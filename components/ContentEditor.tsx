@@ -43,7 +43,7 @@ export default function ContentEditor({ initial }: { initial: string }) {
           }}
           className="border rounded overflow-hidden"
         />
-        <div className="border rounded p-4 overflow-y-auto prose prose-neutral dark:prose-invert max-w-none">
+        <div className="border rounded p-4 overflow-y-auto max-w-none">
           <Preview source={content} />
         </div>
       </div>

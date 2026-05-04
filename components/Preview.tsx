@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { MDXRemote, type MDXRemoteSerializeResult } from "next-mdx-remote";
 import { serialize } from "next-mdx-remote/serialize";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 
@@ -13,7 +14,7 @@ export default function Preview({ source }: { source: string }) {
   useEffect(() => {
     serialize(source, {
       mdxOptions: {
-        remarkPlugins: [remarkMath],
+        remarkPlugins: [remarkMath, remarkGfm],
         rehypePlugins: [rehypeKatex],
       },
     }).then(setMdx);
