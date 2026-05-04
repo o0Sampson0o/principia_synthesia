@@ -3,6 +3,7 @@ import { articles, curriculumEntries } from "@/db/schema";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { upsertCurriculumEntry, removeCurriculumEntry } from "@/app/admin/actions";
+import AddEntryForm from "./AddEntryForm";
 
 export default async function AdminCurriculumPage() {
   const allArticles = await db
@@ -49,59 +50,12 @@ export default async function AdminCurriculumPage() {
       </div>
 
       {/* Add entry form */}
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 mb-10">
-        <h2 className="text-sm font-semibold mb-4">Add to a book</h2>
-        <form action={upsertCurriculumEntry} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              name="bookSlug"
-              placeholder="book-slug"
-              required
-              className="border rounded px-3 py-2 text-sm bg-white dark:bg-zinc-900"
-            />
-            <input
-              name="bookTitle"
-              placeholder="Book Title"
-              required
-              className="border rounded px-3 py-2 text-sm bg-white dark:bg-zinc-900"
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <select
-              name="articleId"
-              required
-              className="border rounded px-3 py-2 text-sm bg-white dark:bg-zinc-900"
-            >
-              <option value="">Select article…</option>
-              {allArticles
-                .filter((a) => !existingArticleIds.has(a.id))
-                .map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.title}
-                  </option>
-                ))}
-            </select>
-            <input
-              name="position"
-              type="number"
-              placeholder="Position"
-              required
-              className="border rounded px-3 py-2 text-sm bg-white dark:bg-zinc-900"
-            />
-            <input
-              name="partTitle"
-              placeholder="Part title (optional)"
-              className="border rounded px-3 py-2 text-sm bg-white dark:bg-zinc-900"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-4 py-2 text-sm rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity"
-          >
-            Add entry
-          </button>
-        </form>
-      </div>
+      <AddEntryForm
+        allArticles={allArticles}
+        bookList={bookList}
+        existingArticleIds={Array.from(existingArticleIds)}
+        nextPositions={nextPositions}
+      />
 
       {/* Existing books */}
       {bookList.length === 0 ? (
