@@ -1,0 +1,110 @@
+import { db } from "@/db";
+import { articles, curriculumEntries } from "@/db/schema";
+import { eq, asc, and } from "drizzle-orm";
+import { notFound } from "next/navigation";
+import { MDXRemote } from "next-mdx-remote/rsc";
+import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
+import Link from "next/link";
+
+export default async function CurriculumArticlePage({
+  params,
+}: {
+  params: Promise<{ book: string; slug: string }>;
+}) {
+  const { book: bookSlug, slug } = await params;
+
+  const article = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.slug, slug))
+    .limit(1);
+
+  if (!article[0]) notFound();
+
+  const entry = await db
+    .select()
+    .from(curriculumEntries)
+    .where(
+      and(
+        eq(curriculumEntries.bookSlug, bookSlug),
+        eq(curriculumEntries.articleId, article[0].id)
+      )
+    )
+    .limit(1);
+
+  if (!entry[0]) notFound();
+
+  const entries = await db
+    .select({
+      articleSlug: articles.slug,
+      articleTitle: articles.title,
+    })
+    .from(curriculumEntries)
+    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .where(eq(curriculumEntries.bookSlug, bookSlug))
+    .orderBy(asc(curriculumEntries.position));
+
+  const currentIndex = entries.findIndex((e) => e.articleSlug === slug);
+  const prevEntry = currentIndex > 0 ? entries[currentIndex - 1] : null;
+  const nextEntry =
+    currentIndex < entries.length - 1 ? entries[currentIndex + 1] : null;
+
+  const { title, content, updatedAt } = article[0];
+  const bookTitle = entry[0].bookTitle;
+
+  return (
+    <main className="max-w-3xl mx-auto px-4 py-10">
+      <Link
+        href={`/curriculum/${bookSlug}`}
+        className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors mb-6 inline-block"
+      >
+        ← Back to {bookTitle}
+      </Link>
+
+      <h1 className="text-4xl font-bold mb-2">{title}</h1>
+      <p className="text-sm text-gray-500 mb-8">
+        Last updated: {updatedAt?.toLocaleDateString()}
+      </p>
+
+      <article className="markdown-content">
+        <MDXRemote
+          source={content || ""}
+          options={{
+            mdxOptions: {
+              remarkPlugins: [remarkMath, remarkGfm],
+              rehypePlugins: [rehypeKatex],
+            },
+          }}
+        />
+      </article>
+
+      {(prevEntry || nextEntry) && (
+        <nav className="flex justify-between mt-12 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+          {prevEntry ? (
+            <Link
+              href={`/curriculum/${bookSlug}/${prevEntry.articleSlug}`}
+              className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+            >
+              ← {prevEntry.articleTitle}
+            </Link>
+          ) : (
+            <div />
+          )}
+          {nextEntry ? (
+            <Link
+              href={`/curriculum/${bookSlug}/${nextEntry.articleSlug}`}
+              className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors text-right"
+            >
+              {nextEntry.articleTitle} →
+            </Link>
+          ) : (
+            <div />
+          )}
+        </nav>
+      )}
+    </main>
+  );
+}

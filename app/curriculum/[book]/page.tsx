@@ -54,7 +54,7 @@ export default async function CurriculumBookPage({
                 {e.partTitle}
               </p>
             )}
-            <Link href={`/${e.articleSlug}`} className="group flex items-baseline gap-3 py-1">
+               <Link href={`/curriculum/${bookSlug}/${e.articleSlug}`} className="group flex items-baseline gap-3 py-1">
               <span className="text-xs text-zinc-300 dark:text-zinc-600 w-6 text-right shrink-0 tabular-nums">
                 {e.position}
               </span>
