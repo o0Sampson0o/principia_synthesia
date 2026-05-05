@@ -5,19 +5,36 @@ import { articles, revisions, curriculumEntries, categories, articleCategories }
 import { eq, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  createArticleSchema,
+  updateArticleSchema,
+  deleteArticleSchema,
+  upsertCurriculumEntrySchema,
+  removeCurriculumEntrySchema,
+  restoreRevisionSchema,
+} from "@/lib/validations";
 
 export async function createArticle(formData: FormData) {
   const title = formData.get("title") as string;
   const slug = formData.get("slug") as string;
   const summary = formData.get("summary") as string;
   const content = formData.get("content") as string;
-  const categorySlugs = ((formData.get("categories") as string) || "").split(",").filter(Boolean)
+  const categoriesStr = (formData.get("categories") as string) || "";
 
-  const [article] = await db.insert(articles).values({ title, slug, summary, content }).returning()
-  await setArticleCategories(article.id, categorySlugs)
+  const validated = createArticleSchema.parse({ title, slug, summary, content, categories: categoriesStr });
+  const categorySlugs = validated.categories?.split(",").filter(Boolean) || [];
+
+  const [article] = await db.insert(articles).values({
+    title: validated.title,
+    slug: validated.slug,
+    summary: validated.summary,
+    content: validated.content,
+  }).returning();
+
+  await setArticleCategories(article.id, categorySlugs);
 
   revalidatePath("/");
-  redirect(`/${slug}`);
+  redirect(`/${validated.slug}`);
 }
 
 export async function updateArticle(formData: FormData) {
@@ -26,40 +43,97 @@ export async function updateArticle(formData: FormData) {
   const slug = formData.get("slug") as string;
   const summary = formData.get("summary") as string;
   const content = formData.get("content") as string;
-  const categorySlugs = ((formData.get("categories") as string) || "").split(",").filter(Boolean)
+  const editNote = (formData.get("editNote") as string) || "Updated";
+  const categoriesStr = (formData.get("categories") as string) || "";
+
+  const validated = updateArticleSchema.parse({ id, title, slug, summary, content, categories: categoriesStr });
+  const categorySlugs = validated.categories?.split(",").filter(Boolean) || [];
 
   // Save revision first
   const current = await db
     .select()
     .from(articles)
-    .where(eq(articles.id, id))
+    .where(eq(articles.id, validated.id))
     .limit(1);
   if (current[0]?.content) {
     await db.insert(revisions).values({
-      articleId: id,
+      articleId: validated.id,
       content: current[0].content,
-      editNote: "Updated",
+      editNote: editNote,
     });
   }
 
   await db
     .update(articles)
-    .set({ title, slug, summary, content, updatedAt: new Date() })
-    .where(eq(articles.id, id));
+    .set({
+      title: validated.title,
+      slug: validated.slug,
+      summary: validated.summary,
+      content: validated.content,
+      updatedAt: new Date(),
+    })
+    .where(eq(articles.id, validated.id));
 
-  await setArticleCategories(id, categorySlugs)
+  await setArticleCategories(validated.id, categorySlugs);
 
-  revalidatePath(`/${slug}`);
-  redirect(`/${slug}`);
+  revalidatePath(`/${validated.slug}`);
+  redirect(`/${validated.slug}`);
+}
+
+export async function restoreRevision(formData: FormData) {
+  const validated = restoreRevisionSchema.parse({
+    revisionId: formData.get("revisionId"),
+    articleId: formData.get("articleId"),
+  });
+
+  // Get the revision
+  const revision = await db
+    .select()
+    .from(revisions)
+    .where(eq(revisions.id, validated.revisionId))
+    .limit(1);
+
+  if (!revision[0]) {
+    throw new Error("Revision not found");
+  }
+
+  // Get current article for slug
+  const article = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.id, validated.articleId))
+    .limit(1);
+
+  if (!article[0]) {
+    throw new Error("Article not found");
+  }
+
+  // Save current content as a revision before restoring
+  await db.insert(revisions).values({
+    articleId: validated.articleId,
+    content: article[0].content || "",
+    editNote: "Before restore",
+  });
+
+  // Restore the old content
+  await db
+    .update(articles)
+    .set({ content: revision[0].content, updatedAt: new Date() })
+    .where(eq(articles.id, validated.articleId));
+
+  revalidatePath(`/${article[0].slug}`);
+  redirect(`/${article[0].slug}`);
 }
 
 export async function deleteArticle(formData: FormData) {
-  const id = Number(formData.get("id"));
-  const slug = formData.get("slug") as string;
+  const validated = deleteArticleSchema.parse({
+    id: formData.get("id"),
+    slug: formData.get("slug"),
+  });
 
-  await db.delete(revisions).where(eq(revisions.articleId, id));
-  await db.delete(curriculumEntries).where(eq(curriculumEntries.articleId, id));
-  await db.delete(articles).where(eq(articles.id, id));
+  await db.delete(revisions).where(eq(revisions.articleId, validated.id));
+  await db.delete(curriculumEntries).where(eq(curriculumEntries.articleId, validated.id));
+  await db.delete(articles).where(eq(articles.id, validated.id));
 
   revalidatePath("/");
   redirect("/");
@@ -68,41 +142,56 @@ export async function deleteArticle(formData: FormData) {
 // --- Curriculum actions ---
 
 export async function upsertCurriculumEntry(formData: FormData) {
-  const bookSlug = formData.get("bookSlug") as string;
-  const bookTitle = formData.get("bookTitle") as string;
-  const articleId = Number(formData.get("articleId"));
-  const position = Number(formData.get("position"));
-  const partTitle = (formData.get("partTitle") as string) || null;
+  const validated = upsertCurriculumEntrySchema.parse({
+    bookSlug: formData.get("bookSlug"),
+    bookTitle: formData.get("bookTitle"),
+    articleId: formData.get("articleId"),
+    position: formData.get("position"),
+    partTitle: formData.get("partTitle"),
+  });
 
   // Check if entry exists
   const existing = await db
     .select()
     .from(curriculumEntries)
-    .where(eq(curriculumEntries.articleId, articleId))
+    .where(eq(curriculumEntries.articleId, validated.articleId))
     .limit(1);
 
   if (existing[0]) {
     await db
       .update(curriculumEntries)
-      .set({ bookSlug, bookTitle, position, partTitle })
+      .set({
+        bookSlug: validated.bookSlug,
+        bookTitle: validated.bookTitle,
+        position: validated.position,
+        partTitle: validated.partTitle,
+      })
       .where(eq(curriculumEntries.id, existing[0].id));
   } else {
     await db
       .insert(curriculumEntries)
-      .values({ bookSlug, bookTitle, articleId, position, partTitle });
+      .values({
+        bookSlug: validated.bookSlug,
+        bookTitle: validated.bookTitle,
+        articleId: validated.articleId,
+        position: validated.position,
+        partTitle: validated.partTitle,
+      });
   }
 
-  revalidatePath("/curriculum/" + bookSlug);
+  revalidatePath("/curriculum/" + validated.bookSlug);
   revalidatePath("/admin/curriculum");
 }
 
 export async function removeCurriculumEntry(formData: FormData) {
-  const id = Number(formData.get("id"));
-  const bookSlug = formData.get("bookSlug") as string;
+  const validated = removeCurriculumEntrySchema.parse({
+    id: formData.get("id"),
+    bookSlug: formData.get("bookSlug"),
+  });
 
-  await db.delete(curriculumEntries).where(eq(curriculumEntries.id, id));
+  await db.delete(curriculumEntries).where(eq(curriculumEntries.id, validated.id));
 
-  revalidatePath("/curriculum/" + bookSlug);
+  revalidatePath("/curriculum/" + validated.bookSlug);
   revalidatePath("/admin/curriculum");
 }
 

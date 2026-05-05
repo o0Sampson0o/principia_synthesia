@@ -13,14 +13,17 @@ export default async function Nav() {
         >
           Principia Synthesia
         </Link>
-        <div className="flex items-center gap-6 text-sm text-zinc-500 dark:text-zinc-400">
-          <Link href="/search" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-            Search
-          </Link>
-          <Link href="/category" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-            Categories
-          </Link>
-          {session?.isAdmin && (
+          <div className="flex items-center gap-6 text-sm text-zinc-500 dark:text-zinc-400">
+            <Link href="/search" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+              Search
+            </Link>
+            <Link href="/category" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+              Categories
+            </Link>
+            <Link href="/animations" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+              Animations
+            </Link>
+            {session?.isAdmin && (
             <>
               <Link href="/admin" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
                 Admin

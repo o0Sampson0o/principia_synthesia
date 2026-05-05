@@ -8,6 +8,9 @@ import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import "katex/dist/katex.min.css";
+import { PendulumSim, DoublePendulumSim, OrbitSim } from "@/components/animations";
+
+const mdxComponents = { PendulumSim, DoublePendulumSim, OrbitSim };
 
 export default function Preview({ source }: { source: string }) {
   const [mdx, setMdx] = useState<MDXRemoteSerializeResult | null>(null);
@@ -21,7 +24,7 @@ export default function Preview({ source }: { source: string }) {
     }).then(setMdx);
   }, [source]);
 
-  if (!mdx) return <p className="text-gray-400 text-sm">Rendering...</p>;
+  if (!mdx) return <p className="text-zinc-400 text-sm">Rendering...</p>;
 
-  return <div className="markdown-content"><MDXRemote {...mdx} /></div>;
+  return <div className="markdown-content"><MDXRemote {...mdx} components={mdxComponents} /></div>;
 }

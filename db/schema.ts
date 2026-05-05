@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, boolean, unique, foreignKey } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -25,13 +25,13 @@ export const categories = pgTable("categories", {
 });
 
 export const articleCategories = pgTable("article_categories", {
-  articleId: integer("article_id").notNull(),
-  categoryId: integer("category_id").notNull(),
+  articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+  categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
 });
 
 export const revisions = pgTable("revisions", {
   id: serial("id").primaryKey(),
-  articleId: integer("article_id").notNull(),
+  articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
   content: text("content"),
   editNote: text("edit_note"),
   editedAt: timestamp("edited_at").defaultNow(),
@@ -44,7 +44,7 @@ export const curriculumEntries = pgTable(
     id: serial("id").primaryKey(),
     bookSlug: text("book_slug").notNull(),
     bookTitle: text("book_title").notNull(),
-    articleId: integer("article_id").notNull(),
+    articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
     position: integer("position").notNull(), // ordering within the book
     partTitle: text("part_title"),           // optional section heading above this entry
   },
