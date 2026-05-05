@@ -18,16 +18,14 @@ export async function GET(
     return new Response("Animation not found", { status: 404 });
   }
 
-  // Return a simple HTML page that runs the animation
-  const html = `
-<!DOCTYPE html>
+  // Return HTML page that runs the animation
+  const code = result[0].code;
+  
+  const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script>
-    ${result[0].code}
-  </script>
   <style>
     body { margin: 0; overflow: hidden; background: transparent; }
     canvas { display: block; }
@@ -36,7 +34,8 @@ export async function GET(
 <body>
   <div id="container"></div>
   <script>
-    // Initialize animation when DOM is ready
+    ${code}
+    
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', init);
     } else {
@@ -54,8 +53,7 @@ export async function GET(
     }
   </script>
 </body>
-</html>
-`;
+</html>`;
 
   return new Response(html, {
     headers: {

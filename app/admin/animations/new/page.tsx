@@ -4,6 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { saveAnimation, deleteAnimation } from "@/app/admin/actions";
 import { useRouter } from "next/navigation";
+import AnimationPreview from "@/components/AnimationPreview";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), {
   ssr: false,
@@ -111,7 +112,7 @@ export default function NewAnimationPage() {
           />
         </div>
 
-        {/* Settings */}
+         {/* Settings + Preview */}
         <div className="border rounded p-4 overflow-y-auto">
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2">Slug</label>
@@ -131,12 +132,7 @@ export default function NewAnimationPage() {
               className="w-full border rounded px-4 py-2 text-sm"
             />
           </div>
-          <div className="p-4 rounded bg-zinc-50 dark:bg-zinc-900">
-            <p className="text-xs text-zinc-400 mb-2">Usage in MDX:</p>
-            <code className="text-xs text-zinc-600 dark:text-zinc-400">
-              {`<DynamicAnimation slug="${slug || "..."}" />`}
-            </code>
-          </div>
+          {slug && <AnimationPreview slug={slug} />}
         </div>
       </div>
     </main>
