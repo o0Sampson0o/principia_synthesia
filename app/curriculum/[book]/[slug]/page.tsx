@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { articles, curriculumEntries, categories, articleCategories } from "@/db/schema";
 import { eq, asc, and } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
@@ -9,7 +10,7 @@ import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import "katex/dist/katex.min.css";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
-import MDXWithAnimations from "@/components/MDXWithAnimations";
+import DynamicAnimation from "@/components/DynamicAnimation";
 
 export default async function CurriculumArticlePage({
   params,
@@ -138,8 +139,9 @@ export default async function CurriculumArticlePage({
       <hr className="border-zinc-200 dark:border-zinc-800 mb-8" />
 
       <article className="markdown-content">
-        <MDXWithAnimations
+        <MDXRemote
           source={content || ""}
+          components={{ DynamicAnimation }}
           options={{
             mdxOptions: {
               remarkPlugins: [remarkMath, remarkGfm, remarkWikilinks],
