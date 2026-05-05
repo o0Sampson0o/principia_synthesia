@@ -4,8 +4,17 @@ import dynamic from "next/dynamic";
 import type { MDXRemoteSerializeResult } from "next-mdx-remote";
 import type { ComponentType } from "react";
 
+// DynamicAnimation is loaded via dynamic import
+// We need to pass it as a component, not a dynamic wrapper
 const DynamicAnimation = dynamic(
-  () => import("./DynamicAnimation"),
+  () => import("./DynamicAnimation").then(mod => {
+    // Return a component that renders the default export
+    return function DynamicAnimationWrapper(props: any) {
+      const Component = mod.default;
+      if (!Component) return null;
+      return <Component {...props} />;
+    };
+  }),
   {
     ssr: false,
     loading: () => null,
