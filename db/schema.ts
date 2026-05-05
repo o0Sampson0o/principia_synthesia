@@ -59,3 +59,13 @@ export const savedAnimations = pgTable("saved_animations", {
   code: text("code").notNull(), // Plain JS animation code
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// User themes - custom themes saved by users
+export const userThemes = pgTable("user_themes", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").unique().notNull(),
+  variables: text("variables").notNull(), // JSON string of CSS variables
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
