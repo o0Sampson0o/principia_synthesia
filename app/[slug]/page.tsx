@@ -10,7 +10,7 @@ import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import "katex/dist/katex.min.css";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
-import { PendulumSim, DoublePendulumSim, OrbitSim } from "@/components/animations";
+import MDXWithAnimations from "@/components/MDXWithAnimations";
 
 export default async function ArticlePage({
   params,
@@ -102,9 +102,8 @@ export default async function ArticlePage({
       <hr className="border-zinc-200 dark:border-zinc-800 mb-8" />
 
       <article className="markdown-content">
-        <MDXRemote
+        <MDXWithAnimations
           source={content || ""}
-          components={{ PendulumSim, DoublePendulumSim, OrbitSim }}
           options={{
             mdxOptions: {
               remarkPlugins: [remarkMath, remarkGfm, remarkWikilinks],
