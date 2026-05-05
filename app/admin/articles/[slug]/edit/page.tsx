@@ -2,10 +2,10 @@ import { db } from "@/db";
 import { articles, categories, articleCategories, revisions } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { updateArticle, restoreRevision } from "@/app/admin/actions";
-import ContentEditor from "@/components/ContentEditor";
-import CategoryInput from "@/components/CategoryInput";
+import { restoreRevision } from "@/app/admin/actions";
 import DeleteButton from "./DeleteButton";
+import EditForm from "./EditForm";
+import RestoreButton from "./RestoreButton";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
@@ -48,33 +48,8 @@ export default async function EditArticlePage({
       </div>
 
       {/* Edit Form */}
-      <form action={updateArticle} className="space-y-4 mb-12">
-        <input type="hidden" name="id" value={a.id} />
-        <input
-          name="title"
-          defaultValue={a.title}
-          required
-          className="w-full border rounded px-4 py-2"
-        />
-        <input
-          name="slug"
-          defaultValue={a.slug}
-          required
-          className="w-full border rounded px-4 py-2"
-        />
-        <input
-          name="summary"
-          defaultValue={a.summary || ""}
-          className="w-full border rounded px-4 py-2"
-        />
-        <input
-          name="editNote"
-          placeholder="Edit note (optional)"
-          className="w-full border rounded px-4 py-2 text-sm"
-        />
-        <CategoryInput initial={existingCats.map((c) => c.slug)} />
-        <ContentEditor initial={a.content || ""} />
-      </form>
+      <EditForm article={a} existingCats={existingCats} />
+
 
       {/* Revisions */}
       {revisionList.length > 0 && (
@@ -104,17 +79,7 @@ export default async function EditArticlePage({
                   <form action={restoreRevision} className="inline">
                     <input type="hidden" name="revisionId" value={rev.id} />
                     <input type="hidden" name="articleId" value={a.id} />
-                    <button
-                      type="submit"
-                      className="text-xs px-3 py-1 rounded border border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                      onClick={(e) => {
-                        if (!confirm("Restore this revision? Current content will be saved as a revision.")) {
-                          e.preventDefault();
-                        }
-                      }}
-                    >
-                      Restore
-                    </button>
+                    <RestoreButton revisionId={rev.id} articleId={a.id} />
                   </form>
                 </summary>
                 <div className="px-4 pb-4 border-t border-zinc-200 dark:border-zinc-800">
