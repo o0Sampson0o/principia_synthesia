@@ -44,6 +44,10 @@ export default forwardRef<ContentEditorRef, {
     contentValue.current = val;
     onChange?.(val);
 
+    // Keep hidden input in sync
+    const field = document.getElementById("content-field") as HTMLInputElement | null;
+    if (field) field.value = val;
+
     // Debounce preview updates
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
@@ -56,6 +60,12 @@ export default forwardRef<ContentEditorRef, {
   const handleCompile = useCallback((e?: React.MouseEvent) => {
     e?.preventDefault();
     previewRef.current?.updateSource(contentValue.current);
+  }, []);
+
+  // Initialize hidden input on mount so form submits correctly even without editing
+  useEffect(() => {
+    const field = document.getElementById("content-field") as HTMLInputElement | null;
+    if (field) field.value = initial;
   }, []);
 
   // Expose compile method to parent
