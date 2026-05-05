@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { articles, curriculumEntries } from "@/db/schema";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { upsertCurriculumEntry, removeCurriculumEntry } from "@/app/admin/actions";
+import { upsertCurriculumEntry, removeCurriculumEntry, deleteCurriculumBook } from "@/app/admin/actions";
 import AddEntryForm from "./AddEntryForm";
 
 export default async function AdminCurriculumPage() {
@@ -75,6 +75,22 @@ export default async function AdminCurriculumPage() {
                     ({bookSlug})
                   </span>
                 </h3>
+                <form
+                  action={deleteCurriculumBook}
+                  onSubmit={(e) => {
+                    if (!confirm(`Delete the entire book "${book.bookTitle}"? Articles will not be deleted.`)) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
+                  <input type="hidden" name="bookSlug" value={bookSlug} />
+                  <button
+                    type="submit"
+                    className="text-xs text-zinc-300 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                  >
+                    Delete book
+                  </button>
+                </form>
               </div>
               <ol className="space-y-1">
                 {book.entries.map((e) => (

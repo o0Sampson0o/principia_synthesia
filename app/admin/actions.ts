@@ -195,6 +195,16 @@ export async function removeCurriculumEntry(formData: FormData) {
   revalidatePath("/admin/curriculum");
 }
 
+export async function deleteCurriculumBook(formData: FormData) {
+  const bookSlug = (formData.get("bookSlug") as string).trim();
+  if (!bookSlug) return;
+
+  await db.delete(curriculumEntries).where(eq(curriculumEntries.bookSlug, bookSlug));
+
+  revalidatePath("/curriculum/" + bookSlug);
+  revalidatePath("/admin/curriculum");
+}
+
 // --- Category actions ---
 
 export async function setArticleCategories(articleId: number, slugs: string[]) {
