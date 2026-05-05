@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { articles, revisions, curriculumEntries } from "@/db/schema";
+import { articles, revisions, curriculumEntries, categories, articleCategories } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -11,22 +11,22 @@ export async function createArticle(formData: FormData) {
   const slug = formData.get("slug") as string;
   const summary = formData.get("summary") as string;
   const content = formData.get("content") as string;
+  const categorySlugs = ((formData.get("categories") as string) || "").split(",").filter(Boolean)
 
-  await db.insert(articles).values({ title, slug, summary, content });
+  const [article] = await db.insert(articles).values({ title, slug, summary, content }).returning()
+  await setArticleCategories(article.id, categorySlugs)
 
   revalidatePath("/");
   redirect(`/${slug}`);
 }
 
 export async function updateArticle(formData: FormData) {
-  console.log("content received:", formData.get("content"));
-  console.log("id received:", formData.get("id"));
-  // rest of the function...
   const id = Number(formData.get("id"));
   const title = formData.get("title") as string;
   const slug = formData.get("slug") as string;
   const summary = formData.get("summary") as string;
   const content = formData.get("content") as string;
+  const categorySlugs = ((formData.get("categories") as string) || "").split(",").filter(Boolean)
 
   // Save revision first
   const current = await db
@@ -46,6 +46,8 @@ export async function updateArticle(formData: FormData) {
     .update(articles)
     .set({ title, slug, summary, content, updatedAt: new Date() })
     .where(eq(articles.id, id));
+
+  await setArticleCategories(id, categorySlugs)
 
   revalidatePath(`/${slug}`);
   redirect(`/${slug}`);
@@ -102,4 +104,32 @@ export async function removeCurriculumEntry(formData: FormData) {
 
   revalidatePath("/curriculum/" + bookSlug);
   revalidatePath("/admin/curriculum");
+}
+
+// --- Category actions ---
+
+export async function setArticleCategories(articleId: number, slugs: string[]) {
+  // Upsert each category by slug
+  const ids: number[] = []
+  for (const slug of slugs) {
+    const name = slug.trim()
+    if (!name) continue
+    const existing = await db.select().from(categories).where(eq(categories.slug, name)).limit(1)
+    let id: number
+    if (existing[0]) {
+      id = existing[0].id
+    } else {
+      const [inserted] = await db.insert(categories).values({ slug: name, name }).returning()
+      id = inserted.id
+    }
+    ids.push(id)
+  }
+
+  // Replace all category links for this article
+  await db.delete(articleCategories).where(eq(articleCategories.articleId, articleId))
+  if (ids.length > 0) {
+    await db.insert(articleCategories).values(ids.map((categoryId) => ({ articleId, categoryId })))
+  }
+
+  revalidatePath("/category")
 }

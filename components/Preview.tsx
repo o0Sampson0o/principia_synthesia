@@ -6,6 +6,7 @@ import { serialize } from "next-mdx-remote/serialize";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
+import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import "katex/dist/katex.min.css";
 
 export default function Preview({ source }: { source: string }) {
@@ -14,7 +15,7 @@ export default function Preview({ source }: { source: string }) {
   useEffect(() => {
     serialize(source, {
       mdxOptions: {
-        remarkPlugins: [remarkMath, remarkGfm],
+        remarkPlugins: [remarkMath, remarkGfm, remarkWikilinks],
         rehypePlugins: [rehypeKatex],
       },
     }).then(setMdx);

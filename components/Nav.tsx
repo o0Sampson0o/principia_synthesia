@@ -17,6 +17,9 @@ export default async function Nav() {
           <Link href="/search" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
             Search
           </Link>
+          <Link href="/category" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+            Categories
+          </Link>
           {session?.isAdmin && (
             <>
               <Link href="/admin" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">

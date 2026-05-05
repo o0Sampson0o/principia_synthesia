@@ -1,0 +1,57 @@
+import { visit } from "unist-util-visit"
+import type { Root, Text, Link, PhrasingContent } from "mdast"
+
+export function remarkWikilinks() {
+  return (tree: Root) => {
+    visit(tree, "text", (node: Text, index, parent) => {
+      if (!parent || index === undefined) return
+
+      const regex = /\[\[([^\]]+)\]\]/g
+      const parts: PhrasingContent[] = []
+      let lastIndex = 0
+      let match
+
+      while ((match = regex.exec(node.value)) !== null) {
+        if (match.index > lastIndex) {
+          parts.push({ type: "text", value: node.value.slice(lastIndex, match.index) })
+        }
+
+        const inner = match[1]
+
+        // Split on | for optional display label
+        const [target, label] = inner.includes("|")
+          ? inner.split("|").map((s) => s.trim())
+          : [inner.trim(), null]
+
+        // Resolve URL: book:slug → /curriculum/slug, else → /slug
+        let url: string
+        let displayText: string
+
+        if (target.startsWith("book:")) {
+          const bookSlug = target.slice(5).trim()
+          url = `/curriculum/${bookSlug}`
+          displayText = label ?? bookSlug
+        } else {
+          url = `/${target}`
+          displayText = label ?? target
+        }
+
+        const link: Link = {
+          type: "link",
+          url,
+          children: [{ type: "text", value: displayText }],
+        }
+        parts.push(link)
+        lastIndex = match.index + match[0].length
+      }
+
+      if (parts.length === 0) return
+
+      if (lastIndex < node.value.length) {
+        parts.push({ type: "text", value: node.value.slice(lastIndex) })
+      }
+
+      parent.children.splice(index, 1, ...parts)
+    })
+  }
+}

@@ -1,5 +1,6 @@
 import { createArticle } from "@/app/admin/actions";
 import ContentEditor from "@/components/ContentEditor";
+import CategoryInput from "@/components/CategoryInput";
 
 export default function NewArticlePage() {
   return (
@@ -23,6 +24,7 @@ export default function NewArticlePage() {
           placeholder="Short summary"
           className="w-full border rounded px-4 py-2"
         />
+        <CategoryInput initial={[]} />
         <ContentEditor initial="" />
       </form>
     </main>

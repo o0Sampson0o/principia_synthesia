@@ -1,9 +1,10 @@
 import { db } from "@/db";
-import { articles } from "@/db/schema";
+import { articles, categories, articleCategories } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { updateArticle } from "@/app/admin/actions";
 import ContentEditor from "@/components/ContentEditor";
+import CategoryInput from "@/components/CategoryInput";
 import DeleteButton from "./DeleteButton";
 
 export default async function EditArticlePage({
@@ -20,6 +21,12 @@ export default async function EditArticlePage({
   if (!article[0]) notFound();
 
   const a = article[0];
+
+  const existingCats = await db
+    .select({ slug: categories.slug })
+    .from(categories)
+    .innerJoin(articleCategories, eq(categories.id, articleCategories.categoryId))
+    .where(eq(articleCategories.articleId, a.id));
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-10">
@@ -46,6 +53,7 @@ export default async function EditArticlePage({
           defaultValue={a.summary || ""}
           className="w-full border rounded px-4 py-2"
         />
+        <CategoryInput initial={existingCats.map((c) => c.slug)} />
         <ContentEditor initial={a.content || ""} />
       </form>
     </main>
