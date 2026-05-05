@@ -50,3 +50,12 @@ export const curriculumEntries = pgTable(
   },
   (t) => [unique().on(t.bookSlug, t.articleId)]
 );
+
+// Saved animations - user-created animations stored in DB
+export const savedAnimations = pgTable("saved_animations", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").unique().notNull(),
+  name: text("name").notNull(),
+  code: text("code").notNull(), // Plain JS animation code
+  createdAt: timestamp("created_at").defaultNow(),
+});

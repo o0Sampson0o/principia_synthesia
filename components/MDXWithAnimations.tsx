@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { MDXRemoteSerializeResult } from "next-mdx-remote";
+import type { ComponentType } from "react";
 
 const PendulumSim = dynamic(
   () => import("@/components/animations/PendulumSim"),
@@ -27,10 +28,19 @@ const OrbitSim = dynamic(
   }
 );
 
+const DynamicAnimation = dynamic(
+  () => import("./DynamicAnimation"),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
+
 const mdxComponents = {
   PendulumSim,
   DoublePendulumSim,
   OrbitSim,
+  DynamicAnimation,
 };
 
 export default function MDXWithAnimations({

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { articles, revisions, curriculumEntries, categories, articleCategories } from "@/db/schema";
+import { articles, revisions, curriculumEntries, categories, articleCategories, savedAnimations } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -231,4 +231,41 @@ export async function setArticleCategories(articleId: number, slugs: string[]) {
   }
 
   revalidatePath("/category")
+}
+
+// --- Animation actions ---
+
+export async function saveAnimation(formData: FormData) {
+  const slug = (formData.get("slug") as string).trim();
+  const name = (formData.get("name") as string).trim();
+  const code = (formData.get("code") as string).trim();
+
+  if (!slug || !name || !code) return;
+
+  const existing = await db
+    .select()
+    .from(savedAnimations)
+    .where(eq(savedAnimations.slug, slug))
+    .limit(1);
+
+  if (existing[0]) {
+    await db
+      .update(savedAnimations)
+      .set({ name, code })
+      .where(eq(savedAnimations.id, existing[0].id));
+  } else {
+    await db.insert(savedAnimations).values({ slug, name, code });
+  }
+
+  revalidatePath("/admin/animations");
+  revalidatePath("/animations");
+}
+
+export async function deleteAnimation(formData: FormData) {
+  const slug = (formData.get("slug") as string).trim();
+  if (!slug) return;
+
+  await db.delete(savedAnimations).where(eq(savedAnimations.slug, slug));
+
+  revalidatePath("/admin/animations");
 }
