@@ -1,29 +1,9 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import type { MDXRemoteSerializeResult } from "next-mdx-remote";
-import type { ComponentType } from "react";
 
-// DynamicAnimation is loaded via dynamic import
-// We need to pass it as a component, not a dynamic wrapper
-const DynamicAnimation = dynamic(
-  () => import("./DynamicAnimation").then(mod => {
-    // Return a component that renders the default export
-    return function DynamicAnimationWrapper(props: any) {
-      const Component = mod.default;
-      if (!Component) return null;
-      return <Component {...props} />;
-    };
-  }),
-  {
-    ssr: false,
-    loading: () => null,
-  }
-);
-
-const mdxComponents = {
-  DynamicAnimation,
-};
+// Import DynamicAnimation statically — it's a client component with iframe
+import DynamicAnimation from "./DynamicAnimation";
 
 export default function MDXWithAnimations({
   source,
@@ -32,11 +12,17 @@ export default function MDXWithAnimations({
   source: string;
   options?: any;
 }) {
+  // We need to pass DynamicAnimation as a component to MDXRemote
+  // Since it uses iframe, we can create a wrapper
+  const components: Record<string, any> = {
+    DynamicAnimation: (props: any) => <DynamicAnimation {...props} />,
+  };
+
   const MDXRemote = require("next-mdx-remote").MDXRemote;
 
   return (
     <div className="markdown-content">
-      <MDXRemote source={source} components={mdxComponents} options={options} />
+      <MDXRemote source={source} components={components} options={options} />
     </div>
   );
 }
