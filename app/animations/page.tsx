@@ -98,11 +98,12 @@ export default async function AnimationsPage({
             >
               {/* Preview iframe — clicking goes to animation page */}
               <Link href={`/animations/${anim.slug}`} className="block">
-                <div className="relative bg-zinc-50 dark:bg-zinc-900" style={{ height: "200px" }}>
+                <div className="relative bg-zinc-50 dark:bg-zinc-900" style={{ height: "200px", minHeight: "200px" }}>
                   <iframe
                     src={`/api/animations/${anim.slug}`}
                     className="w-full h-full border-0 pointer-events-none"
                     title={anim.name}
+                    loading="lazy"
                   />
                 </div>
               </Link>
