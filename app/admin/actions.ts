@@ -37,7 +37,7 @@ export async function createArticle(formData: FormData) {
   redirect(`/${validated.slug}`);
 }
 
-export async function updateArticle(formData: FormData) {
+export async function updateArticle(prevState: any, formData: FormData) {
   const id = Number(formData.get("id"));
   const title = formData.get("title") as string;
   const slug = formData.get("slug") as string;
@@ -46,7 +46,23 @@ export async function updateArticle(formData: FormData) {
   const editNote = (formData.get("editNote") as string) || "Updated";
   const categoriesStr = (formData.get("categories") as string) || "";
 
-  const validated = updateArticleSchema.parse({ id, title, slug, summary, content, categories: categoriesStr });
+  let validated: any;
+  try {
+    validated = updateArticleSchema.parse({ id, title, slug, summary, content, categories: categoriesStr });
+  } catch (err: any) {
+    if (err?.name === "ZodError") {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of err.issues) {
+        const field = issue.path.join(".");
+        fieldErrors[field] = issue.message;
+      }
+      return { error: fieldErrors };
+    }
+    throw err;
+  }
+
+  if (!validated) return { error: { form: "Validation failed" } };
+
   const categorySlugs = validated.categories?.split(",").filter(Boolean) || [];
 
   // Save revision first

@@ -37,6 +37,9 @@ export default async function AdminPage({
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Admin</h1>
         <div className="flex items-center gap-4">
+          <Link href="/admin/animations" className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
+            Animations →
+          </Link>
           <Link href="/admin/curriculum" className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
             Curriculum →
           </Link>
