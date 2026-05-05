@@ -19,7 +19,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   return (
-    <main className="max-w-md mx-auto px-4 py-20">
+    <main className="max-w-md mx-auto px-6 py-20">
       <h1 className="text-3xl font-bold mb-6 text-zinc-900 dark:text-zinc-100">
         Sign in
       </h1>
@@ -38,7 +38,7 @@ export default async function LoginPage({
             type="email"
             required
             autoComplete="email"
-            className="w-full border rounded px-4 py-2 bg-white dark:bg-zinc-900"
+            className="w-full border border-zinc-200 dark:border-zinc-700 rounded px-4 py-2 bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500 transition-colors"
           />
         </div>
         <div>
@@ -54,7 +54,7 @@ export default async function LoginPage({
             type="password"
             required
             autoComplete="current-password"
-            className="w-full border rounded px-4 py-2 bg-white dark:bg-zinc-900"
+            className="w-full border border-zinc-200 dark:border-zinc-700 rounded px-4 py-2 bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500 transition-colors"
           />
         </div>
         <button

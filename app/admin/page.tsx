@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { desc, count } from "drizzle-orm";
 import Link from "next/link";
+import Pagination from "@/components/Pagination";
 
 const PAGE_SIZE = 20;
 
@@ -33,7 +34,7 @@ export default async function AdminPage({
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-10">
+    <main className="max-w-4xl mx-auto px-6 py-10">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Admin</h1>
         <div className="flex items-center gap-4">
@@ -97,30 +98,7 @@ export default async function AdminPage({
             ))}
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-6">
-              {currentPage > 1 && (
-                <Link
-                  href={`/admin?page=${currentPage - 1}`}
-                  className="px-3 py-1.5 text-sm rounded border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors"
-                >
-                  ← Previous
-                </Link>
-              )}
-              <span className="text-sm text-zinc-400 dark:text-zinc-500 px-3">
-                Page {currentPage} of {totalPages}
-              </span>
-              {currentPage < totalPages && (
-                <Link
-                  href={`/admin?page=${currentPage + 1}`}
-                  className="px-3 py-1.5 text-sm rounded border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors"
-                >
-                  Next →
-                </Link>
-              )}
-            </div>
-          )}
+          <Pagination currentPage={currentPage} totalPages={totalPages} basePath="/admin" />
         </>
       )}
     </main>

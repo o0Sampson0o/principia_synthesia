@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { articles, revisions, curriculumEntries, categories, articleCategories, savedAnimations } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -224,23 +224,35 @@ export async function deleteCurriculumBook(formData: FormData) {
 // --- Category actions ---
 
 export async function setArticleCategories(articleId: number, slugs: string[]) {
-  // Upsert each category by slug
-  const ids: number[] = []
-  for (const slug of slugs) {
-    const name = slug.trim()
-    if (!name) continue
-    const existing = await db.select().from(categories).where(eq(categories.slug, name)).limit(1)
-    let id: number
-    if (existing[0]) {
-      id = existing[0].id
-    } else {
-      const [inserted] = await db.insert(categories).values({ slug: name, name }).returning()
-      id = inserted.id
-    }
-    ids.push(id)
+  const cleanSlugs = slugs.map((s) => s.trim()).filter(Boolean)
+
+  if (cleanSlugs.length === 0) {
+    await db.delete(articleCategories).where(eq(articleCategories.articleId, articleId))
+    revalidatePath("/category")
+    return
   }
 
-  // Replace all category links for this article
+  // Fetch existing categories in one query
+  const existing = await db
+    .select()
+    .from(categories)
+    .where(inArray(categories.slug, cleanSlugs))
+
+  const existingMap = new Map(existing.map((c) => [c.slug, c.id]))
+  const toInsert = cleanSlugs.filter((s) => !existingMap.has(s))
+
+  // Batch insert new categories
+  if (toInsert.length > 0) {
+    const inserted = await db
+      .insert(categories)
+      .values(toInsert.map((slug) => ({ slug, name: slug })))
+      .returning()
+    for (const c of inserted) existingMap.set(c.slug, c.id)
+  }
+
+  const ids = cleanSlugs.map((s) => existingMap.get(s)!).filter(Boolean)
+
+  // Replace all category links atomically
   await db.delete(articleCategories).where(eq(articleCategories.articleId, articleId))
   if (ids.length > 0) {
     await db.insert(articleCategories).values(ids.map((categoryId) => ({ articleId, categoryId })))

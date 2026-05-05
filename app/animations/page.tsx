@@ -3,6 +3,7 @@ import { savedAnimations } from "@/db/schema"
 import { ilike, or, count } from "drizzle-orm"
 import Link from "next/link"
 import { getSession } from "@/lib/auth"
+import Pagination from "@/components/Pagination"
 
 const PAGE_SIZE = 12
 
@@ -130,30 +131,7 @@ export default async function AnimationsPage({
         </div>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <nav className="flex items-center justify-center gap-2 mt-10">
-          {currentPage > 1 && (
-            <Link
-              href={`/animations?q=${query}&page=${currentPage - 1}`}
-              className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
-            >
-              ← Previous
-            </Link>
-          )}
-          <span className="text-sm text-zinc-400 dark:text-zinc-500 px-4">
-            Page {currentPage} of {totalPages}
-          </span>
-          {currentPage < totalPages && (
-            <Link
-              href={`/animations?q=${query}&page=${currentPage + 1}`}
-              className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
-            >
-              Next →
-            </Link>
-          )}
-        </nav>
-      )}
+      <Pagination currentPage={currentPage} totalPages={totalPages} basePath="/animations" query={query} />
     </main>
   )
 }
