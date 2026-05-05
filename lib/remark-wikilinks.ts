@@ -23,7 +23,10 @@ export function remarkWikilinks() {
           ? inner.split("|").map((s) => s.trim())
           : [inner.trim(), null]
 
-        // Resolve URL: book:slug → /curriculum/slug, else → /slug
+        // Resolve URL: 
+        // - book:slug → /curriculum/slug
+        // - anim:slug → [[anim:slug]] renders as <DynamicAnimation slug="..." />
+        // - else → /slug
         let url: string
         let displayText: string
 
@@ -31,6 +34,13 @@ export function remarkWikilinks() {
           const bookSlug = target.slice(5).trim()
           url = `/curriculum/${bookSlug}`
           displayText = label ?? bookSlug
+        } else if (target.startsWith("anim:")) {
+          // Animation syntax: [[anim:slug]] → render as DynamicAnimation
+          const animSlug = target.slice(5).trim()
+          // We'll handle this as a special JSX element
+          // For now, convert to a link that points to preview
+          url = `/animations/${animSlug}`
+          displayText = label ?? animSlug
         } else {
           url = `/${target}`
           displayText = label ?? target
