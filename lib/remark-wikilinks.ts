@@ -25,7 +25,7 @@ export function remarkWikilinks() {
 
         // Resolve URL: 
         // - book:slug → /curriculum/slug
-        // - anim:slug → [[anim:slug]] renders as <DynamicAnimation slug="..." />
+        // - anim:slug → /animations/slug (preview page)
         // - else → /slug
         let url: string
         let displayText: string
@@ -35,10 +35,7 @@ export function remarkWikilinks() {
           url = `/curriculum/${bookSlug}`
           displayText = label ?? bookSlug
         } else if (target.startsWith("anim:")) {
-          // Animation syntax: [[anim:slug]] → render as DynamicAnimation
           const animSlug = target.slice(5).trim()
-          // We'll handle this as a special JSX element
-          // For now, convert to a link that points to preview
           url = `/animations/${animSlug}`
           displayText = label ?? animSlug
         } else {
