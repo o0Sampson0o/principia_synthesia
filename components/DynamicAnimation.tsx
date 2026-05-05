@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 export default function DynamicAnimation({ slug }: { slug: string }) {
   const [error, setError] = useState(false);
@@ -16,12 +17,20 @@ export default function DynamicAnimation({ slug }: { slug: string }) {
   return (
     <div className="my-6">
       <iframe
-        src={`/animations/${slug}`}
+        src={`/api/animations/${slug}`}
         className="w-full border-0"
         style={{ height: '400px' }}
         title={`Animation: ${slug}`}
         onError={() => setError(true)}
       />
+      <div className="mt-2 text-right">
+        <Link
+          href={`/animations/${slug}`}
+          className="text-xs text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
+        >
+          View animation →
+        </Link>
+      </div>
     </div>
   );
 }

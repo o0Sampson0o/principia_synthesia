@@ -1,110 +1,159 @@
-import PendulumSim from "@/components/animations/PendulumSim";
-import DoublePendulumSim from "@/components/animations/DoublePendulumSim";
-import OrbitSim from "@/components/animations/OrbitSim";
-import Link from "next/link";
+import { db } from "@/db"
+import { savedAnimations } from "@/db/schema"
+import { ilike, or, count } from "drizzle-orm"
+import Link from "next/link"
+import { getSession } from "@/lib/auth"
 
-export default function AnimationsPage() {
+const PAGE_SIZE = 12
+
+export default async function AnimationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string }>
+}) {
+  const { q, page } = await searchParams
+  const query = q?.trim() || ""
+  const currentPage = Math.max(1, parseInt(page || "1", 10))
+  const offset = (currentPage - 1) * PAGE_SIZE
+
+  const session = await getSession()
+
+  const where = query
+    ? or(
+        ilike(savedAnimations.name, `%${query}%`),
+        ilike(savedAnimations.slug, `%${query}%`)
+      )
+    : undefined
+
+  const [animations, [{ total }]] = await Promise.all([
+    db
+      .select()
+      .from(savedAnimations)
+      .where(where)
+      .orderBy(savedAnimations.createdAt)
+      .limit(PAGE_SIZE)
+      .offset(offset),
+    db.select({ total: count() }).from(savedAnimations).where(where),
+  ])
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10">
-      <Link
-        href="/"
-        className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors mb-6 inline-block"
-      >
-        ← Back to home
-      </Link>
-
-      <header className="mb-10">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mb-3">
-          Physics Animations
-        </h1>
-        <p className="text-lg text-zinc-500 dark:text-zinc-400">
-          Interactive simulations built with Canvas. These components can be embedded directly in articles using MDX.
+    <main className="max-w-5xl mx-auto px-6 py-10">
+      <header className="mb-8">
+        <div className="flex items-baseline justify-between mb-2">
+          <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Animations
+          </h1>
+          {session?.isAdmin && (
+            <Link
+              href="/admin/animations/new"
+              className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors underline underline-offset-2"
+            >
+              New animation →
+            </Link>
+          )}
+        </div>
+        <p className="text-zinc-500 dark:text-zinc-400">
+          {total} {total === 1 ? "animation" : "animations"} — embed in articles with{" "}
+          <code className="text-xs bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono">
+            {"<DynamicAnimation slug=\"your-slug\" />"}
+          </code>
         </p>
       </header>
 
-      <div className="space-y-16">
-        {/* Pendulum */}
-        <section>
-          <h2 className="text-2xl font-semibold mb-4">Pendulum</h2>
-          <p className="text-zinc-500 dark:text-zinc-400 mb-6">
-            A simple pendulum simulation. Adjust length, gravity, initial angle, and damping.
+      {/* Search */}
+      <form method="GET" action="/animations" className="mb-8">
+        <input
+          name="q"
+          defaultValue={query}
+          placeholder="Search animations..."
+          className="w-full border border-zinc-200 dark:border-zinc-700 rounded px-4 py-2 text-sm bg-transparent text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500 transition-colors"
+        />
+      </form>
+
+      <hr className="border-zinc-200 dark:border-zinc-800 mb-8" />
+
+      {animations.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-zinc-400 dark:text-zinc-500 text-sm mb-4">
+            {query ? `No animations matching "${query}"` : "No animations yet."}
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Default</h3>
-              <PendulumSim />
+          {session?.isAdmin && !query && (
+            <Link
+              href="/admin/animations/new"
+              className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors underline underline-offset-2"
+            >
+              Create the first one →
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {animations.map((anim) => (
+            <div
+              key={anim.id}
+              className="group block border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors"
+            >
+              {/* Preview iframe — clicking goes to animation page */}
+              <Link href={`/animations/${anim.slug}`} className="block">
+                <div className="relative bg-zinc-50 dark:bg-zinc-900" style={{ height: "200px" }}>
+                  <iframe
+                    src={`/api/animations/${anim.slug}`}
+                    className="w-full h-full border-0 pointer-events-none"
+                    title={anim.name}
+                  />
+                </div>
+              </Link>
+
+              {/* Card footer */}
+              <div className="px-4 py-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <Link href={`/animations/${anim.slug}`} className="block flex-1 min-w-0">
+                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 hover:text-black dark:hover:text-white transition-colors">
+                    {anim.name}
+                  </p>
+                  <p className="text-xs text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">
+                    {anim.slug}
+                  </p>
+                </Link>
+                {session?.isAdmin && (
+                  <Link
+                    href={`/admin/animations/${anim.slug}`}
+                    className="text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors ml-4 shrink-0"
+                  >
+                    Edit
+                  </Link>
+                )}
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Longer, slower (L=2.5, g=5)</h3>
-              <PendulumSim length={2.5} gravity={5} />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold mb-2">High damping</h3>
-              <PendulumSim damping={0.05} initialAngle={60} />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Large angle (80°)</h3>
-              <PendulumSim initialAngle={80} />
-            </div>
-          </div>
-          <div className="mt-4 p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-              {`<PendulumSim length={1.5} gravity={9.81} initialAngle={30} damping={0.01} />`}
-            </p>
-          </div>
-        </section>
+          ))}
+        </div>
+      )}
 
-        {/* Double Pendulum */}
-        <section>
-          <h2 className="text-2xl font-semibold mb-4">Double Pendulum</h2>
-          <p className="text-zinc-500 dark:text-zinc-400 mb-6">
-            A chaotic double pendulum system. The trail shows the path of the second bob.
-          </p>
-          <DoublePendulumSim />
-          <div className="mt-4 p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-              {`<DoublePendulumSim mass1={1} mass2={1} length1={1.2} length2={1.0} gravity={9.81} />`}
-            </p>
-          </div>
-        </section>
-
-        {/* Orbit Simulation */}
-        <section>
-          <h2 className="text-2xl font-semibold mb-4">N-Body Orbit Simulation</h2>
-          <p className="text-zinc-500 dark:text-zinc-400 mb-6">
-            Gravitational simulation of multiple bodies. The default setup has 3 bodies in orbit.
-          </p>
-          <OrbitSim />
-          <div className="mt-4 p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-              {`<OrbitSim G={6.674e-11} trail={true} />`}
-            </p>
-          </div>
-        </section>
-
-        {/* Usage Guide */}
-        <section className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
-          <h2 className="text-xl font-semibold mb-4">How to use in articles</h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-            These components are automatically available in MDX content. Just import and use them in your article:
-          </p>
-          <pre className="text-xs bg-zinc-100 dark:bg-zinc-800 p-4 rounded-lg overflow-x-auto">
-{`import PendulumSim from "@/components/animations/PendulumSim";
-import DoublePendulumSim from "@/components/animations/DoublePendulumSim";
-import OrbitSim from "@/components/animations/OrbitSim";
-
-# My Physics Article
-
-Here's a pendulum simulation:
-
-<PendulumSim length={2} gravity={9.81} initialAngle={45} />
-
-And a double pendulum:
-
-<DoublePendulumSim />`}
-          </pre>
-        </section>
-      </div>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <nav className="flex items-center justify-center gap-2 mt-10">
+          {currentPage > 1 && (
+            <Link
+              href={`/animations?q=${query}&page=${currentPage - 1}`}
+              className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+            >
+              ← Previous
+            </Link>
+          )}
+          <span className="text-sm text-zinc-400 dark:text-zinc-500 px-4">
+            Page {currentPage} of {totalPages}
+          </span>
+          {currentPage < totalPages && (
+            <Link
+              href={`/animations?q=${query}&page=${currentPage + 1}`}
+              className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+            >
+              Next →
+            </Link>
+          )}
+        </nav>
+      )}
     </main>
-  );
+  )
 }

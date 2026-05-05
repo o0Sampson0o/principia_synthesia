@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { savedAnimations } from "@/db/schema";
 import Link from "next/link";
-import { deleteAnimation } from "@/app/admin/actions";
+import DeleteButton from "./DeleteButton";
 
 export default async function AnimationsPage() {
   const animations = await db
@@ -43,25 +43,18 @@ export default async function AnimationsPage() {
               </div>
               <div className="flex gap-4">
                 <Link
+                  href={`/admin/animations/${anim.slug}`}
+                  className="text-xs text-zinc-400 hover:text-zinc-700"
+                >
+                  Edit
+                </Link>
+                <Link
                   href={`/animations/${anim.slug}`}
                   className="text-xs text-zinc-400 hover:text-zinc-700"
                 >
                   Preview
                 </Link>
-                <form action={deleteAnimation}>
-                  <input type="hidden" name="slug" value={anim.slug} />
-                  <button
-                    type="submit"
-                    className="text-xs text-red-400 hover:text-red-600"
-                    onClick={(e) => {
-                      if (!confirm("Delete this animation?")) {
-                        e.preventDefault();
-                      }
-                    }}
-                  >
-                    Delete
-                  </button>
-                </form>
+                <DeleteButton slug={anim.slug} />
               </div>
             </div>
           ))}

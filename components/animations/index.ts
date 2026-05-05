@@ -1,3 +1,3 @@
-export { default as PendulumSim } from "./PendulumSim";
-export { default as DoublePendulumSim } from "./DoublePendulumSim";
-export { default as OrbitSim } from "./OrbitSim";
+// Predefined animation components removed.
+// All animations are now managed via the DB (savedAnimations table)
+// and embedded in articles using <DynamicAnimation slug="your-slug" />
