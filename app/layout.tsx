@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { userThemes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { buildThemeStyle, defaultThemeStyle, defaultLight, defaultDark } from "@/lib/theme";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,6 +59,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         <Nav />
         {children}
+        <Analytics />
       </body>
     </html>
   );
