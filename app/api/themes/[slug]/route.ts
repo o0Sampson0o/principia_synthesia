@@ -1,6 +1,7 @@
 import { db } from "@/db";
-import { userThemes } from "@/db/schema";
+import { userThemes, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { buildThemeStyle, defaultLight, defaultDark } from "@/lib/theme";
 
 export async function GET(
   request: Request,
@@ -8,27 +9,31 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  const result = await db
-    .select({ variables: userThemes.variables })
-    .from(userThemes)
-    .where(eq(userThemes.slug, slug))
+  // slug is the user email
+  const user = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, slug))
     .limit(1);
 
-  if (!result[0]) {
-    return new Response("Theme not found", { status: 404 });
+  if (!user[0]) {
+    return new Response("User not found", { status: 404 });
   }
 
-  // Return CSS with CSS variables
-  const css = `
-:root {
-  ${result[0].variables}
-}
-`;
+  const result = await db
+    .select({ lightTokens: userThemes.lightTokens, darkTokens: userThemes.darkTokens })
+    .from(userThemes)
+    .where(eq(userThemes.userId, user[0].id))
+    .limit(1);
+
+  const light = { ...defaultLight, ...result[0]?.lightTokens };
+  const dark  = { ...defaultDark,  ...result[0]?.darkTokens };
+  const css   = buildThemeStyle(light, dark);
 
   return new Response(css, {
     headers: {
       "Content-Type": "text/css",
-      "Cache-Control": "public, max-age=31536000",
+      "Cache-Control": "no-store",
     },
   });
 }
