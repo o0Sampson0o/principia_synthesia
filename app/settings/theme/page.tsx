@@ -1,23 +1,23 @@
-import { getSession } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { db } from "@/db"
-import { userThemes } from "@/db/schema"
-import { eq } from "drizzle-orm"
-import { defaultLight, defaultDark } from "@/lib/theme"
-import ThemeEditor from "./ThemeEditor"
+import { getSession } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { userThemes } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { defaultLight, defaultDark } from "@/lib/theme";
+import ThemeEditor from "./ThemeEditor";
 
 export default async function ThemeSettingsPage() {
-  const session = await getSession()
-  if (!session) redirect("/login")
+  const session = await getSession();
+  if (!session) redirect("/login");
 
   const existing = await db
     .select()
     .from(userThemes)
     .where(eq(userThemes.userId, session.userId))
-    .limit(1)
+    .limit(1);
 
-  const lightTokens = existing[0]?.lightTokens ?? defaultLight
-  const darkTokens = existing[0]?.darkTokens ?? defaultDark
+  const lightTokens = { ...defaultLight, ...existing[0]?.lightTokens };
+  const darkTokens = { ...defaultDark, ...existing[0]?.darkTokens };
 
   return (
     <main className="max-w-2xl mx-auto px-6 py-10">
@@ -26,7 +26,8 @@ export default async function ThemeSettingsPage() {
           Theme
         </h1>
         <p className="text-sm text-zinc-400 dark:text-zinc-500">
-          Customize your light and dark mode colors. Changes apply immediately as a preview and save on click.
+          Customize your light and dark mode colors. Changes apply immediately
+          as a preview and save on click.
         </p>
       </header>
 
@@ -34,5 +35,5 @@ export default async function ThemeSettingsPage() {
 
       <ThemeEditor initialLight={lightTokens} initialDark={darkTokens} />
     </main>
-  )
+  );
 }
