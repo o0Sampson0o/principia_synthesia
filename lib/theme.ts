@@ -235,6 +235,45 @@ export const PRESETS: Preset[] = [
       secondaryText:    "#a89984",
     },
   },
+  {
+    name: "Catppuccin",
+    light: {
+      // Catppuccin Latte
+      background:       "#eff1f5",
+      foreground:       "#4c4f69",
+      muted:            "#e6e9ef",
+      mutedForeground:  "#6c6f85",
+      border:           "#ccd0da",
+      link:             "#1e66f5",
+      linkHover:        "#4c4f69",
+      codeBackground:   "#e6e9ef",
+      surface:          "#eff1f5",
+      surfaceHover:     "#dce0e8",
+      primaryBtn:       "#1e66f5",
+      primaryBtnText:   "#eff1f5",
+      inputBorder:      "#ccd0da",
+      inputFocusBorder: "#1e66f5",
+      secondaryText:    "#6c6f85",
+    },
+    dark: {
+      // Catppuccin Mocha
+      background:       "#1e1e2e",
+      foreground:       "#cdd6f4",
+      muted:            "#181825",
+      mutedForeground:  "#a6adc8",
+      border:           "#45475a",
+      link:             "#89b4fa",
+      linkHover:        "#cdd6f4",
+      codeBackground:   "#181825",
+      surface:          "#1e1e2e",
+      surfaceHover:     "#313244",
+      primaryBtn:       "#89b4fa",
+      primaryBtnText:   "#1e1e2e",
+      inputBorder:      "#45475a",
+      inputFocusBorder: "#89b4fa",
+      secondaryText:    "#a6adc8",
+    },
+  },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
