@@ -15,14 +15,21 @@ export async function saveTheme(formData: FormData) {
   const mode = formData.get("mode") as "light" | "dark"
 
   const tokens: ThemeTokens = {
-    background:      formData.get("background") as string,
-    foreground:      formData.get("foreground") as string,
-    muted:           formData.get("muted") as string,
-    mutedForeground: formData.get("mutedForeground") as string,
-    border:          formData.get("border") as string,
-    link:            formData.get("link") as string,
-    linkHover:       formData.get("linkHover") as string,
-    codeBackground:  formData.get("codeBackground") as string,
+    background:       formData.get("background") as string,
+    foreground:       formData.get("foreground") as string,
+    muted:            formData.get("muted") as string,
+    mutedForeground:  formData.get("mutedForeground") as string,
+    border:           formData.get("border") as string,
+    link:             formData.get("link") as string,
+    linkHover:        formData.get("linkHover") as string,
+    codeBackground:   formData.get("codeBackground") as string,
+    surface:          formData.get("surface") as string,
+    surfaceHover:     formData.get("surfaceHover") as string,
+    primaryBtn:       formData.get("primaryBtn") as string,
+    primaryBtnText:   formData.get("primaryBtnText") as string,
+    inputBorder:      formData.get("inputBorder") as string,
+    inputFocusBorder: formData.get("inputFocusBorder") as string,
+    secondaryText:    formData.get("secondaryText") as string,
   }
 
   const existing = await db
