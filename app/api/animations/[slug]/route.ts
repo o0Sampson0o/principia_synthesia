@@ -2,9 +2,11 @@ import { db } from "@/db"
 import { savedAnimations } from "@/db/schema"
 import { eq } from "drizzle-orm"
 import { NextResponse } from "next/server"
+import { defaultLight, defaultDark } from "@/lib/theme"
+import type { ThemeTokens } from "@/db/schema"
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
@@ -13,6 +15,20 @@ export async function GET(
 
   const fnMatch = anim[0].code.match(/function\s+(\w+)/)
   const fnCall = fnMatch ? `${fnMatch[1]}();` : ""
+
+  // Read theme tokens from query param, fall back to defaults based on
+  // prefers-color-scheme — the iframe has no access to the parent's CSS vars.
+  const url = new URL(req.url)
+  const raw = url.searchParams.get("theme")
+  let light: ThemeTokens = defaultLight
+  let dark: ThemeTokens = defaultDark
+  if (raw) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(raw))
+      if (parsed.light) light = { ...defaultLight, ...parsed.light }
+      if (parsed.dark)  dark  = { ...defaultDark,  ...parsed.dark }
+    } catch {}
+  }
 
   const html = `<!DOCTYPE html>
 <html>
@@ -27,6 +43,13 @@ export async function GET(
 <body>
   <canvas id="canvas"></canvas>
   <script>
+    // Theme tokens available to all animations as window.theme
+    const _light = ${JSON.stringify(light)};
+    const _dark  = ${JSON.stringify(dark)};
+    const _dark_mq = window.matchMedia('(prefers-color-scheme: dark)');
+    window.theme = _dark_mq.matches ? _dark : _light;
+    _dark_mq.addEventListener('change', e => { window.theme = e.matches ? _dark : _light; });
+
     window.addEventListener('DOMContentLoaded', function() {
       ${anim[0].code}
       ${fnCall}
