@@ -5,14 +5,21 @@ import { saveTheme, resetTheme } from "../actions"
 import type { ThemeTokens } from "@/db/schema"
 
 const TOKEN_LABELS: Record<keyof ThemeTokens, string> = {
-  background:      "Background",
-  foreground:      "Primary text",
-  muted:           "Muted background",
-  mutedForeground: "Secondary text",
-  border:          "Borders & dividers",
-  link:            "Link color",
-  linkHover:       "Link hover",
-  codeBackground:  "Code background",
+  background:       "Page background",
+  foreground:       "Primary text",
+  muted:            "Muted background",
+  mutedForeground:  "Secondary text",
+  border:           "Borders & dividers",
+  link:             "Link color",
+  linkHover:        "Link hover",
+  codeBackground:   "Code background",
+  surface:          "Nav & surface background",
+  surfaceHover:     "Hovered surface",
+  primaryBtn:       "Primary button",
+  primaryBtnText:   "Primary button text",
+  inputBorder:      "Input border",
+  inputFocusBorder: "Input focus border",
+  secondaryText:    "Labels & nav links",
 }
 
 interface Props {

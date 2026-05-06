@@ -3,8 +3,8 @@ import Link from "next/link"
 interface Props {
   currentPage: number
   totalPages: number
-  basePath: string   // e.g. "/animations" or "/admin"
-  query?: string     // optional search query to preserve
+  basePath: string
+  query?: string
 }
 
 export default function Pagination({ currentPage, totalPages, basePath, query }: Props) {
@@ -20,23 +20,13 @@ export default function Pagination({ currentPage, totalPages, basePath, query }:
   return (
     <nav className="flex items-center justify-center gap-2 mt-10">
       {currentPage > 1 && (
-        <Link
-          href={qs(currentPage - 1)}
-          className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
-        >
-          ← Previous
-        </Link>
+        <Link href={qs(currentPage - 1)} className="themed-link text-sm">← Previous</Link>
       )}
-      <span className="text-sm text-zinc-400 dark:text-zinc-500 px-4">
+      <span className="text-sm themed-muted px-4">
         Page {currentPage} of {totalPages}
       </span>
       {currentPage < totalPages && (
-        <Link
-          href={qs(currentPage + 1)}
-          className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
-        >
-          Next →
-        </Link>
+        <Link href={qs(currentPage + 1)} className="themed-link text-sm">Next →</Link>
       )}
     </nav>
   )

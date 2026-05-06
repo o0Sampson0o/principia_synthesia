@@ -70,6 +70,14 @@ export type ThemeTokens = {
   link: string
   linkHover: string
   codeBackground: string
+  // Extended tokens
+  surface: string         // card/nav/raised surface bg
+  surfaceHover: string    // hovered surface
+  primaryBtn: string      // primary button bg
+  primaryBtnText: string  // primary button text
+  inputBorder: string     // form input borders
+  inputFocusBorder: string // focused input border
+  secondaryText: string   // labels, section headers
 }
 
 export const userThemes = pgTable("user_themes", {

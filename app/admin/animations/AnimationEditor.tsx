@@ -129,20 +129,16 @@ export default function AnimationEditor({ initial }: Props) {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-10">
+    <main className="max-w-7xl mx-auto px-6 py-10">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">{isEdit ? `Edit: ${initial.name}` : "New Animation"}</h1>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-4 py-2 text-sm rounded bg-zinc-900 text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-        >
+        <h1 className="text-3xl font-bold themed-heading">{isEdit ? `Edit: ${initial.name}` : "New Animation"}</h1>
+        <button onClick={handleSave} disabled={saving} className="themed-btn-primary">
           {saving ? "Saving..." : "Save"}
         </button>
       </div>
 
       <div className="grid grid-cols-2 gap-4 h-[600px] mb-4">
-        <div className="border rounded overflow-hidden">
+        <div className="themed-border border rounded overflow-hidden">
           <CodeMirror
             value={code}
             height="600px"
@@ -153,34 +149,34 @@ export default function AnimationEditor({ initial }: Props) {
           />
         </div>
 
-        <div className="border rounded p-4 overflow-y-auto space-y-4">
+        <div className="themed-border border rounded p-4 overflow-y-auto space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Slug</label>
+            <label className="block text-sm font-medium themed-secondary mb-1">Slug</label>
             <input
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               disabled={isEdit}
               placeholder="my-animation"
-              className="w-full border rounded px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="themed-input text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
+            <label className="block text-sm font-medium themed-secondary mb-1">Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="My Animation"
-              className="w-full border rounded px-4 py-2 text-sm"
+              className="themed-input text-sm"
             />
           </div>
           {slug && (
             <div>
-              <p className="text-xs text-zinc-400 mb-2">Preview {previewKey === 0 ? "(save to load)" : ""}</p>
+              <p className="text-xs themed-muted mb-2">Preview {previewKey === 0 ? "(save to load)" : ""}</p>
               {previewKey > 0 && (
                 <iframe
                   key={previewKey}
                   src={`/api/animations/${slug}?v=${previewKey}`}
-                  className="w-full border rounded"
+                  className="w-full themed-border border rounded"
                   style={{ height: "400px" }}
                   title={`Animation: ${slug}`}
                 />
