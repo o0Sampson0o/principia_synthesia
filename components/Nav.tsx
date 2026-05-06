@@ -23,7 +23,12 @@ export default async function Nav() {
             <Link href="/animations" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
               Animations
             </Link>
-            {session?.isAdmin && (
+            {session && (
+            <Link href="/settings/theme" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+              Theme
+            </Link>
+          )}
+          {session?.isAdmin && (
             <>
               <Link href="/admin" className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
                 Admin

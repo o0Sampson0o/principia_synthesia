@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, boolean, unique, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, boolean, unique, jsonb } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -56,16 +56,26 @@ export const savedAnimations = pgTable("saved_animations", {
   id: serial("id").primaryKey(),
   slug: text("slug").unique().notNull(),
   name: text("name").notNull(),
-  code: text("code").notNull(), // Plain JS animation code
+  code: text("code").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// User themes - custom themes saved by users
+// Per-user theme customization
+export type ThemeTokens = {
+  background: string
+  foreground: string
+  muted: string
+  mutedForeground: string
+  border: string
+  link: string
+  linkHover: string
+  codeBackground: string
+}
+
 export const userThemes = pgTable("user_themes", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").unique().notNull(),
-  variables: text("variables").notNull(), // JSON string of CSS variables
-  isDefault: boolean("is_default").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  lightTokens: jsonb("light_tokens").$type<ThemeTokens>().notNull(),
+  darkTokens: jsonb("dark_tokens").$type<ThemeTokens>().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
