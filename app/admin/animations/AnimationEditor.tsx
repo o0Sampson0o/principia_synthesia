@@ -1,32 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { saveAnimation } from "@/app/admin/actions";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { javascript } from "@codemirror/lang-javascript";
+import { buildAnimationSrc } from "@/lib/useAnimationSrc";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
-// Token keys must match ThemeTokens in db/schema.ts
 const TOKEN_KEYS = [
   "background", "foreground", "muted", "mutedForeground", "border",
   "link", "linkHover", "codeBackground", "surface", "surfaceHover",
   "primaryBtn", "primaryBtnText", "inputBorder", "inputFocusBorder", "secondaryText",
 ] as const;
-
-function camelToKebab(s: string) {
-  return s.replace(/([A-Z])/g, (m) => `-${m.toLowerCase()}`);
-}
-
-function readThemeTokens() {
-  const style = getComputedStyle(document.documentElement);
-  const result: Record<string, string> = {};
-  for (const key of TOKEN_KEYS) {
-    result[key] = style.getPropertyValue(`--${camelToKebab(key)}`).trim();
-  }
-  return result;
-}
 
 const DEFAULT_CODE = `function DoublePendulum() {
   const canvas = document.getElementById('canvas');
@@ -146,14 +133,7 @@ export default function AnimationEditor({ initial }: Props) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  const buildPreviewSrc = useCallback((key: number) => {
-    const light = readThemeTokens();
-    // For dark we can't easily read dark vars from CSS (they're behind a media query),
-    // so we pass the light tokens for both and let the iframe handle prefers-color-scheme.
-    // A future improvement could inject dark tokens via a data attribute on <html>.
-    const theme = encodeURIComponent(JSON.stringify({ light, dark: light }));
-    return `/api/animations/${slug}?v=${key}&theme=${theme}`;
-  }, [slug]);
+
 
   async function handleSave() {
     if (!slug || !name || !code) { alert("Please fill in all fields"); return; }
@@ -214,7 +194,7 @@ export default function AnimationEditor({ initial }: Props) {
               {previewKey > 0 && (
                 <iframe
                   key={previewKey}
-                  src={buildPreviewSrc(previewKey)}
+                  src={buildAnimationSrc(slug, previewKey)}
                   className="w-full themed-border border rounded"
                   style={{ height: "400px" }}
                   title={`Animation: ${slug}`}

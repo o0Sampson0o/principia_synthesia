@@ -1,13 +1,21 @@
+"use client";
+
+import { useAnimationSrc } from "@/lib/useAnimationSrc";
+
 export default function AnimationPreview({ slug }: { slug: string }) {
+  const src = useAnimationSrc(slug);
+
   return (
-    <div className="border rounded p-4 bg-zinc-50 dark:bg-zinc-900">
-      <p className="text-xs text-zinc-400 mb-2">Preview:</p>
-      <iframe
-        src={`/api/animations/${slug}`}
-        className="w-full border-0"
-        style={{ height: '400px' }}
-        title={`Animation: ${slug}`}
-      />
+    <div className="themed-border border rounded p-4 themed-surface">
+      <p className="text-xs themed-muted mb-2">Preview:</p>
+      {src && (
+        <iframe
+          src={src}
+          className="w-full border-0"
+          style={{ height: "400px" }}
+          title={`Animation: ${slug}`}
+        />
+      )}
     </div>
   );
 }

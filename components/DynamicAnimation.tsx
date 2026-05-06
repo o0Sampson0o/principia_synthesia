@@ -1,36 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
-
-const TOKEN_KEYS = [
-  "background", "foreground", "muted", "mutedForeground", "border",
-  "link", "linkHover", "codeBackground", "surface", "surfaceHover",
-  "primaryBtn", "primaryBtnText", "inputBorder", "inputFocusBorder", "secondaryText",
-] as const;
-
-function camelToKebab(s: string) {
-  return s.replace(/([A-Z])/g, (m) => `-${m.toLowerCase()}`);
-}
-
-function readThemeTokens() {
-  const style = getComputedStyle(document.documentElement);
-  const result: Record<string, string> = {};
-  for (const key of TOKEN_KEYS) {
-    result[key] = style.getPropertyValue(`--${camelToKebab(key)}`).trim();
-  }
-  return result;
-}
+import { useAnimationSrc } from "@/lib/useAnimationSrc";
 
 export default function DynamicAnimation({ slug }: { slug: string }) {
   const [error, setError] = useState(false);
-  const [src, setSrc] = useState<string | null>(null);
-
-  useEffect(() => {
-    const tokens = readThemeTokens();
-    const theme = encodeURIComponent(JSON.stringify({ light: tokens, dark: tokens }));
-    setSrc(`/api/animations/${slug}?theme=${theme}`);
-  }, [slug]);
+  const src = useAnimationSrc(slug);
 
   if (error) {
     return (
@@ -46,7 +22,7 @@ export default function DynamicAnimation({ slug }: { slug: string }) {
         <iframe
           src={src}
           className="w-full border-0"
-          style={{ height: '400px' }}
+          style={{ height: "400px" }}
           title={`Animation: ${slug}`}
           onError={() => setError(true)}
         />
