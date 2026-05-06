@@ -22,6 +22,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Principia Synthesia",
   description: "A personal textbook of everything.",
+  verification: {
+    google: "5YT4p4zVX0_lqKaz_4CYRU8PA_r8p6zwB-_1XC9Lh7E",
+  },
 };
 
 export default async function RootLayout({
