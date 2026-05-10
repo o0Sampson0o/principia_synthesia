@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+/**
+ * Validates form data for creating a new article.
+ * `categories` is a comma-separated string of slugs (e.g. `"physics,math"`).
+ */
 export const createArticleSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title too long"),
   slug: z
@@ -11,15 +15,29 @@ export const createArticleSchema = z.object({
   categories: z.string().optional(),
 });
 
+/**
+ * Validates form data for updating an existing article.
+ * Extends `createArticleSchema` with the required database `id`.
+ */
 export const updateArticleSchema = createArticleSchema.extend({
   id: z.coerce.number().int().positive("Invalid article ID"),
 });
 
+/**
+ * Validates form data for deleting an article.
+ * Both `id` and `slug` are required so the action can revalidate the correct path.
+ */
 export const deleteArticleSchema = z.object({
   id: z.coerce.number().int().positive("Invalid article ID"),
   slug: z.string().min(1),
 });
 
+/**
+ * Validates form data for adding or updating a curriculum (book) entry.
+ * A book has no dedicated table — it is implied by a shared `bookSlug` on
+ * multiple `curriculumEntries` rows. `position` controls the reading order;
+ * `partTitle` is an optional section heading rendered above the entry.
+ */
 export const upsertCurriculumEntrySchema = z.object({
   bookSlug: z
     .string()
@@ -31,16 +49,26 @@ export const upsertCurriculumEntrySchema = z.object({
   partTitle: z.string().max(200, "Part title too long").optional().nullable(),
 });
 
+/**
+ * Validates form data for removing a single article from a curriculum book.
+ * `bookSlug` is included so the correct curriculum page can be revalidated.
+ */
 export const removeCurriculumEntrySchema = z.object({
   id: z.coerce.number().int().positive("Invalid entry ID"),
   bookSlug: z.string().min(1),
 });
 
+/**
+ * Validates form data for restoring an article to a previous revision.
+ * The current content is automatically saved as a new revision before the
+ * restore so that the operation can itself be undone.
+ */
 export const restoreRevisionSchema = z.object({
   revisionId: z.coerce.number().int().positive("Invalid revision ID"),
   articleId: z.coerce.number().int().positive("Invalid article ID"),
 });
 
+/** Validates the login form fields. */
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),

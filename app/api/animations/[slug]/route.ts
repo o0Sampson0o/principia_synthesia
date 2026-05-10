@@ -5,6 +5,27 @@ import { NextResponse } from "next/server"
 import { defaultLight, defaultDark } from "@/lib/theme"
 import type { ThemeTokens } from "@/db/schema"
 
+/**
+ * GET /api/animations/[slug]
+ *
+ * Serves the animation as a self-contained HTML page suitable for embedding in
+ * an `<iframe>`. The page contains a full-screen `<canvas>`, an inline
+ * `<script>` with the stored animation code, and a `window.theme` object
+ * populated with the 15 color tokens.
+ *
+ * Theme tokens are read from the `?theme=` query parameter, which must be a
+ * URL-encoded JSON string of the form `{ light: ThemeTokens, dark: ThemeTokens }`.
+ * The iframe selects the correct set at runtime via a `prefers-color-scheme`
+ * media query listener. If the parameter is absent or malformed, the built-in
+ * default tokens are used as a fallback.
+ *
+ * The first function declaration found in the animation code is called
+ * automatically after `DOMContentLoaded` (e.g. `function MyAnim() {...}` →
+ * `MyAnim();`). Animation code that uses a top-level IIFE or event listeners
+ * directly requires no named function.
+ *
+ * Returns 404 if no animation with the given slug exists in the database.
+ */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
@@ -63,6 +84,13 @@ export async function GET(
   })
 }
 
+/**
+ * DELETE /api/animations/[slug]
+ *
+ * Removes the animation record from the database. Returns `{ ok: true }` on
+ * success regardless of whether the slug existed. No auth check is performed
+ * here — the admin UI that calls this is already protected by middleware.
+ */
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ slug: string }> }

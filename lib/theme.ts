@@ -1,5 +1,6 @@
 import type { ThemeTokens } from "@/db/schema"
 
+/** Default token values for light mode. Used as the fallback when a user has no saved theme. */
 export const defaultLight: ThemeTokens = {
   background:       "#ffffff",
   foreground:       "#18181b",
@@ -18,6 +19,7 @@ export const defaultLight: ThemeTokens = {
   secondaryText:    "#71717a",
 }
 
+/** Default token values for dark mode. Used as the fallback when a user has no saved theme. */
 export const defaultDark: ThemeTokens = {
   background:       "#09090b",
   foreground:       "#fafafa",
@@ -38,12 +40,18 @@ export const defaultDark: ThemeTokens = {
 
 // ─── Presets ──────────────────────────────────────────────────────────────────
 
+/** A named pair of light/dark token sets that can be applied in one click from the theme editor. */
 export type Preset = {
   name: string
   light: ThemeTokens
   dark: ThemeTokens
 }
 
+/**
+ * Built-in color presets shown in the theme editor.
+ * Add a new entry here (with both `light` and `dark` ThemeTokens) to make it
+ * available as a one-click preset for all users.
+ */
 export const PRESETS: Preset[] = [
   {
     name: "Default",
@@ -288,6 +296,14 @@ function camel2kebab(str: string): string {
   return str.replace(/([A-Z])/g, (m) => `-${m.toLowerCase()}`)
 }
 
+/**
+ * Generates a CSS `<style>` block that declares all 15 theme tokens as CSS
+ * custom properties on `:root`. The dark variants are wrapped in a
+ * `prefers-color-scheme: dark` media query so the browser picks the right set
+ * automatically.
+ *
+ * The resulting string is injected verbatim into `<head>` by the root layout.
+ */
 export function buildThemeStyle(light: ThemeTokens, dark: ThemeTokens): string {
   return `
 :root {
@@ -301,6 +317,10 @@ ${tokensToVars(dark)}
 `.trim()
 }
 
+/**
+ * Returns the CSS block for the built-in default theme (zinc-based light/dark).
+ * Used as the fallback in the root layout when the current user has no saved theme.
+ */
 export function defaultThemeStyle(): string {
   return buildThemeStyle(defaultLight, defaultDark)
 }

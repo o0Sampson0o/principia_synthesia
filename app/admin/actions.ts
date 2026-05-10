@@ -14,6 +14,12 @@ import {
   restoreRevisionSchema,
 } from "@/lib/validations";
 
+/**
+ * Creates a new article and sets its categories, then redirects to the new
+ * article's public page. Input is validated with `createArticleSchema`.
+ * Categories (comma-separated slugs) are auto-created if they don't exist.
+ * Revalidates the homepage cache on success.
+ */
 export async function createArticle(formData: FormData) {
   const title = formData.get("title") as string;
   const slug = formData.get("slug") as string;
@@ -37,6 +43,13 @@ export async function createArticle(formData: FormData) {
   redirect(`/${validated.slug}`);
 }
 
+/**
+ * Updates an existing article's content, title, slug, and categories.
+ * Before writing the new content, the current content is saved as a revision
+ * so it can be restored later. Validation errors are returned as a field-error
+ * map rather than thrown, making them suitable for use with `useFormState`.
+ * On success, revalidates the article's public page and redirects there.
+ */
 export async function updateArticle(prevState: any, formData: FormData) {
   const id = Number(formData.get("id"));
   const title = formData.get("title") as string;
@@ -96,6 +109,13 @@ export async function updateArticle(prevState: any, formData: FormData) {
   redirect(`/${validated.slug}`);
 }
 
+/**
+ * Restores an article to a specific historical revision.
+ * Saves the current content as a new revision (with note "Before restore")
+ * before overwriting, so the restore itself is reversible.
+ * Revalidates the article's public page and redirects there on success.
+ * Throws if the revision or article is not found.
+ */
 export async function restoreRevision(formData: FormData) {
   const validated = restoreRevisionSchema.parse({
     revisionId: formData.get("revisionId"),
@@ -141,6 +161,11 @@ export async function restoreRevision(formData: FormData) {
   redirect(`/${article[0].slug}`);
 }
 
+/**
+ * Permanently deletes an article along with all its revisions and curriculum
+ * entries (cascade is handled manually here to be explicit). Revalidates the
+ * homepage cache and redirects to `/` after deletion.
+ */
 export async function deleteArticle(formData: FormData) {
   const validated = deleteArticleSchema.parse({
     id: formData.get("id"),
@@ -157,6 +182,12 @@ export async function deleteArticle(formData: FormData) {
 
 // --- Curriculum actions ---
 
+/**
+ * Adds an article to a book, or updates its position and part title if it is
+ * already a member of that book. The book itself is implicitly created when the
+ * first entry with a new `bookSlug` is inserted (there is no separate book
+ * record). Revalidates the book's public page and the admin curriculum page.
+ */
 export async function upsertCurriculumEntry(formData: FormData) {
   const validated = upsertCurriculumEntrySchema.parse({
     bookSlug: formData.get("bookSlug"),
@@ -199,6 +230,11 @@ export async function upsertCurriculumEntry(formData: FormData) {
   revalidatePath("/admin/curriculum");
 }
 
+/**
+ * Removes a single article from a book. If this is the last entry in the book,
+ * the book is implicitly deleted. Revalidates the book's public page and the
+ * admin curriculum page.
+ */
 export async function removeCurriculumEntry(formData: FormData) {
   const validated = removeCurriculumEntrySchema.parse({
     id: formData.get("id"),
@@ -211,6 +247,11 @@ export async function removeCurriculumEntry(formData: FormData) {
   revalidatePath("/admin/curriculum");
 }
 
+/**
+ * Deletes an entire book by removing all `curriculumEntries` rows that share
+ * the given `bookSlug`. The articles themselves are not affected. Revalidates
+ * the book's public page and the admin curriculum page.
+ */
 export async function deleteCurriculumBook(formData: FormData) {
   const bookSlug = (formData.get("bookSlug") as string).trim();
   if (!bookSlug) return;
@@ -223,6 +264,18 @@ export async function deleteCurriculumBook(formData: FormData) {
 
 // --- Category actions ---
 
+/**
+ * Atomically replaces all category associations for an article.
+ *
+ * For each slug in `slugs`, the category is created if it does not already
+ * exist (using the slug as the initial name). All existing links for the
+ * article are deleted and replaced in a single transaction-like sequence.
+ * Passing an empty array removes all categories from the article.
+ *
+ * Revalidates `/category` after every call. This function is called internally
+ * by `createArticle` and `updateArticle` — it is also exported so it can be
+ * called directly from other server actions.
+ */
 export async function setArticleCategories(articleId: number, slugs: string[]) {
   const cleanSlugs = slugs.map((s) => s.trim()).filter(Boolean)
 
@@ -263,6 +316,12 @@ export async function setArticleCategories(articleId: number, slugs: string[]) {
 
 // --- Animation actions ---
 
+/**
+ * Creates or updates a saved animation. If an animation with the given slug
+ * already exists, its `name` and `code` are updated. Otherwise a new row is
+ * inserted. Revalidates the admin animations list and the public animations list.
+ * Silently returns early if any of `slug`, `name`, or `code` is empty.
+ */
 export async function saveAnimation(formData: FormData) {
   const slug = (formData.get("slug") as string).trim();
   const name = (formData.get("name") as string).trim();
@@ -289,6 +348,11 @@ export async function saveAnimation(formData: FormData) {
   revalidatePath("/animations");
 }
 
+/**
+ * Deletes an animation by slug. Revalidates the admin animations list.
+ * Silently returns early if `slug` is empty. Note: any iframes currently
+ * embedding this animation will display a blank page after deletion.
+ */
 export async function deleteAnimation(formData: FormData) {
   const slug = (formData.get("slug") as string).trim();
   if (!slug) return;

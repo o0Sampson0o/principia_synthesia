@@ -1,6 +1,18 @@
 import { visit } from "unist-util-visit"
 import type { Root, Text, Link, PhrasingContent } from "mdast"
 
+/**
+ * Remark plugin that transforms `[[wikilink]]` syntax in MDX/Markdown into
+ * standard hyperlinks. Supported syntaxes:
+ *
+ * - `[[slug]]`            → link to `/<slug>` (article)
+ * - `[[slug|Label]]`      → same, with custom display text
+ * - `[[book:slug]]`       → link to `/curriculum/<slug>` (book table of contents)
+ * - `[[anim:slug]]`       → link to `/animations/<slug>` (animation preview page)
+ *
+ * The plugin operates on the MDAST `text` node level, splitting runs of text
+ * that contain `[[...]]` patterns into text + link nodes in-place.
+ */
 export function remarkWikilinks() {
   return (tree: Root) => {
     visit(tree, "text", (node: Text, index, parent) => {

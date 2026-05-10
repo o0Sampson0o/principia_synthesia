@@ -1,5 +1,6 @@
 import { pgTable, serial, text, timestamp, integer, boolean, unique, jsonb } from "drizzle-orm/pg-core";
 
+/** Admin accounts. Only users with `isAdmin = true` can access `/admin/**`. */
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").unique().notNull(),
@@ -7,6 +8,7 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").default(false).notNull(),
 });
 
+/** The primary content table. `content` is raw MDX stored as a string. */
 export const articles = pgTable("articles", {
   id: serial("id").primaryKey(),
   slug: text("slug").unique().notNull(),
@@ -17,6 +19,11 @@ export const articles = pgTable("articles", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+/**
+ * Flat category taxonomy. `parentId` allows hierarchical nesting but the UI
+ * currently treats all categories as top-level. Categories are auto-created
+ * by `setArticleCategories()` when an unknown slug is saved with an article.
+ */
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   slug: text("slug").unique().notNull(),
@@ -24,11 +31,17 @@ export const categories = pgTable("categories", {
   parentId: integer("parent_id"),
 });
 
+/** Many-to-many join between articles and categories. Both sides cascade-delete. */
 export const articleCategories = pgTable("article_categories", {
   articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
   categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
 });
 
+/**
+ * Revision history for articles. A new row is inserted before every save and
+ * before every revision restore, so the history is always complete. Rows are
+ * cascade-deleted when the parent article is deleted.
+ */
 export const revisions = pgTable("revisions", {
   id: serial("id").primaryKey(),
   articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
@@ -37,7 +50,20 @@ export const revisions = pgTable("revisions", {
   editedAt: timestamp("edited_at").defaultNow(),
 });
 
-// A "book" is just a named slug + title. Entries define its ordered contents.
+/**
+ * Ordered reading lists ("books") for the curriculum feature.
+ *
+ * There is no dedicated `books` table — a book is implicitly defined by a
+ * shared `bookSlug` across one or more rows in this table. The `bookTitle` is
+ * denormalized onto every entry (all entries for a book should have the same
+ * title). Deleting all entries for a given `bookSlug` effectively deletes the book.
+ *
+ * `position` controls the reading order within a book (ascending, 0-based).
+ * `partTitle` is an optional section heading rendered above the entry in the
+ * book's table of contents, allowing articles to be grouped into named parts.
+ *
+ * A unique constraint prevents the same article from appearing twice in one book.
+ */
 export const curriculumEntries = pgTable(
   "curriculum_entries",
   {
@@ -51,7 +77,11 @@ export const curriculumEntries = pgTable(
   (t) => [unique().on(t.bookSlug, t.articleId)]
 );
 
-// Saved animations - user-created animations stored in DB
+/**
+ * Canvas-based physics animations created and managed via the admin panel.
+ * `code` stores the raw JavaScript that is injected into a sandboxed `<iframe>`
+ * by `GET /api/animations/[slug]`. See `docs/animations.md` for authoring details.
+ */
 export const savedAnimations = pgTable("saved_animations", {
   id: serial("id").primaryKey(),
   slug: text("slug").unique().notNull(),
@@ -60,7 +90,12 @@ export const savedAnimations = pgTable("saved_animations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Per-user theme customization
+/**
+ * The 15 color tokens that make up one side (light or dark) of the site theme.
+ * All values are CSS color strings (hex, rgb, hsl, etc.). Each token maps to a
+ * CSS custom property — e.g. `primaryBtn` → `--primary-btn`. See `lib/theme.ts`
+ * for the full token-to-CSS-var mapping and `docs/theming.md` for usage guidance.
+ */
 export type ThemeTokens = {
   background: string
   foreground: string
@@ -80,6 +115,11 @@ export type ThemeTokens = {
   secondaryText: string   // labels, section headers
 }
 
+/**
+ * Stores a user's custom color theme. One row per user (enforced by the unique
+ * constraint on `userId`). Light and dark tokens are persisted as JSONB and
+ * merged with the defaults at render time by the root layout.
+ */
 export const userThemes = pgTable("user_themes", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
