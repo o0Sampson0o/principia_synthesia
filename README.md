@@ -16,6 +16,21 @@ Principia Synthesia is a personal knowledge base / wiki application built with N
 - **Revision History**: Automatic revision tracking with ability to view and restore previous versions
 - **Search**: Search across article titles, content, and summaries
 - **Authentication**: JWT-based admin authentication with bcrypt password hashing
+- **Theming**: Per-user CSS variable theme system (15 tokens × light/dark) with a live editor and preset palettes
+
+## Architecture Overview
+
+Key design decisions for developers extending the system:
+
+- **Animation iframe sandboxing**: Animation code is stored as a JavaScript string in the DB. The `GET /api/animations/[slug]` route wraps it in a self-contained HTML page with a `<canvas>` and a `window.theme` object. This iframe has no access to the parent page's DOM or CSS — the current color tokens are encoded into the `?theme=` query parameter by the client before the iframe loads, then injected as `window.theme` in the page script.
+
+- **Implicit book model**: There is no `books` database table. A "book" is implicitly defined by all `curriculumEntries` rows that share the same `bookSlug`. Creating the first entry for a slug creates the book; deleting all entries for a slug deletes it. The `bookTitle` is denormalized onto every entry.
+
+- **Category auto-creation**: Categories do not need to be pre-created. When an article is saved with a comma-separated list of category slugs, `setArticleCategories()` inserts any slugs that don't exist yet (using the slug as the initial name), then atomically replaces all category links for that article.
+
+- **Theme CSS variable injection**: The root layout reads the logged-in user's saved theme from the `userThemes` table and injects a `<style>` block of CSS custom properties (`--background`, `--primary-btn`, etc.) into `<head>` on every request. Tailwind utility classes prefixed with `themed-` (e.g. `themed-btn-primary`, `themed-input`) consume these variables. When no user is logged in, the built-in zinc-based defaults are used.
+
+- **Wikilink syntax**: The custom `remarkWikilinks` plugin processes `[[slug]]`, `[[slug|Label]]`, `[[book:slug]]`, and `[[anim:slug]]` syntax in MDX content, transforming them into standard `<a>` tags pointing at the correct routes before the MDX is rendered server-side.
 
 ## Tech Stack
 
@@ -52,7 +67,7 @@ Principia Synthesia is a personal knowledge base / wiki application built with N
    Create a `.env.local` file in the root directory:
    ```
    DATABASE_URL=postgresql://user:password@localhost:5432/principia_synthesia
-   JWT_SECRET=your-secret-key-here
+   AUTH_SECRET=your-secret-key-here
    ```
 
 4. Run database migrations:
@@ -78,25 +93,45 @@ Principia Synthesia is a personal knowledge base / wiki application built with N
 ```
 principia-synthesia/
 ├── app/                          # Next.js App Router pages
-│   ├── [slug]/                   # Dynamic article pages
-│   ├── admin/                    # Admin section (protected)
-│   │   ├── articles/             # Article CRUD
-│   │   └── curriculum/          # Curriculum management
-│   ├── api/auth/logout/         # Logout endpoint
-│   ├── category/                 # Category pages
-│   ├── curriculum/               # Book/curriculum views
-│   └── search/                  # Search functionality
-├── components/                   # React components
-│   ├── animations/              # Physics simulation components
-│   ├── ContentEditor.tsx         # MDX editor with preview
-│   └── Nav.tsx                  # Navigation bar
-├── db/                          # Database layer
-│   ├── schema.ts                # Drizzle ORM schema
-│   └── seed.ts                  # Database seed script
-├── lib/                         # Utilities
-│   ├── auth.ts                  # Authentication utilities
-│   └── remark-wikilinks.ts      # Wikilinks remark plugin
-└── public/                      # Static assets
+│   ├── [slug]/                   # Public article view
+│   ├── admin/                    # Admin section (protected by middleware)
+│   │   ├── actions.ts            # All server-side mutations
+│   │   ├── animations/           # Animation list / create / edit
+│   │   ├── articles/[slug]/edit/ # Article edit form, revision restore, delete
+│   │   ├── articles/new/         # New article form
+│   │   └── curriculum/           # Book management UI
+│   ├── animations/               # Public animations list and detail pages
+│   ├── api/
+│   │   ├── animations/[slug]/    # GET: serve animation HTML; DELETE: remove
+│   │   ├── auth/logout/          # POST: clear session cookie
+│   │   └── themes/[slug]/        # GET: serve per-user theme CSS
+│   ├── category/                 # Category browse pages
+│   ├── curriculum/               # Book table of contents and per-book article views
+│   ├── login/                    # Login page and action
+│   ├── search/                   # Full-text search
+│   ├── settings/theme/           # Theme editor UI and save action
+│   └── sitemap.ts                # Next.js sitemap generator
+├── components/                   # Shared React components
+│   ├── animations/               # Legacy animation stubs (all animations now via DB)
+│   ├── AnimationCard.tsx         # Animation list card
+│   ├── AnimationPreview.tsx      # Standalone animation preview (client)
+│   ├── ContentEditor.tsx         # Split-pane MDX editor with live preview
+│   ├── DynamicAnimation.tsx      # MDX-embeddable animation iframe wrapper
+│   ├── Nav.tsx                   # Site navigation bar
+│   ├── Preview.tsx               # MDX preview renderer (fast + full MDX modes)
+│   └── Pagination.tsx            # Pagination component
+├── db/                           # Database layer
+│   ├── index.ts                  # Drizzle client (postgres driver)
+│   ├── schema.ts                 # All table definitions + ThemeTokens type
+│   └── seed.ts                   # Seed admin user script
+├── lib/                          # Shared utilities
+│   ├── auth.ts                   # bcrypt + JWT helpers, session cookie read/write
+│   ├── remark-wikilinks.ts       # Custom remark plugin for [[wikilink]] syntax
+│   ├── theme.ts                  # Token defaults, presets, buildThemeStyle()
+│   ├── useAnimationSrc.ts        # buildAnimationSrc() + useAnimationSrc() hook
+│   └── validations.ts            # Zod schemas for all server action inputs
+├── middleware.ts                 # JWT auth gate for /admin/**
+└── tests/                        # Vitest test suite (91 tests across 7 files)
 ```
 
 ## Usage
@@ -128,24 +163,18 @@ See the full curriculum: [[book:physics|Physics Textbook]]
 
 ### Embedding Animations
 
-Physics animations can be embedded directly in articles using MDX:
+Animations are created in the admin panel at `/admin/animations` and stored in
+the database. Each animation has a unique slug. Embed one in an article with:
 
 ```markdown
-# Pendulum Motion
-
-Here's a simple pendulum:
-
-<PendulumSim length={2} gravity={9.81} initialAngle={45} />
-
-And here's a chaotic double pendulum:
-
-<DoublePendulumSim />
+<DynamicAnimation slug="your-animation-slug" />
 ```
 
-Available animations:
-- `<PendulumSim />` - Single pendulum simulation
-- `<DoublePendulumSim />` - Chaotic double pendulum
-- `<OrbitSim />` - N-body gravitational simulation
+The component renders a sandboxed `<iframe>` pointing at
+`/api/animations/[slug]`. The current page's color tokens are forwarded to the
+iframe so the animation can access them via `window.theme.background`,
+`window.theme.foreground`, etc. See `docs/animations.md` for the full authoring
+guide including all available `window.theme` tokens.
 
 ### Organizing Curriculum
 
@@ -164,12 +193,14 @@ Available animations:
 
 ## Database Schema
 
-- **users**: Admin users with email and password hash
+- **users**: Admin users with email and bcrypt password hash
 - **articles**: Main content with slug, title, content (MDX), summary
-- **categories**: Hierarchical categories (with parentId support)
-- **article_categories**: Many-to-many relationship between articles and categories
-- **revisions**: Article revision history
-- **curriculum_entries**: Ordered entries linking articles to books
+- **categories**: Flat category taxonomy (parentId column available for nesting)
+- **article_categories**: Many-to-many join between articles and categories
+- **revisions**: Article revision history; a new row is saved before every update and restore
+- **curriculum_entries**: Ordered entries linking articles to books (books have no dedicated table — they are implied by a shared `bookSlug`)
+- **saved_animations**: Canvas animation code stored as JS strings, served via the API route
+- **user_themes**: Per-user light/dark token sets stored as JSONB
 
 ## Scripts
 
@@ -180,6 +211,32 @@ Available animations:
 - `npx drizzle-kit generate` - Generate database migrations
 - `npx drizzle-kit migrate` - Run database migrations
 - `npx drizzle-kit studio` - Open Drizzle Studio
+
+## Testing
+
+The project uses **Vitest** with 91 tests across 7 files.
+
+```bash
+npm test          # run in watch mode (development)
+npm run test:run  # run once and exit (CI)
+```
+
+Test files live in `tests/`:
+
+| File | What it covers |
+|---|---|
+| `tests/lib/auth.test.ts` | bcrypt hashing, JWT sign/verify, `getSession()` |
+| `tests/lib/remark-wikilinks.test.ts` | All `[[wikilink]]` syntax variants |
+| `tests/lib/theme.test.ts` | `buildThemeStyle()`, `defaultThemeStyle()` |
+| `tests/lib/useAnimationSrc.test.ts` | `buildAnimationSrc()`, `useAnimationSrc` hook |
+| `tests/api/animations-route.test.ts` | `GET /api/animations/[slug]` HTML generation |
+| `tests/middleware.test.ts` | Admin route JWT auth gate |
+| `tests/actions/admin-actions.test.ts` | Server actions: create/update/delete article, animations |
+
+**Environment notes**: Tests that use `jose` JWT signing must declare
+`// @vitest-environment node` to avoid a jsdom cross-realm `Uint8Array`
+issue. Mock variables used inside `vi.mock()` factories must be initialised
+with `vi.hoisted()`.
 
 ## License
 
