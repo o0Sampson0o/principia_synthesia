@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "generate:katex-css": "node scripts/generate-katex-css.mjs"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.0",

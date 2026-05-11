@@ -1,5 +1,4 @@
-import { readFileSync } from "fs";
-import { join } from "path";
+import { KATEX_CSS } from "./katex-css.generated";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkMath from "remark-math";
@@ -39,36 +38,8 @@ async function mdxToHtml(mdx: string): Promise<string> {
   return String(file);
 }
 
-let katexCssCache: string | null = null;
-
 function getKatexCss(): string {
-  if (katexCssCache) return katexCssCache;
-
-  try {
-    const fontsDir = join(process.cwd(), "node_modules/katex/dist/fonts");
-    const cssPath = join(process.cwd(), "node_modules/katex/dist/katex.min.css");
-    let css = readFileSync(cssPath, "utf-8");
-
-    css = css.replace(/url\(fonts\/([^)]+)\)/g, (_, filename: string) => {
-      const ext = filename.substring(filename.lastIndexOf("."));
-      const mime: Record<string, string> = {
-        ".woff2": "font/woff2",
-        ".woff": "font/woff",
-        ".ttf": "font/ttf",
-      };
-      try {
-        const data = readFileSync(join(fontsDir, filename));
-        return `url(data:${mime[ext] ?? "application/octet-stream"};base64,${data.toString("base64")})`;
-      } catch {
-        return `url(fonts/${filename})`;
-      }
-    });
-
-    katexCssCache = css;
-    return css;
-  } catch {
-    return "";
-  }
+  return KATEX_CSS;
 }
 
 const PRINT_CSS = `
