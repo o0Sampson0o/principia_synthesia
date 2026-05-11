@@ -4,6 +4,8 @@ import { eq, asc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { renderBookHtml } from "@/lib/pdf/render-book-html";
 
+export const maxDuration = 60;
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ book: string }> }
@@ -28,11 +30,23 @@ export async function GET(
   }
 
   const bookTitle = entries[0].bookTitle;
-
   const html = await renderBookHtml(bookTitle, entries);
 
-  const { chromium } = await import("playwright");
-  const browser = await chromium.launch();
+  const { chromium } = await import("playwright-core");
+
+  let launchOptions: Parameters<typeof chromium.launch>[0];
+  if (process.env.VERCEL) {
+    const chromiumPkg = (await import("@sparticuz/chromium")).default;
+    launchOptions = {
+      args: chromiumPkg.args,
+      executablePath: await chromiumPkg.executablePath(),
+      headless: true,
+    };
+  } else {
+    launchOptions = { channel: "chrome", headless: true };
+  }
+
+  const browser = await chromium.launch(launchOptions);
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle" });

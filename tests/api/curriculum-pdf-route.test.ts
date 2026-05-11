@@ -6,8 +6,8 @@ vi.mock("@/lib/pdf/render-book-html", () => ({
   renderBookHtml: vi.fn().mockResolvedValue("<html><body>Test Book PDF</body></html>"),
 }));
 
-// Mock playwright to avoid launching a real browser in tests
-vi.mock("playwright", () => ({
+// Mock playwright-core and @sparticuz/chromium to avoid launching a real browser in tests
+vi.mock("playwright-core", () => ({
   chromium: {
     launch: vi.fn().mockResolvedValue({
       newPage: vi.fn().mockResolvedValue({
@@ -16,6 +16,14 @@ vi.mock("playwright", () => ({
       }),
       close: vi.fn().mockResolvedValue(undefined),
     }),
+  },
+}));
+
+vi.mock("@sparticuz/chromium", () => ({
+  default: {
+    args: [],
+    executablePath: vi.fn().mockResolvedValue("/usr/bin/chromium"),
+    headless: true,
   },
 }));
 
@@ -121,7 +129,7 @@ describe("GET /api/curriculum/[book]/export/pdf", () => {
   });
 
   it("closes the browser even if pdf() throws", async () => {
-    const { chromium } = await import("playwright");
+    const { chromium } = await import("playwright-core");
     const mockClose = vi.fn().mockResolvedValue(undefined);
     (chromium.launch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       newPage: vi.fn().mockResolvedValue({
