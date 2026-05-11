@@ -18,21 +18,35 @@ Both return 404 if the book has no curriculum entries.
 
 1. The route queries all `curriculumEntries` for the book (joined to `articles`),
    ordered by `position`.
-2. `renderBookHtml()` (`lib/pdf/render-book-html.ts`) converts each chapter's MDX
-   content to HTML and assembles a full HTML document containing:
+2. A SHA-256 content hash is computed from the book title and every entry's
+   position, part title, article title, and article content. The hash is checked
+   against the `pdf_caches` table — a matching hash returns the stored PDF
+   immediately, skipping Chromium entirely.
+3. On cache miss, `renderBookHtml()` (`lib/pdf/render-book-html.ts`) converts
+   each chapter's MDX content to HTML and assembles a full HTML document
+   containing:
    - A cover page with the book title.
    - A table of contents listing all chapters (with part headings where set).
    - Each chapter on its own page, with part label and chapter title in a styled
      header.
-3. The HTML document has two `<style>` blocks inlined in `<head>`:
+4. The HTML document has two `<style>` blocks inlined in `<head>`:
    - KaTeX CSS (read from `node_modules/katex/dist/katex.min.css` at request time).
    - Print CSS (`@page` margins, serif body font, heading sizes, code blocks,
      tables, `.katex-display` centering, and all chapter/TOC layout classes).
-4. The route launches a headless Chromium instance via Playwright, feeds the HTML
-   to `page.setContent()` (waiting for `networkidle`), then calls
-   `page.pdf({ format: 'A4', printBackground: true })`.
-5. The resulting PDF buffer is streamed back as `application/pdf` with
+5. Headless Chromium is launched via Playwright. On **Vercel** the Chromium
+   binary is downloaded from the npm registry on cold start (extracted to
+   `/tmp/chromium-bin` and inflated by `@sparticuz/chromium`). On warm start
+   the already-inflated `/tmp/chromium` is reused. **Locally** Playwright uses
+   the system or cached browser directly.
+6. The HTML is fed to `page.setContent()` (waiting for `networkidle`), then
+   `page.pdf({ format: 'A4', printBackground: true })` is called.
+7. The resulting PDF buffer is stored in the `pdf_caches` table (old cache
+   entries for the same book are replaced) and streamed back as
+   `application/pdf` with
    `Content-Disposition: attachment; filename="<book-slug>.pdf"`.
+
+Any subsequent request with the same book state (same articles, same ordering,
+same titles) hits the cache and returns instantly.
 
 ### MDX content pipeline
 
@@ -67,7 +81,9 @@ elements from the resulting HTML.
 - Body font: Georgia / Times New Roman, 11 pt, line-height 1.6.
 - Code: Courier New, 9 pt, light gray background.
 - Every chapter starts on a new page (`page-break-before: always`).
-- `Cache-Control: no-store` — content is always rendered fresh from the database.
+- `Cache-Control: no-store` — client-side caching is disabled; server-side
+  caching via the `pdf_caches` database table (content-hash-based invalidation)
+  avoids regenerating PDFs when the book state hasn't changed.
 
 ---
 

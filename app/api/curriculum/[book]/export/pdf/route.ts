@@ -46,7 +46,7 @@ export async function GET(
     .limit(1);
 
   if (cached[0]?.contentHash === contentHash) {
-    return new NextResponse(Buffer.from(cached[0].pdfData, "base64"), {
+    return new NextResponse(new Uint8Array(Buffer.from(cached[0].pdfData, "base64")), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${bookSlug}.pdf"`,
@@ -92,7 +92,7 @@ export async function GET(
       contentHash,
     });
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${bookSlug}.pdf"`,

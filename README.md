@@ -17,6 +17,7 @@ Principia Synthesia is a personal knowledge base / wiki application built with N
 - **Search**: Search across article titles, content, and summaries
 - **Authentication**: JWT-based admin authentication with bcrypt password hashing
 - **Theming**: Per-user CSS variable theme system (15 tokens × light/dark) with a live editor and preset palettes
+- **PDF / EPUB Export**: Download any curriculum book as a PDF (Playwright + KaTeX) or EPUB3 (MathJax SVG), cached in the database with content-hash invalidation
 
 ## Architecture Overview
 
@@ -104,6 +105,7 @@ principia-synthesia/
 │   ├── api/
 │   │   ├── animations/[slug]/    # GET: serve animation HTML; DELETE: remove
 │   │   ├── auth/logout/          # POST: clear session cookie
+│   │   ├── curriculum/           # PDF / EPUB export routes
 │   │   └── themes/[slug]/        # GET: serve per-user theme CSS
 │   ├── category/                 # Category browse pages
 │   ├── curriculum/               # Book table of contents and per-book article views
@@ -126,12 +128,21 @@ principia-synthesia/
 │   └── seed.ts                   # Seed admin user script
 ├── lib/                          # Shared utilities
 │   ├── auth.ts                   # bcrypt + JWT helpers, session cookie read/write
+│   ├── book-toc.ts               # Book table-of-contents helpers
+│   ├── cache.ts                  # Cache utilities
+│   ├── epub.ts                   # EPUB generation (rehypeMathSvg plugin)
+│   ├── mdx-sanitize.ts           # Sanitization schema for export HTML
+│   ├── pagination.ts             # Pagination utility
+│   ├── pdf/
+│   │   └── render-book-html.ts   # MDX → HTML conversion for PDF
+│   ├── rate-limit.ts             # In-memory rate limiter
 │   ├── remark-wikilinks.ts       # Custom remark plugin for [[wikilink]] syntax
 │   ├── theme.ts                  # Token defaults, presets, buildThemeStyle()
 │   ├── useAnimationSrc.ts        # buildAnimationSrc() + useAnimationSrc() hook
+│   ├── validate-animation.ts     # Animation script validator
 │   └── validations.ts            # Zod schemas for all server action inputs
-├── middleware.ts                 # JWT auth gate for /admin/**
-└── tests/                        # Vitest test suite (91 tests across 7 files)
+├── middleware.ts                 # JWT auth gate, CSP nonce, rate limiting
+└── tests/                        # Vitest test suite
 ```
 
 ## Usage
@@ -201,6 +212,8 @@ guide including all available `window.theme` tokens.
 - **curriculum_entries**: Ordered entries linking articles to books (books have no dedicated table — they are implied by a shared `bookSlug`)
 - **saved_animations**: Canvas animation code stored as JS strings, served via the API route
 - **user_themes**: Per-user light/dark token sets stored as JSONB
+- **book_snapshots / book_snapshot_entries**: Point-in-time captures of book curriculum structure
+- **pdf_caches**: Cached PDF export data with SHA-256 content-hash invalidation
 
 ## Scripts
 
@@ -214,7 +227,7 @@ guide including all available `window.theme` tokens.
 
 ## Testing
 
-The project uses **Vitest** with 91 tests across 7 files.
+The project uses **Vitest** with 162 tests across 16 files.
 
 ```bash
 npm test          # run in watch mode (development)
@@ -229,9 +242,18 @@ Test files live in `tests/`:
 | `tests/lib/remark-wikilinks.test.ts` | All `[[wikilink]]` syntax variants |
 | `tests/lib/theme.test.ts` | `buildThemeStyle()`, `defaultThemeStyle()` |
 | `tests/lib/useAnimationSrc.test.ts` | `buildAnimationSrc()`, `useAnimationSrc` hook |
+| `tests/lib/book-toc.test.ts` | Book table-of-contents helpers |
+| `tests/lib/pagination.test.ts` | Pagination utility |
+| `tests/lib/rate-limit.test.ts` | In-memory rate limiter |
+| `tests/lib/validate-animation.test.ts` | Animation script validator |
+| `tests/lib/epub.test.ts` | EPUB generation |
 | `tests/api/animations-route.test.ts` | `GET /api/animations/[slug]` HTML generation |
+| `tests/api/curriculum-pdf-route.test.ts` | `GET /api/curriculum/[book]/export/pdf` |
+| `tests/api/curriculum-epub-route.test.ts` | `GET /api/curriculum/[book]/export/epub` |
 | `tests/middleware.test.ts` | Admin route JWT auth gate |
+| `tests/middleware-csp.test.ts` | Content Security Policy header generation |
 | `tests/actions/admin-actions.test.ts` | Server actions: create/update/delete article, animations |
+| `tests/actions/settings-actions.test.ts` | Settings server actions (theme, color-scheme) |
 
 **Environment notes**: Tests that use `jose` JWT signing must declare
 `// @vitest-environment node` to avoid a jsdom cross-realm `Uint8Array`

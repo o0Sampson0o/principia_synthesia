@@ -89,6 +89,14 @@ erDiagram
         text part_title
     }
 
+    pdf_caches {
+        serial id PK
+        text book_slug "NOT NULL"
+        text pdf_data "NOT NULL (base64)"
+        text content_hash "NOT NULL (SHA-256)"
+        timestamp generated_at "default now()"
+    }
+
     users ||--o| user_themes : "has theme"
     articles ||--o{ revisions : "has revisions"
     articles ||--o{ article_categories : "tagged with"
@@ -120,3 +128,11 @@ Values: `'system'` (default, follows OS), `'light'`, `'dark'`.
 a book's structure (added in task 4.3). `article_content` is stored in the
 snapshot entry so content can optionally be rolled back. Both tables cascade-
 delete when their parent is removed.
+
+### PDF cache
+`pdf_caches` stores generated PDF exports keyed by `book_slug`. The
+`content_hash` is a SHA-256 digest of the book title plus all entry positions,
+part titles, article titles, and article content. On each PDF request the hash
+is recomputed — a match returns the cached PDF without launching Chromium. Old
+entries for the same `book_slug` are replaced on cache miss, so there is at
+most one row per book at any time.
