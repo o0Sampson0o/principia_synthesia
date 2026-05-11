@@ -111,9 +111,12 @@ export async function GET(
  * immediately without downloading.
  */
 async function getChromiumBinDir(): Promise<string> {
-  const { existsSync, mkdirSync, writeFileSync, unlinkSync, readFileSync } =
-    await import("fs");
+  const { existsSync, mkdirSync, writeFileSync, unlinkSync, readFileSync,
+          createReadStream } = await import("fs");
   const { join } = await import("path");
+  const { createGunzip } = await import("zlib");
+  const { pipeline } = await import("stream/promises");
+  const { extract } = await import("tar-fs");
 
   const binDir = "/tmp/chromium-bin";
 
@@ -137,9 +140,10 @@ async function getChromiumBinDir(): Promise<string> {
 
   mkdirSync(binDir, { recursive: true });
 
-  const { execSync } = await import("child_process");
-  execSync(
-    `tar xzf ${tarball} --strip-components=2 -C ${binDir} 'package/bin/'`
+  await pipeline(
+    createReadStream(tarball),
+    createGunzip(),
+    extract(binDir, { strip: 2, entries: ["package/bin/"] } as any)
   );
 
   unlinkSync(tarball);
