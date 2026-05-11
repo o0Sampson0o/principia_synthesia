@@ -29,6 +29,13 @@
       "when": 1777969311906,
       "tag": "0003_careless_unus",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778507618741,
+      "tag": "0004_book_snapshots_and_theme_preference",
+      "breakpoints": true
     }
   ]
 }
