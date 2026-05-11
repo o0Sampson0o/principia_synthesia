@@ -153,3 +153,19 @@ export const userThemes = pgTable("user_themes", {
   colorSchemePreference: text("color_scheme_preference").default("system").notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+/**
+ * Cached PDF exports for curriculum books. The `contentHash` is a SHA-256
+ * digest of the book's current state (title + all entry positions, part titles,
+ * article titles, and article content). When any article or curriculum entry
+ * changes the hash won't match, triggering a fresh PDF generation. Old entries
+ * for the same `bookSlug` are deleted before inserting a new one, so there is
+ * at most one cached PDF per book at any time.
+ */
+export const pdfCaches = pgTable("pdf_caches", {
+  id: serial("id").primaryKey(),
+  bookSlug: text("book_slug").notNull(),
+  pdfData: text("pdf_data").notNull(),
+  contentHash: text("content_hash").notNull(),
+  generatedAt: timestamp("generated_at").defaultNow(),
+});
