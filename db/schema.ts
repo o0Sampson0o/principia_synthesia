@@ -116,6 +116,31 @@ export type ThemeTokens = {
 }
 
 /**
+ * Point-in-time snapshots of a book's curriculum structure.
+ * Each snapshot captures the ordered list of entries at the moment it was taken.
+ * Rows in `bookSnapshotEntries` cascade-delete when the snapshot is deleted.
+ */
+export const bookSnapshots = pgTable("book_snapshots", {
+  id: serial("id").primaryKey(),
+  bookSlug: text("book_slug").notNull(),
+  bookTitle: text("book_title").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+/** One row per curriculum entry captured inside a `bookSnapshot`. */
+export const bookSnapshotEntries = pgTable("book_snapshot_entries", {
+  id: serial("id").primaryKey(),
+  snapshotId: integer("snapshot_id").notNull().references(() => bookSnapshots.id, { onDelete: "cascade" }),
+  articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+  articleSlug: text("article_slug").notNull(),
+  articleTitle: text("article_title").notNull(),
+  articleContent: text("article_content"),
+  position: integer("position").notNull(),
+  partTitle: text("part_title"),
+});
+
+/**
  * Stores a user's custom color theme. One row per user (enforced by the unique
  * constraint on `userId`). Light and dark tokens are persisted as JSONB and
  * merged with the defaults at render time by the root layout.
@@ -125,5 +150,6 @@ export const userThemes = pgTable("user_themes", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
   lightTokens: jsonb("light_tokens").$type<ThemeTokens>().notNull(),
   darkTokens: jsonb("dark_tokens").$type<ThemeTokens>().notNull(),
+  colorSchemePreference: text("color_scheme_preference").default("system").notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
