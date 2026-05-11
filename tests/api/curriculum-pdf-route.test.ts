@@ -13,6 +13,7 @@ vi.mock("playwright-core", () => ({
     launch: vi.fn().mockResolvedValue({
       newPage: vi.fn().mockResolvedValue({
         setContent: vi.fn().mockResolvedValue(undefined),
+        evaluate: vi.fn().mockResolvedValue(undefined),
         pdf: vi.fn().mockResolvedValue(Buffer.from("%PDF-1.4 fake pdf content for test")),
       }),
       close: vi.fn().mockResolvedValue(undefined),
@@ -229,6 +230,7 @@ describe("GET /api/curriculum/[book]/export/pdf", () => {
     (chromium.launch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       newPage: vi.fn().mockResolvedValue({
         setContent: vi.fn().mockResolvedValue(undefined),
+        evaluate: vi.fn().mockResolvedValue(undefined),
         pdf: vi.fn().mockRejectedValue(new Error("pdf failed")),
       }),
       close: mockClose,

@@ -78,6 +78,7 @@ export async function GET(
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle" });
+    await page.evaluate(() => document.fonts.ready);
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,

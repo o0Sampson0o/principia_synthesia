@@ -9,6 +9,7 @@ const fontsDir = join(dist, "fonts");
 
 let css = readFileSync(cssPath, "utf-8");
 
+// Inline font files as base64 data URIs
 css = css.replace(/url\(fonts\/([^)]+)\)/g, (_, filename) => {
   const ext = filename.substring(filename.lastIndexOf("."));
   const mime = {
@@ -19,6 +20,9 @@ css = css.replace(/url\(fonts\/([^)]+)\)/g, (_, filename) => {
   const data = readFileSync(join(fontsDir, filename));
   return `url(data:${mime[ext] ?? "application/octet-stream"};base64,${data.toString("base64")})`;
 });
+
+// Strip woff and ttf fallbacks — keep only woff2 (smallest)
+css = css.replace(/,url\(data:font\/woff;base64,[^)]+\) format\("woff"\),url\(data:font\/ttf;base64,[^)]+\) format\("truetype"\)/g, "");
 
 const outPath = join(root, "lib/pdf/katex-css.generated.ts");
 writeFileSync(
