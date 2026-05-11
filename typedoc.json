@@ -1,0 +1,16 @@
+{
+  "entryPoints": ["lib", "db"],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "plugin": ["typedoc-plugin-markdown"],
+  "excludeExternals": true,
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "readme": "none",
+  "skipErrorChecking": true,
+  "exclude": [
+    "**/*.test.ts",
+    "**/node_modules/**",
+    "**/.next/**"
+  ]
+}
