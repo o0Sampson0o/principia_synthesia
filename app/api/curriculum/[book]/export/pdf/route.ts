@@ -143,7 +143,13 @@ async function getChromiumBinDir(): Promise<string> {
   await pipeline(
     createReadStream(tarball),
     createGunzip(),
-    extract(binDir, { strip: 2, entries: ["package/bin/"] } as any)
+    extract(binDir, {
+      strip: 2,
+      ignore: (_, header) => {
+        if (header?.type === "directory") return true;
+        return !["chromium.br", "fonts.tar.br", "swiftshader.tar.br", "al2023.tar.br"].includes(header?.name ?? "");
+      },
+    })
   );
 
   unlinkSync(tarball);
