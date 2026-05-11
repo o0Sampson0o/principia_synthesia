@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { articles, revisions, curriculumEntries, categories, articleCategories, savedAnimations } from "@/db/schema";
-import { eq, asc, inArray } from "drizzle-orm";
+import { articles, revisions, curriculumEntries, categories, articleCategories, savedAnimations, bookSnapshots, bookSnapshotEntries } from "@/db/schema";
+import { eq, asc, inArray, ilike } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -360,4 +360,136 @@ export async function deleteAnimation(formData: FormData) {
   await db.delete(savedAnimations).where(eq(savedAnimations.slug, slug));
 
   revalidatePath("/admin/animations");
+}
+
+// --- Snapshot actions ---
+
+/**
+ * Captures the current curriculum structure of a book as a named snapshot.
+ * Each entry's position, part title, article metadata, and optionally the
+ * article content are stored in `bookSnapshotEntries`. Revalidates the
+ * snapshots admin page on success.
+ */
+export async function snapshotBook(bookSlug: string, note?: string) {
+  const entries = await db
+    .select({
+      articleId: curriculumEntries.articleId,
+      position: curriculumEntries.position,
+      partTitle: curriculumEntries.partTitle,
+      articleSlug: articles.slug,
+      articleTitle: articles.title,
+      articleContent: articles.content,
+    })
+    .from(curriculumEntries)
+    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .where(eq(curriculumEntries.bookSlug, bookSlug))
+    .orderBy(asc(curriculumEntries.position));
+
+  if (entries.length === 0) throw new Error("Book not found");
+
+  const bookTitleRow = await db
+    .select({ bookTitle: curriculumEntries.bookTitle })
+    .from(curriculumEntries)
+    .where(eq(curriculumEntries.bookSlug, bookSlug))
+    .limit(1);
+
+  const [snapshot] = await db
+    .insert(bookSnapshots)
+    .values({ bookSlug, bookTitle: bookTitleRow[0].bookTitle, note: note ?? null })
+    .returning();
+
+  await db.insert(bookSnapshotEntries).values(
+    entries.map((e) => ({
+      snapshotId: snapshot.id,
+      articleId: e.articleId,
+      articleSlug: e.articleSlug,
+      articleTitle: e.articleTitle,
+      articleContent: e.articleContent,
+      position: e.position,
+      partTitle: e.partTitle,
+    }))
+  );
+
+  revalidatePath(`/admin/curriculum/${bookSlug}/snapshots`);
+}
+
+/**
+ * Restores a book's curriculum to a previously saved snapshot. The current
+ * entries are replaced by the snapshot's entry list. If `restoreContent` is
+ * true, each article's content is also overwritten with the snapshot value.
+ * Revalidates the curriculum admin page on success.
+ */
+export async function restoreBookSnapshot(snapshotId: number, restoreContent = false) {
+  const entries = await db
+    .select()
+    .from(bookSnapshotEntries)
+    .where(eq(bookSnapshotEntries.snapshotId, snapshotId))
+    .orderBy(asc(bookSnapshotEntries.position));
+
+  if (entries.length === 0) throw new Error("Snapshot not found or empty");
+
+  const snapshot = await db
+    .select()
+    .from(bookSnapshots)
+    .where(eq(bookSnapshots.id, snapshotId))
+    .limit(1);
+
+  if (!snapshot[0]) throw new Error("Snapshot not found");
+
+  const { bookSlug, bookTitle } = snapshot[0];
+
+  // Replace curriculum entries
+  await db.delete(curriculumEntries).where(eq(curriculumEntries.bookSlug, bookSlug));
+  await db.insert(curriculumEntries).values(
+    entries.map((e) => ({
+      bookSlug,
+      bookTitle,
+      articleId: e.articleId,
+      position: e.position,
+      partTitle: e.partTitle,
+    }))
+  );
+
+  // Optionally restore article content
+  if (restoreContent) {
+    for (const e of entries) {
+      if (e.articleContent != null) {
+        await db
+          .update(articles)
+          .set({ content: e.articleContent })
+          .where(eq(articles.id, e.articleId));
+      }
+    }
+  }
+
+  revalidatePath(`/admin/curriculum/${bookSlug}`);
+  revalidatePath(`/curriculum/${bookSlug}`);
+}
+
+// --- Search ---
+
+/**
+ * Fuzzy-searches articles, books, and animations using case-insensitive ILIKE
+ * queries. Returns up to 8 results per category. Used by the command palette.
+ */
+export async function searchAll(query: string) {
+  const q = `%${query}%`;
+  const [articleRows, bookRows, animationRows] = await Promise.all([
+    db
+      .select({ id: articles.id, slug: articles.slug, title: articles.title })
+      .from(articles)
+      .where(ilike(articles.title, q))
+      .limit(8),
+    db
+      .selectDistinct({ bookSlug: curriculumEntries.bookSlug, bookTitle: curriculumEntries.bookTitle })
+      .from(curriculumEntries)
+      .where(ilike(curriculumEntries.bookTitle, q))
+      .limit(8),
+    db
+      .select({ slug: savedAnimations.slug, name: savedAnimations.name })
+      .from(savedAnimations)
+      .where(ilike(savedAnimations.name, q))
+      .limit(8),
+  ]);
+  return { articles: articleRows, books: bookRows, animations: animationRows };
 }
