@@ -24,18 +24,21 @@ export default function CommandPalette() {
   const router = useRouter();
 
   // Global keydown listener for Ctrl/Cmd+Shift+P
+  // Uses capture phase + stopImmediatePropagation to prevent browser
+  // (e.g. Edge) from intercepting the shortcut for its own print dialog.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "P") {
         e.preventDefault();
+        e.stopPropagation();
         setOpen((prev) => !prev);
       }
       if (e.key === "Escape") {
         setOpen(false);
       }
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, []);
 
   // Focus input when palette opens
