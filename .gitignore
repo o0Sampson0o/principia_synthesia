@@ -43,3 +43,13 @@ next-env.d.ts
 
 # sensitive seeds
 db/*seed*.ts
+
+# local config and tooling files
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+GEMENI.md
+COPILOT.md
+.claude/
+.cursor/
+.aider*
