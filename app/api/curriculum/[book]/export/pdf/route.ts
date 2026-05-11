@@ -43,7 +43,7 @@ export async function GET(
       headless: true,
     };
   } else {
-    launchOptions = { channel: "chrome", headless: true };
+    launchOptions = { headless: true };
   }
 
   const browser = await chromium.launch(launchOptions);
