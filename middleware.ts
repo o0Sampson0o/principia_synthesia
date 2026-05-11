@@ -1,49 +1,81 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { rateLimit } from "@/lib/rate-limit";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "dev-secret-change-in-production"
 );
 
+function buildCsp(nonce: string): string {
+  const isDev = process.env.NODE_ENV === "development";
+  const scriptSrc = [
+    `'nonce-${nonce}'`,
+    "'strict-dynamic'",
+    isDev ? "'unsafe-eval'" : "",
+  ].filter(Boolean).join(" ");
+
+  return [
+    `default-src 'self'`,
+    `script-src ${scriptSrc}`,
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: blob:`,
+    `font-src 'self'`,
+    `connect-src 'self'`,
+    `frame-src 'self'`,
+    `object-src 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+  ].join("; ");
+}
+
 /**
- * Edge middleware that guards all `/admin/**` routes.
- *
- * Auth flow for requests matching `/admin/:path*`:
- * 1. If no `session` cookie is present → redirect to `/login`.
- * 2. If the cookie contains an invalid or expired JWT → redirect to `/login`.
- * 3. If the JWT payload has `isAdmin !== true` → redirect to `/` (homepage).
- * 4. Otherwise → allow the request through.
- *
- * Non-admin paths are passed through unconditionally. The same JWT secret and
- * algorithm (HS256) used by `lib/auth.ts` are replicated here so that the
- * middleware can verify tokens without importing server-only modules.
+ * Middleware that:
+ * 1. Attaches a per-request CSP nonce and enforces a Content-Security-Policy
+ *    header on every response. The nonce is forwarded via `x-csp-nonce` so
+ *    Server Components can stamp it onto inline `<script>` tags.
+ * 2. Guards all `/admin/**` routes — redirects to `/login` if no valid admin
+ *    session JWT is present.
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
 
-  if (!pathname.startsWith("/admin")) {
-    return NextResponse.next();
-  }
-
-  const token = request.cookies.get("session")?.value;
-  if (!token) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    const session = payload as { isAdmin?: boolean };
-
-    if (!session.isAdmin) {
-      return NextResponse.redirect(new URL("/", request.url));
+  // Rate-limit login attempts
+  if (pathname === "/login") {
+    const allowed = rateLimit(`login:${ip}`, 10, 60_000);
+    if (!allowed) {
+      return new NextResponse("Too Many Requests", { status: 429 });
     }
-
-    return NextResponse.next();
-  } catch {
-    return NextResponse.redirect(new URL("/login", request.url));
   }
+
+  const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
+  const csp = buildCsp(nonce);
+
+  // Admin auth check
+  if (pathname.startsWith("/admin")) {
+    const token = request.cookies.get("session")?.value;
+    if (!token) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    try {
+      const { payload } = await jwtVerify(token, JWT_SECRET);
+      const session = payload as { isAdmin?: boolean };
+      if (!session.isAdmin) {
+        return NextResponse.redirect(new URL("/", request.url));
+      }
+    } catch {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+  }
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-csp-nonce", nonce);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("content-security-policy", csp);
+  return response;
 }
 
 export const config = {
-  matcher: "/admin/:path*",
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|monitoring).*)"],
 };
