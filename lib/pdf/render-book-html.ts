@@ -39,12 +39,33 @@ async function mdxToHtml(mdx: string): Promise<string> {
   return String(file);
 }
 
+let katexCssCache: string | null = null;
+
 function getKatexCss(): string {
+  if (katexCssCache) return katexCssCache;
+
   try {
-    return readFileSync(
-      join(process.cwd(), "node_modules/katex/dist/katex.min.css"),
-      "utf-8"
-    );
+    const fontsDir = join(process.cwd(), "node_modules/katex/dist/fonts");
+    const cssPath = join(process.cwd(), "node_modules/katex/dist/katex.min.css");
+    let css = readFileSync(cssPath, "utf-8");
+
+    css = css.replace(/url\(fonts\/([^)]+)\)/g, (_, filename: string) => {
+      const ext = filename.substring(filename.lastIndexOf("."));
+      const mime: Record<string, string> = {
+        ".woff2": "font/woff2",
+        ".woff": "font/woff",
+        ".ttf": "font/ttf",
+      };
+      try {
+        const data = readFileSync(join(fontsDir, filename));
+        return `url(data:${mime[ext] ?? "application/octet-stream"};base64,${data.toString("base64")})`;
+      } catch {
+        return `url(fonts/${filename})`;
+      }
+    });
+
+    katexCssCache = css;
+    return css;
   } catch {
     return "";
   }
