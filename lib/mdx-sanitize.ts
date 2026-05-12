@@ -32,6 +32,10 @@ export const mdxSanitizeSchema: Schema = {
     div: ["className", "style", "aria-label"],
     math: ["xmlns", "display"],
     annotation: ["encoding"],
+    svg: ["xmlns", "viewBox", "width", "height", "style", "role", "focusable", "x", "y"],
+    g: ["transform", "stroke", "fill", "stroke-width", "data-mml-node"],
+    path: ["d", "transform", "data-c"],
+    use: ["href", "transform"],
   },
   tagNames: [
     // Text
@@ -51,6 +55,8 @@ export const mdxSanitizeSchema: Schema = {
     "msubsup", "mfrac", "msqrt", "mroot", "munder", "mover",
     "munderover", "mtable", "mtr", "mtd", "mtext", "mspace",
     "annotation", "semantics",
+    // SVG (for MathJax SVG output)
+    "svg", "g", "path", "rect", "circle", "line", "polyline", "polygon", "ellipse", "use", "defs", "symbol",
     // Sectioning
     "section", "article", "aside", "figure", "figcaption",
   ],

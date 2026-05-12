@@ -52,8 +52,9 @@ function getMjHtml() {
 function latexToSvgString(latex: string, display: boolean): string {
   const html = getMjHtml();
   const node = html.convert(latex, { display });
+  const inner = _mjAdaptor.innerHTML(node);
   html.clear();
-  return _mjAdaptor.innerHTML(node);
+  return inner;
 }
 
 // ─── rehype plugin: replace math code nodes with inline SVG ──────────────────
@@ -105,7 +106,7 @@ function rehypeMathSvg() {
     for (const { parent, index, latex, display } of replacements) {
       try {
         const svgStr = latexToSvgString(latex, display);
-        const frag = fromHtml(svgStr, { fragment: true });
+        const frag = fromHtml(svgStr, { fragment: true, space: "svg" });
         const svgEl = frag.children.find((c) => c.type === "element") as Element | undefined;
         if (!svgEl) continue;
 
@@ -117,7 +118,13 @@ function rehypeMathSvg() {
             children: [svgEl],
           } as Element;
         } else {
-          parent.children[index] = svgEl;
+          // Wrap in a span to give it a proper inline container in the HAST tree
+          parent.children[index] = {
+            type: "element",
+            tagName: "span",
+            properties: { className: ["math-svg-inline"] },
+            children: [svgEl],
+          } as Element;
         }
       } catch {
         // leave raw latex visible on error

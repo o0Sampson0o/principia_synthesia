@@ -78,7 +78,14 @@ export async function GET(
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle" });
+    
+    // Force 'screen' media to ensure @font-face rules are applied correctly in headless Chromium
+    await page.emulateMedia({ media: "screen" });
+    
+    // Wait for fonts to be ready and add a small delay for stable rendering
     await page.evaluate(() => document.fonts.ready);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
