@@ -6,12 +6,12 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "dev-secret-change-in-production"
 );
 
-function buildCsp(nonce: string): string {
+function buildCsp(nonce: string, allowEval: boolean = false): string {
   const isDev = process.env.NODE_ENV === "development";
   const scriptSrc = [
     `'nonce-${nonce}'`,
     "'strict-dynamic'",
-    isDev ? "'unsafe-eval'" : "",
+    (isDev || allowEval) ? "'unsafe-eval'" : "",
   ].filter(Boolean).join(" ");
 
   return [
@@ -49,7 +49,10 @@ export async function middleware(request: NextRequest) {
   }
 
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
-  const csp = buildCsp(nonce);
+  
+  // Allow unsafe-eval on routes that need MDX previewing or other evaluation
+  const allowEval = pathname.startsWith("/admin") || pathname.startsWith("/settings");
+  const csp = buildCsp(nonce, allowEval);
 
   // Admin auth check
   if (pathname.startsWith("/admin")) {
