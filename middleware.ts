@@ -20,8 +20,8 @@ function buildCsp(nonce: string, allowEval: boolean = false): string {
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob:`,
     `font-src 'self'`,
-    `connect-src 'self'`,
-    `frame-src 'self'`,
+    `connect-src 'self' https://vitals.vercel-insights.com https://vercel.live`,
+    `frame-src 'self' https://vercel.live`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
@@ -52,6 +52,7 @@ export async function middleware(request: NextRequest) {
   
   // Allow unsafe-eval on routes that need MDX previewing or other evaluation
   const allowEval = pathname.startsWith("/admin") || pathname.startsWith("/settings");
+  
   const csp = buildCsp(nonce, allowEval);
 
   // Admin auth check

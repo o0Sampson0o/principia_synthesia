@@ -51,6 +51,9 @@ export async function GET(
     } catch {}
   }
 
+  // Get CSP nonce from middleware-set header
+  const nonce = req.headers.get("x-csp-nonce") ?? ""
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -63,7 +66,7 @@ export async function GET(
 </head>
 <body>
   <canvas id="canvas"></canvas>
-  <script>
+  <script nonce="${nonce}">
     // Theme tokens available to all animations as window.theme
     const _light = ${JSON.stringify(light)};
     const _dark  = ${JSON.stringify(dark)};
