@@ -298,7 +298,9 @@ describe("deleteArticle", () => {
     vi.clearAllMocks();
   });
 
-  it("deletes revisions, curriculum entries, and the article, then redirects to /", async () => {
+  it("deletes the article (cascades handle revisions/entries) and redirects to /", async () => {
+    // select to check isInternal
+    setupSelect([{ isInternal: false, parentBookSlug: null }]);
     mockDeleteWhere.mockResolvedValue(undefined);
     mockDelete.mockReturnValue({ where: mockDeleteWhere });
 
@@ -306,8 +308,8 @@ describe("deleteArticle", () => {
 
     await expect(deleteArticle(fd)).rejects.toThrow("NEXT_REDIRECT");
 
-    // delete should have been called 3 times: revisions, curriculumEntries, articles
-    expect(mockDelete).toHaveBeenCalledTimes(3);
+    // delete called once — DB cascades handle revisions and curriculum entries
+    expect(mockDelete).toHaveBeenCalledTimes(1);
     expect(revalidatePath).toHaveBeenCalledWith("/");
     expect(redirect).toHaveBeenCalledWith("/");
   });

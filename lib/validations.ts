@@ -68,6 +68,25 @@ export const restoreRevisionSchema = z.object({
   articleId: z.coerce.number().int().positive("Invalid article ID"),
 });
 
+/**
+ * Validates form data for creating an internal (book-only) article.
+ * The article is automatically linked to the given book as a curriculum entry.
+ */
+export const createInternalArticleSchema = z.object({
+  bookSlug: z
+    .string()
+    .min(1, "Book slug is required")
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Book slug must be lowercase with hyphens only"),
+  bookTitle: z.string().min(1, "Book title is required").max(200, "Book title too long"),
+  title: z.string().min(1, "Title is required").max(200, "Title too long"),
+  slug: z
+    .string()
+    .min(1, "Slug is required")
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase with hyphens only"),
+  position: z.coerce.number().int().min(0, "Position must be non-negative"),
+  partTitle: z.string().max(200, "Part title too long").optional().nullable(),
+});
+
 /** Validates the login form fields. */
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),

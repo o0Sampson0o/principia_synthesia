@@ -23,6 +23,8 @@ export default async function AdminPage({
         title: articles.title,
         summary: articles.summary,
         updatedAt: articles.updatedAt,
+        isInternal: articles.isInternal,
+        parentBookSlug: articles.parentBookSlug,
       })
       .from(articles)
       .orderBy(desc(articles.updatedAt))
@@ -68,19 +70,26 @@ export default async function AdminPage({
             {allArticles.map((a) => (
               <div key={a.id} className="flex items-start justify-between p-4 group">
                 <div>
-                  <Link
-                    href={`/admin/articles/${a.slug}/edit`}
-                    className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline decoration-zinc-300 dark:decoration-zinc-600 underline-offset-2"
-                  >
-                    {a.title}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/admin/articles/${a.slug}/edit`}
+                      className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline decoration-zinc-300 dark:decoration-zinc-600 underline-offset-2"
+                    >
+                      {a.title}
+                    </Link>
+                    {a.isInternal && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-normal">
+                        Sub-page
+                      </span>
+                    )}
+                  </div>
                   {a.summary && (
                     <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 line-clamp-1">
                       {a.summary}
                     </p>
                   )}
                   <p className="text-xs text-zinc-300 dark:text-zinc-600 mt-1">
-                    /{a.slug}
+                    {a.isInternal ? `/curriculum/${a.parentBookSlug}/${a.slug}` : `/${a.slug}`}
                     {a.updatedAt && (
                       <span className="ml-2">
                         updated {a.updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}

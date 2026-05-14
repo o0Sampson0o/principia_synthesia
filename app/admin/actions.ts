@@ -2,9 +2,11 @@
 
 import { db } from "@/db";
 import { articles, revisions, curriculumEntries, categories, articleCategories, savedAnimations, bookSnapshots, bookSnapshotEntries } from "@/db/schema";
-import { eq, asc, inArray, ilike } from "drizzle-orm";
+import { eq, asc, inArray, ilike, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
+import { getVisibleArticleSlugs, getVisibleBookSlugs } from "@/lib/access";
 import {
   createArticleSchema,
   updateArticleSchema,
@@ -12,6 +14,7 @@ import {
   upsertCurriculumEntrySchema,
   removeCurriculumEntrySchema,
   restoreRevisionSchema,
+  createInternalArticleSchema,
 } from "@/lib/validations";
 
 /**
@@ -105,6 +108,10 @@ export async function updateArticle(prevState: any, formData: FormData) {
 
   await setArticleCategories(validated.id, categorySlugs);
 
+  if (current[0]?.isInternal && current[0]?.parentBookSlug) {
+    revalidatePath(`/curriculum/${current[0].parentBookSlug}/${validated.slug}`);
+    redirect(`/curriculum/${current[0].parentBookSlug}/${validated.slug}`);
+  }
   revalidatePath(`/${validated.slug}`);
   redirect(`/${validated.slug}`);
 }
@@ -157,14 +164,18 @@ export async function restoreRevision(formData: FormData) {
     .set({ content: revision[0].content, updatedAt: new Date() })
     .where(eq(articles.id, validated.articleId));
 
+  if (article[0].isInternal && article[0].parentBookSlug) {
+    revalidatePath(`/curriculum/${article[0].parentBookSlug}/${article[0].slug}`);
+    redirect(`/curriculum/${article[0].parentBookSlug}/${article[0].slug}`);
+  }
   revalidatePath(`/${article[0].slug}`);
   redirect(`/${article[0].slug}`);
 }
 
 /**
- * Permanently deletes an article along with all its revisions and curriculum
- * entries (cascade is handled manually here to be explicit). Revalidates the
- * homepage cache and redirects to `/` after deletion.
+ * Permanently deletes an article. For internal articles, redirects to the
+ * curriculum admin page; for regular articles, redirects to the homepage.
+ * Revisions and curriculum entries are cascade-deleted by the DB FK constraints.
  */
 export async function deleteArticle(formData: FormData) {
   const validated = deleteArticleSchema.parse({
@@ -172,10 +183,18 @@ export async function deleteArticle(formData: FormData) {
     slug: formData.get("slug"),
   });
 
-  await db.delete(revisions).where(eq(revisions.articleId, validated.id));
-  await db.delete(curriculumEntries).where(eq(curriculumEntries.articleId, validated.id));
+  const article = await db.select({ isInternal: articles.isInternal, parentBookSlug: articles.parentBookSlug })
+    .from(articles)
+    .where(eq(articles.id, validated.id))
+    .limit(1);
+
   await db.delete(articles).where(eq(articles.id, validated.id));
 
+  if (article[0]?.isInternal && article[0]?.parentBookSlug) {
+    revalidatePath("/admin/curriculum");
+    revalidatePath(`/curriculum/${article[0].parentBookSlug}`);
+    redirect("/admin/curriculum");
+  }
   revalidatePath("/");
   redirect("/");
 }
@@ -241,7 +260,26 @@ export async function removeCurriculumEntry(formData: FormData) {
     bookSlug: formData.get("bookSlug"),
   });
 
-  await db.delete(curriculumEntries).where(eq(curriculumEntries.id, validated.id));
+  const entry = await db
+    .select({ articleId: curriculumEntries.articleId })
+    .from(curriculumEntries)
+    .where(eq(curriculumEntries.id, validated.id))
+    .limit(1);
+
+  if (entry[0]) {
+    const article = await db
+      .select({ id: articles.id, isInternal: articles.isInternal })
+      .from(articles)
+      .where(eq(articles.id, entry[0].articleId))
+      .limit(1);
+
+    if (article[0]?.isInternal) {
+      // Deleting the article cascade-deletes the entry, revisions, and category links
+      await db.delete(articles).where(eq(articles.id, article[0].id));
+    } else {
+      await db.delete(curriculumEntries).where(eq(curriculumEntries.id, validated.id));
+    }
+  }
 
   revalidatePath("/curriculum/" + validated.bookSlug);
   revalidatePath("/admin/curriculum");
@@ -256,7 +294,20 @@ export async function deleteCurriculumBook(formData: FormData) {
   const bookSlug = (formData.get("bookSlug") as string).trim();
   if (!bookSlug) return;
 
+  // Find all internal articles owned by this book before removing entries
+  const internalEntries = await db
+    .select({ articleId: curriculumEntries.articleId })
+    .from(curriculumEntries)
+    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .where(and(eq(curriculumEntries.bookSlug, bookSlug), eq(articles.isInternal, true)));
+
+  // Delete non-internal entries first
   await db.delete(curriculumEntries).where(eq(curriculumEntries.bookSlug, bookSlug));
+
+  // Delete internal articles (their entries were already removed above)
+  for (const { articleId } of internalEntries) {
+    await db.delete(articles).where(eq(articles.id, articleId));
+  }
 
   revalidatePath("/curriculum/" + bookSlug);
   revalidatePath("/admin/curriculum");
@@ -466,19 +517,62 @@ export async function restoreBookSnapshot(snapshotId: number, restoreContent = f
   revalidatePath(`/curriculum/${bookSlug}`);
 }
 
+// --- Internal article actions ---
+
+/**
+ * Creates a new internal (book-only) article and immediately links it to the
+ * given book as a curriculum entry. The article is not discoverable via search,
+ * categories, or direct URL — only accessible at `/curriculum/[book]/[slug]`.
+ * Redirects to the article's edit page on success.
+ */
+export async function createInternalArticle(formData: FormData) {
+  const validated = createInternalArticleSchema.parse({
+    bookSlug: formData.get("bookSlug"),
+    bookTitle: formData.get("bookTitle"),
+    title: formData.get("title"),
+    slug: formData.get("slug"),
+    position: formData.get("position"),
+    partTitle: formData.get("partTitle") || null,
+  });
+
+  const [article] = await db
+    .insert(articles)
+    .values({
+      title: validated.title,
+      slug: validated.slug,
+      isInternal: true,
+      parentBookSlug: validated.bookSlug,
+    })
+    .returning();
+
+  await db.insert(curriculumEntries).values({
+    bookSlug: validated.bookSlug,
+    bookTitle: validated.bookTitle,
+    articleId: article.id,
+    position: validated.position,
+    partTitle: validated.partTitle ?? null,
+  });
+
+  revalidatePath("/admin/curriculum");
+  revalidatePath(`/curriculum/${validated.bookSlug}`);
+  redirect(`/admin/articles/${validated.slug}/edit`);
+}
+
 // --- Search ---
 
 /**
  * Fuzzy-searches articles, books, and animations using case-insensitive ILIKE
  * queries. Returns up to 8 results per category. Used by the command palette.
+ * Internal articles are excluded — they are only accessible via their book.
  */
 export async function searchAll(query: string) {
+  const session = await getSession();
   const q = `%${query}%`;
   const [articleRows, bookRows, animationRows] = await Promise.all([
     db
       .select({ id: articles.id, slug: articles.slug, title: articles.title })
       .from(articles)
-      .where(ilike(articles.title, q))
+      .where(and(eq(articles.isInternal, false), ilike(articles.title, q)))
       .limit(8),
     db
       .selectDistinct({ bookSlug: curriculumEntries.bookSlug, bookTitle: curriculumEntries.bookTitle })

@@ -8,7 +8,14 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").default(false).notNull(),
 });
 
-/** The primary content table. `content` is raw MDX stored as a string. */
+/**
+ * The primary content table. `content` is raw MDX stored as a string.
+ *
+ * `isInternal` marks articles that only exist inside a specific book — they
+ * are not discoverable via direct URL, search, or category listings.
+ * `parentBookSlug` records which book owns the internal article and is used
+ * to enforce access control and to clean up on curriculum entry removal.
+ */
 export const articles = pgTable("articles", {
   id: serial("id").primaryKey(),
   slug: text("slug").unique().notNull(),
@@ -17,6 +24,8 @@ export const articles = pgTable("articles", {
   summary: text("summary"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  isInternal: boolean("is_internal").default(false).notNull(),
+  parentBookSlug: text("parent_book_slug"),
 });
 
 /**
