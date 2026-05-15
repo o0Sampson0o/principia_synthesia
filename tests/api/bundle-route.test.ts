@@ -32,6 +32,13 @@ vi.mock("@/lib/bundle/build-book-bundle", () => ({
   buildBookBundle: mockBuildBookBundle,
 }));
 
+// --- License mock — feature enabled by default ---
+const mockFeatureEnabled = vi.hoisted(() => vi.fn().mockReturnValue(true));
+vi.mock("@/lib/license", () => ({
+  getLicenseFromRequest: vi.fn().mockResolvedValue(null),
+  featureEnabled: mockFeatureEnabled,
+}));
+
 // --- drizzle-orm operators ---
 vi.mock("drizzle-orm", async (importOriginal) => {
   const actual = await importOriginal<typeof import("drizzle-orm")>();

@@ -123,4 +123,22 @@ describe("remarkWikilinks", () => {
     expect(links[0].url).toBe("/a");
     expect(links[1].url).toBe("/b");
   });
+
+  it("transforms [[object:pendulum]] to href /objects/pendulum with display text 'pendulum'", () => {
+    const children = getFirstParagraphChildren("[[object:pendulum]]");
+    expect(children).toHaveLength(1);
+    const link = children[0] as Link;
+    expect(link.type).toBe("link");
+    expect(link.url).toBe("/objects/pendulum");
+    expect((link.children[0] as Text).value).toBe("pendulum");
+  });
+
+  it("transforms [[object:my-dataset|My Dataset]] to href /objects/my-dataset with display text 'My Dataset'", () => {
+    const children = getFirstParagraphChildren("[[object:my-dataset|My Dataset]]");
+    expect(children).toHaveLength(1);
+    const link = children[0] as Link;
+    expect(link.type).toBe("link");
+    expect(link.url).toBe("/objects/my-dataset");
+    expect((link.children[0] as Text).value).toBe("My Dataset");
+  });
 });

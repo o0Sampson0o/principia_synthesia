@@ -7,6 +7,13 @@ const mockCanViewBook = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 vi.mock("@/lib/auth", () => ({ getSession: mockGetSession }));
 vi.mock("@/lib/access", () => ({ canViewBook: mockCanViewBook }));
 
+// Mock license — feature enabled by default so existing tests are unaffected
+const mockFeatureEnabled = vi.hoisted(() => vi.fn().mockReturnValue(true));
+vi.mock("@/lib/license", () => ({
+  getLicenseFromRequest: vi.fn().mockResolvedValue(null),
+  featureEnabled: mockFeatureEnabled,
+}));
+
 // --- Mock @/db ---
 const mockSelect = vi.hoisted(() => vi.fn());
 const mockFrom = vi.hoisted(() => vi.fn());

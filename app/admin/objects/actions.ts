@@ -13,7 +13,7 @@ async function requireAdmin() {
   if (!session?.isAdmin) throw new Error("Unauthorized");
 }
 
-export async function createKaoObject(formData: FormData) {
+export async function createKaoObject(_prevState: unknown, formData: FormData) {
   await requireAdmin();
   const raw = Object.fromEntries(formData);
   const parsed = createKaoSchema.safeParse(raw);

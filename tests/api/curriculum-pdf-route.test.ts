@@ -13,6 +13,13 @@ const mockCanViewBook = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 vi.mock("@/lib/auth", () => ({ getSession: mockGetSession }));
 vi.mock("@/lib/access", () => ({ canViewBook: mockCanViewBook }));
 
+// Mock license — feature enabled by default so existing tests are unaffected
+const mockFeatureEnabled = vi.hoisted(() => vi.fn().mockReturnValue(true));
+vi.mock("@/lib/license", () => ({
+  getLicenseFromRequest: vi.fn().mockResolvedValue(null),
+  featureEnabled: mockFeatureEnabled,
+}));
+
 // Mock playwright-core and @sparticuz/chromium to avoid launching a real browser in tests
 vi.mock("playwright-core", () => ({
   chromium: {
