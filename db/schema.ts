@@ -125,6 +125,11 @@ export const objects = pgTable("objects", {
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // Provenance for objects installed from the on-disk plugin registry.
+  // For animation-type objects scanned from `plugins/animations/`, `source` is
+  // `"plugin"` and `pluginMeta` is the manifest snapshot. NULL for all others.
+  source: text("source"),
+  pluginMeta: jsonb("plugin_meta"),
 });
 
 /**

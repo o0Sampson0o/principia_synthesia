@@ -1,6 +1,6 @@
 import { db } from "@/db"
-import { savedAnimations } from "@/db/schema"
-import { eq } from "drizzle-orm"
+import { objects } from "@/db/schema"
+import { and, eq } from "drizzle-orm"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import AnimationPreview from "@/components/AnimationPreview"
@@ -12,15 +12,15 @@ export default async function AnimationPage({
 }) {
   const { slug } = await params
 
-  const anim = await db
+  const rows = await db
     .select()
-    .from(savedAnimations)
-    .where(eq(savedAnimations.slug, slug))
+    .from(objects)
+    .where(and(eq(objects.slug, slug), eq(objects.type, "animation")))
     .limit(1)
 
-  if (!anim[0]) notFound()
+  if (!rows[0]) notFound()
 
-  const { name, createdAt } = anim[0]
+  const { name, createdAt } = rows[0]
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">

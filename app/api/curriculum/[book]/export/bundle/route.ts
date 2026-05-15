@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { articles, curriculumEntries, savedAnimations } from "@/db/schema";
-import { eq, asc, inArray } from "drizzle-orm";
+import { articles, curriculumEntries, objects } from "@/db/schema";
+import { eq, asc, inArray, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { buildBookBundle } from "@/lib/bundle/build-book-bundle";
 import { getSession } from "@/lib/auth";
@@ -55,10 +55,13 @@ export async function GET(
   const animCodes = new Map<string, string>();
   if (animSlugs.length > 0) {
     const rows = await db
-      .select({ slug: savedAnimations.slug, code: savedAnimations.code })
-      .from(savedAnimations)
-      .where(inArray(savedAnimations.slug, animSlugs));
-    for (const row of rows) animCodes.set(row.slug, row.code);
+      .select({ slug: objects.slug, content: objects.content })
+      .from(objects)
+      .where(and(eq(objects.type, "animation"), inArray(objects.slug, animSlugs)));
+    for (const row of rows) {
+      const code = (row.content as { code?: string }).code;
+      if (code) animCodes.set(row.slug, code);
+    }
   }
 
   const buffer = await buildBookBundle(bookSlug, bookTitle, entries, animCodes);

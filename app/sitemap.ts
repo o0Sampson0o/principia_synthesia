@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next"
 import { db } from "@/db"
-import { articles, categories, curriculumEntries, savedAnimations } from "@/db/schema"
+import { articles, categories, curriculumEntries, objects } from "@/db/schema"
 import { eq } from "drizzle-orm"
 import { getVisibleArticleSlugs, getVisibleBookSlugs } from "@/lib/access"
 
@@ -11,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     db.select({ slug: articles.slug, updatedAt: articles.updatedAt }).from(articles).where(eq(articles.isInternal, false)),
     db.select({ slug: categories.slug }).from(categories),
     db.select({ bookSlug: curriculumEntries.bookSlug }).from(curriculumEntries),
-    db.select({ slug: savedAnimations.slug, createdAt: savedAnimations.createdAt }).from(savedAnimations),
+    db.select({ slug: objects.slug, createdAt: objects.createdAt }).from(objects).where(eq(objects.type, "animation")),
   ])
 
   // Filter private resources — sitemap runs without a session (null = unauthenticated visitor)

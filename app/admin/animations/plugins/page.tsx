@@ -1,15 +1,15 @@
 import { db } from "@/db";
-import { savedAnimations } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { objects } from "@/db/schema";
+import { and, eq, asc } from "drizzle-orm";
 import Link from "next/link";
 import ScanButton, { UninstallButton } from "./PluginActions";
 
 export default async function PluginGalleryPage() {
   const plugins = await db
     .select()
-    .from(savedAnimations)
-    .where(eq(savedAnimations.source, "plugin"))
-    .orderBy(asc(savedAnimations.name));
+    .from(objects)
+    .where(and(eq(objects.type, "animation"), eq(objects.source, "plugin")))
+    .orderBy(asc(objects.name));
 
   const installedSlugs = plugins.map((p) => p.slug);
 

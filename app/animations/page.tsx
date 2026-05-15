@@ -1,6 +1,6 @@
 import { db } from "@/db"
-import { savedAnimations } from "@/db/schema"
-import { ilike, or, count } from "drizzle-orm"
+import { objects } from "@/db/schema"
+import { and, eq, ilike, or, count } from "drizzle-orm"
 import Link from "next/link"
 import { getSession } from "@/lib/auth"
 import Pagination from "@/components/Pagination"
@@ -20,22 +20,20 @@ export default async function AnimationsPage({
 
   const session = await getSession()
 
+  const baseWhere = eq(objects.type, "animation")
   const where = query
-    ? or(
-        ilike(savedAnimations.name, `%${query}%`),
-        ilike(savedAnimations.slug, `%${query}%`)
-      )
-    : undefined
+    ? and(baseWhere, or(ilike(objects.name, `%${query}%`), ilike(objects.slug, `%${query}%`)))
+    : baseWhere
 
   const [animations, [{ total }]] = await Promise.all([
     db
       .select()
-      .from(savedAnimations)
+      .from(objects)
       .where(where)
-      .orderBy(savedAnimations.createdAt)
+      .orderBy(objects.createdAt)
       .limit(PAGE_SIZE)
       .offset(offset),
-    db.select({ total: count() }).from(savedAnimations).where(where),
+    db.select({ total: count() }).from(objects).where(where),
   ])
 
   const totalPages = Math.ceil(total / PAGE_SIZE)

@@ -3,7 +3,7 @@
 import { readdir, readFile } from "fs/promises";
 import path from "path";
 import { db } from "@/db";
-import { savedAnimations } from "@/db/schema";
+import { objects } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { pluginManifestSchema, type PluginManifest } from "@/lib/validations";
@@ -18,8 +18,8 @@ export type ScanResult =
 
 /**
  * Scans `plugins/animations/` for plugin directories, validates each manifest
- * and animation code, then upserts matching rows in `savedAnimations` with
- * `source: "plugin"`. Requires an admin session.
+ * and animation code, then upserts matching rows in `objects` with
+ * `type: "animation"` and `source: "plugin"`. Requires an admin session.
  */
 export async function scanAndInstallPlugins(): Promise<ScanResult> {
   const session = await getSession();
@@ -94,9 +94,9 @@ export async function scanAndInstallPlugins(): Promise<ScanResult> {
 
     // Upsert: check if row exists
     const existing = await db
-      .select({ id: savedAnimations.id })
-      .from(savedAnimations)
-      .where(eq(savedAnimations.slug, manifest.slug))
+      .select({ id: objects.id })
+      .from(objects)
+      .where(and(eq(objects.slug, manifest.slug), eq(objects.type, "animation")))
       .limit(1);
 
     const pluginMeta = {
@@ -109,14 +109,21 @@ export async function scanAndInstallPlugins(): Promise<ScanResult> {
 
     if (existing.length > 0) {
       await db
-        .update(savedAnimations)
-        .set({ name: manifest.name, code, source: "plugin", pluginMeta })
-        .where(eq(savedAnimations.slug, manifest.slug));
+        .update(objects)
+        .set({
+          name: manifest.name,
+          content: { code },
+          source: "plugin",
+          pluginMeta,
+          updatedAt: new Date(),
+        })
+        .where(eq(objects.id, existing[0].id));
     } else {
-      await db.insert(savedAnimations).values({
+      await db.insert(objects).values({
         slug: manifest.slug,
         name: manifest.name,
-        code,
+        type: "animation",
+        content: { code },
         source: "plugin",
         pluginMeta,
       });
@@ -129,17 +136,21 @@ export async function scanAndInstallPlugins(): Promise<ScanResult> {
 }
 
 /**
- * Removes a plugin row from `savedAnimations`. Only deletes rows where
- * `source = "plugin"` to prevent accidental deletion of user-created animations.
- * Requires an admin session.
+ * Removes a plugin animation object from `objects`. Only deletes rows where
+ * `type = "animation"` and `source = "plugin"` to prevent accidental deletion
+ * of user-created animations. Requires an admin session.
  */
 export async function uninstallPlugin(slug: string): Promise<{ ok: boolean } | { error: string }> {
   const session = await getSession();
   if (!session?.isAdmin) return { error: "Unauthorized" };
 
   await db
-    .delete(savedAnimations)
-    .where(and(eq(savedAnimations.slug, slug), eq(savedAnimations.source, "plugin")));
+    .delete(objects)
+    .where(and(
+      eq(objects.slug, slug),
+      eq(objects.type, "animation"),
+      eq(objects.source, "plugin"),
+    ));
 
   return { ok: true };
 }

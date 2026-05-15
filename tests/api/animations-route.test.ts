@@ -18,6 +18,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   return {
     ...actual,
     eq: vi.fn((col, val) => ({ _type: "eq", col, val })),
+    and: vi.fn((...conds) => ({ _type: "and", conds })),
   };
 });
 
@@ -65,14 +66,14 @@ describe("GET /api/animations/[slug]", () => {
   });
 
   it("returns Content-Type: text/html for a found animation", async () => {
-    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", code: "function MyAnim() {}" }]);
+    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", type: "animation", content: { code: "function MyAnim() {}" } }]);
     const req = makeRequest("my-anim");
     const res = await GET(req, makeParams("my-anim"));
     expect(res.headers.get("content-type")).toContain("text/html");
   });
 
   it("returned HTML contains window.theme injected as a script", async () => {
-    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", code: "function MyAnim() {}" }]);
+    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", type: "animation", content: { code: "function MyAnim() {}" } }]);
     const req = makeRequest("my-anim");
     const res = await GET(req, makeParams("my-anim"));
     const html = await res.text();
@@ -80,7 +81,7 @@ describe("GET /api/animations/[slug]", () => {
   });
 
   it("calls the animation function if code has 'function FnName'", async () => {
-    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", code: "function MyAnim() {}" }]);
+    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", type: "animation", content: { code: "function MyAnim() {}" } }]);
     const req = makeRequest("my-anim");
     const res = await GET(req, makeParams("my-anim"));
     const html = await res.text();
@@ -88,39 +89,34 @@ describe("GET /api/animations/[slug]", () => {
   });
 
   it("does not append a function call when code has no function declaration", async () => {
-    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", code: "const x = 1;" }]);
+    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", type: "animation", content: { code: "const x = 1;" } }]);
     const req = makeRequest("my-anim");
     const res = await GET(req, makeParams("my-anim"));
     const html = await res.text();
-    // No function name extracted, so fnCall should be empty
     expect(html).not.toMatch(/\w+\(\);/);
   });
 
   it("a ?theme= query param overrides the default light tokens", async () => {
-    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", code: "function A() {}" }]);
+    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", type: "animation", content: { code: "function A() {}" } }]);
     const customLight = { ...defaultLight, background: "#ff1122" };
     const themeParam = encodeURIComponent(JSON.stringify({ light: customLight, dark: {} }));
     const req = makeRequest("my-anim", themeParam);
     const res = await GET(req, makeParams("my-anim"));
     const html = await res.text();
-    // The custom background color should appear in the injected _light object
     expect(html).toContain("#ff1122");
   });
 
   it("falls back gracefully to defaults when ?theme= contains invalid JSON", async () => {
-    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", code: "function A() {}" }]);
+    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", type: "animation", content: { code: "function A() {}" } }]);
     const req = makeRequest("my-anim", "NOT_VALID_JSON");
     const res = await GET(req, makeParams("my-anim"));
-    // Should NOT throw — returns 200 with default theme
     expect(res.status).toBe(200);
     const html = await res.text();
-    // Default light background is #ffffff
     expect(html).toContain(defaultLight.background);
   });
 
   it("falls back gracefully to defaults when ?theme= is malformed percent-encoding", async () => {
-    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", code: "function A() {}" }]);
-    // Pass raw %XX that won't parse as JSON after decoding
+    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", type: "animation", content: { code: "function A() {}" } }]);
     const req = makeRequest("my-anim", "%7Bnot-json%7D");
     const res = await GET(req, makeParams("my-anim"));
     expect(res.status).toBe(200);
@@ -128,7 +124,7 @@ describe("GET /api/animations/[slug]", () => {
 
   it("extracts the first function name from code with multiple functions", async () => {
     const code = "function FirstFn() {} function SecondFn() {}";
-    setupDbMock([{ id: 1, slug: "multi", name: "Multi", code }]);
+    setupDbMock([{ id: 1, slug: "multi", name: "Multi", type: "animation", content: { code } }]);
     const req = makeRequest("multi");
     const res = await GET(req, makeParams("multi"));
     const html = await res.text();
@@ -137,7 +133,7 @@ describe("GET /api/animations/[slug]", () => {
   });
 
   it("returned HTML is a valid HTML document (has DOCTYPE and body)", async () => {
-    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", code: "function A() {}" }]);
+    setupDbMock([{ id: 1, slug: "my-anim", name: "My Animation", type: "animation", content: { code: "function A() {}" } }]);
     const req = makeRequest("my-anim");
     const res = await GET(req, makeParams("my-anim"));
     const html = await res.text();
@@ -148,7 +144,7 @@ describe("GET /api/animations/[slug]", () => {
 
   it("the animation code itself appears in the returned HTML", async () => {
     const code = "function MySpecialAnim() { /* draw here */ }";
-    setupDbMock([{ id: 1, slug: "special", name: "Special", code }]);
+    setupDbMock([{ id: 1, slug: "special", name: "Special", type: "animation", content: { code } }]);
     const req = makeRequest("special");
     const res = await GET(req, makeParams("special"));
     const html = await res.text();

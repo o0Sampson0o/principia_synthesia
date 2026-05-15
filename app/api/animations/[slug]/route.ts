@@ -1,6 +1,6 @@
 import { db } from "@/db"
-import { savedAnimations } from "@/db/schema"
-import { eq } from "drizzle-orm"
+import { objects } from "@/db/schema"
+import { and, eq } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { defaultLight, defaultDark } from "@/lib/theme"
 import type { ThemeTokens } from "@/db/schema"
@@ -31,10 +31,18 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
-  const anim = await db.select().from(savedAnimations).where(eq(savedAnimations.slug, slug)).limit(1)
-  if (!anim[0]) return new NextResponse("Not found", { status: 404 })
+  const rows = await db
+    .select()
+    .from(objects)
+    .where(and(eq(objects.slug, slug), eq(objects.type, "animation")))
+    .limit(1)
+  if (!rows[0]) return new NextResponse("Not found", { status: 404 })
 
-  const fnMatch = anim[0].code.match(/function\s+(\w+)/)
+  const content = rows[0].content as { code?: string }
+  const code = content.code ?? ""
+  if (!code) return new NextResponse("Not found", { status: 404 })
+
+  const fnMatch = code.match(/function\s+(\w+)/)
   const fnCall = fnMatch ? `${fnMatch[1]}();` : ""
 
   // Read theme tokens from query param, fall back to defaults based on
@@ -75,7 +83,7 @@ export async function GET(
     _dark_mq.addEventListener('change', e => { window.theme = e.matches ? _dark : _light; });
 
     window.addEventListener('DOMContentLoaded', function() {
-      ${anim[0].code}
+      ${code}
       ${fnCall}
     });
   </script>
@@ -99,6 +107,8 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
-  await db.delete(savedAnimations).where(eq(savedAnimations.slug, slug))
+  await db
+    .delete(objects)
+    .where(and(eq(objects.slug, slug), eq(objects.type, "animation")))
   return NextResponse.json({ ok: true })
 }
