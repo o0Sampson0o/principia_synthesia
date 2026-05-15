@@ -21,21 +21,37 @@ async function seed() {
   console.log("Seeding database...\n");
 
   // ── Users ────────────────────────────────────────────────────────────────────
-  await db.insert(users).values({
-    email: "admin@example.com",
-    passwordHash: await bcrypt.hash("<redacted>", 10),
-    isAdmin: true,
-  }).onConflictDoNothing();
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  const viewerEmail = process.env.SEED_VIEWER_EMAIL;
+  const viewerPassword = process.env.SEED_VIEWER_PASSWORD;
 
-  await db.insert(users).values({
-    email: "viewer@example.com",
-    passwordHash: await bcrypt.hash("<redacted>", 10),
-    isAdmin: false,
-  }).onConflictDoNothing();
+  if (adminEmail && adminPassword) {
+    await db.insert(users).values({
+      email: adminEmail,
+      passwordHash: await bcrypt.hash(adminPassword, 10),
+      isAdmin: true,
+    }).onConflictDoNothing();
+    console.log(`✓ Admin user seeded: ${adminEmail}`);
+  } else {
+    console.log("⚠ Skipping admin user: SEED_ADMIN_EMAIL or SEED_ADMIN_PASSWORD not set");
+  }
 
-  const [admin] = await db.select().from(users).where(eq(users.email, "admin@example.com"));
-  const [viewer] = await db.select().from(users).where(eq(users.email, "viewer@example.com"));
-  console.log(`✓ Users: ${admin.email} (admin), ${viewer.email} (viewer)`);
+  if (viewerEmail && viewerPassword) {
+    await db.insert(users).values({
+      email: viewerEmail,
+      passwordHash: await bcrypt.hash(viewerPassword, 10),
+      isAdmin: false,
+    }).onConflictDoNothing();
+    console.log(`✓ Viewer user seeded: ${viewerEmail}`);
+  } else {
+    console.log("⚠ Skipping viewer user: SEED_VIEWER_EMAIL or SEED_VIEWER_PASSWORD not set");
+  }
+
+  const adminEmail_ = adminEmail ?? "";
+  const viewerEmail_ = viewerEmail ?? "";
+  const [admin] = adminEmail_ ? await db.select().from(users).where(eq(users.email, adminEmail_)) : [null];
+  const [viewer] = viewerEmail_ ? await db.select().from(users).where(eq(users.email, viewerEmail_)) : [null];
 
   // ── Categories ───────────────────────────────────────────────────────────────
   await db.insert(categories).values([

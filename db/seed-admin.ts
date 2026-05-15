@@ -3,13 +3,21 @@ import { users } from "./schema";
 import bcrypt from "bcryptjs";
 
 async function seedAdmin() {
-  const hash = await bcrypt.hash("<redacted>", 10);
+  const email = process.env.SEED_ADMIN_EMAIL;
+  const password = process.env.SEED_ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    console.log("⚠ Skipping admin seed: SEED_ADMIN_EMAIL or SEED_ADMIN_PASSWORD not set");
+    process.exit(0);
+  }
+
+  const hash = await bcrypt.hash(password, 10);
   await db.insert(users).values({
-    email: "admin@example.com",
+    email,
     passwordHash: hash,
     isAdmin: true,
   }).onConflictDoNothing();
-  console.log("Admin account created (or already exists)");
+  console.log(`✓ Admin account seeded: ${email}`);
   process.exit(0);
 }
 
