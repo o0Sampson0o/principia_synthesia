@@ -45,12 +45,12 @@ Math in generated PDFs renders with wrong/broken fonts on Vercel.
 
 ### Phase A — Foundation & Monetization (Week 1–2)
 
-- [ ] Create a Stripe account (https://stripe.com)
-- [ ] Set up GitHub Sponsors (0% fees on individual sponsorships)
+- [ ] Create a Stripe account (https://stripe.com) — **blocked: needs external account**
+- [ ] Set up GitHub Sponsors (0% fees on individual sponsorships) — **blocked: needs external account**
 - [x] Add "Support this project" button linking to GitHub Sponsors (footer + README)
-- [ ] Buy a custom domain (~$10/yr at Cloudflare/Namecheap — signals professionalism)
+- [ ] Buy a custom domain (~$10/yr at Cloudflare/Namecheap — signals professionalism) — **blocked: needs purchase**
 - [x] Enable Vercel Analytics or Plausible (track signups and conversions)
-- [ ] Implement hosted SaaS tiers + Stripe Checkout
+- [ ] Implement hosted SaaS tiers + Stripe Checkout — **blocked: needs Stripe account first**
   - Add `user_id` FK to articles and books
   - [x] Create `/pricing` page with tier comparison table
   - Integrate Stripe Checkout (subscription)
@@ -80,7 +80,7 @@ Math in generated PDFs renders with wrong/broken fonts on Vercel.
   Export route that generates static HTML/CSS/JS for a book + its animations, zipped and served.
 - [x] **Visual permission editor** _(3–5 days)_
   Drag-and-drop UI to set read/write/admin at book or article level.
-- [ ] **Print-on-demand marketplace integration** _(2–3 weeks)_
+- [ ] **Print-on-demand marketplace integration** _(2–3 weeks)_ — **blocked: needs Lulu Direct or Printful account**
   Integrate with Lulu Direct or Printful. Send formatted PDF (with canvas screenshots) and take ~20% commission.
 
 ---
