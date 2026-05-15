@@ -47,12 +47,12 @@ Math in generated PDFs renders with wrong/broken fonts on Vercel.
 
 - [ ] Create a Stripe account (https://stripe.com)
 - [ ] Set up GitHub Sponsors (0% fees on individual sponsorships)
-- [ ] Add "Support this project" button linking to GitHub Sponsors (footer + README)
+- [x] Add "Support this project" button linking to GitHub Sponsors (footer + README)
 - [ ] Buy a custom domain (~$10/yr at Cloudflare/Namecheap — signals professionalism)
-- [ ] Enable Vercel Analytics or Plausible (track signups and conversions)
+- [x] Enable Vercel Analytics or Plausible (track signups and conversions)
 - [ ] Implement hosted SaaS tiers + Stripe Checkout
   - Add `user_id` FK to articles and books
-  - Create `/pricing` page with tier comparison table
+  - [x] Create `/pricing` page with tier comparison table
   - Integrate Stripe Checkout (subscription)
   - Add webhook to update user entitlements after payment
   - Gate Pro/Team features behind middleware
@@ -72,13 +72,13 @@ Math in generated PDFs renders with wrong/broken fonts on Vercel.
 
 ### Phase B — Tier 1 Features (Weeks 3–10)
 
-- [ ] **PWA / Read-only offline caching** _(3–5 days)_
+- [x] **PWA / Read-only offline caching** _(3–5 days)_
   Use `next-pwa` or Workbox. Cache articles, books, and assets. Disable editing offline with graceful error.
 - [ ] **Reorderable article sections** _(1 week)_
   Use `@dnd-kit/sortable`. Store section order in article frontmatter.
-- [ ] **Book → offline HTML/JS bundle export** _(1–2 weeks)_
+- [x] **Book → offline HTML/JS bundle export** _(1–2 weeks)_
   Export route that generates static HTML/CSS/JS for a book + its animations, zipped and served.
-- [ ] **Visual permission editor** _(3–5 days)_
+- [x] **Visual permission editor** _(3–5 days)_
   Drag-and-drop UI to set read/write/admin at book or article level.
 - [ ] **Print-on-demand marketplace integration** _(2–3 weeks)_
   Integrate with Lulu Direct or Printful. Send formatted PDF (with canvas screenshots) and take ~20% commission.
@@ -140,8 +140,8 @@ Math in generated PDFs renders with wrong/broken fonts on Vercel.
 - [ ] At least one paid subscription active
 - [ ] GitHub Sponsors has at least one sponsor
 - [ ] Custom domain live (or clear plan after first $100 MRR)
-- [ ] PWA enabled — articles cache offline
+- [x] PWA enabled — articles cache offline
 - [ ] Users can reorder article sections
-- [ ] Book export to offline bundle works
-- [ ] Permissions editor UI complete
+- [x] Book export to offline bundle works
+- [x] Permissions editor UI complete
 - [ ] Print-on-demand integration ready
