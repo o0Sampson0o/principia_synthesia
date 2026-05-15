@@ -176,3 +176,37 @@ export const pluginManifestSchema = z.object({
 });
 
 export type PluginManifest = z.infer<typeof pluginManifestSchema>;
+
+/**
+ * Schema for a single chapter entry inside the sync bundle's book.json.
+ * `updatedAt` is an ISO 8601 string (validated by Date.parse, not z.date()).
+ */
+export const syncBundleChapterSchema = z.object({
+  slug: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase with hyphens only"),
+  title: z.string().min(1).max(200),
+  partTitle: z.string().max(200).nullable().optional(),
+  position: z.number().int().min(0),
+  isInternal: z.boolean(),
+  updatedAt: z
+    .string()
+    .refine((s) => !Number.isNaN(Date.parse(s)), "updatedAt must be a valid ISO date"),
+});
+
+/** Schema for the top-level book.json document inside the sync bundle. */
+export const syncBundleManifestSchema = z.object({
+  bookSlug: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "bookSlug must be lowercase with hyphens only"),
+  bookTitle: z.string().min(1).max(200),
+  exportedAt: z
+    .string()
+    .refine((s) => !Number.isNaN(Date.parse(s)), "exportedAt must be a valid ISO date"),
+  chapters: z.array(syncBundleChapterSchema),
+});
+
+export type SyncBundleManifest = z.infer<typeof syncBundleManifestSchema>;
+export type SyncBundleChapter = z.infer<typeof syncBundleChapterSchema>;
