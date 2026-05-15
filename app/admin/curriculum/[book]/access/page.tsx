@@ -4,10 +4,10 @@ import { eq, and, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  setResourceVisibility,
   addAccessGrant,
   removeAccessGrant,
 } from "@/app/admin/access/actions";
+import { VisibilityToggle } from "./VisibilityToggle";
 
 export default async function BookAccessPage({
   params,
@@ -86,6 +86,12 @@ export default async function BookAccessPage({
     .select({ id: organizations.id, name: organizations.name, slug: organizations.slug })
     .from(organizations);
 
+  // Filter out already-granted entities
+  const grantedUserIds = new Set(grants.filter((g) => g.granteeType === "user").map((g) => g.granteeId));
+  const grantedOrgIds = new Set(grants.filter((g) => g.granteeType === "org").map((g) => g.granteeId));
+  const ungrantedUsers = allUsers.filter((u) => !grantedUserIds.has(u.id));
+  const ungrantedOrgs = allOrgs.filter((o) => !grantedOrgIds.has(o.id));
+
   return (
     <main className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-8">
@@ -109,26 +115,7 @@ export default async function BookAccessPage({
           Visibility
         </h2>
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-            Current status:{" "}
-            {isPrivate ? (
-              <span className="font-semibold text-amber-600 dark:text-amber-400">Private</span>
-            ) : (
-              <span className="font-semibold text-green-600 dark:text-green-400">Public</span>
-            )}
-          </p>
-          <form action={setResourceVisibility} className="flex items-center gap-3">
-            <input type="hidden" name="resourceType" value="book" />
-            <input type="hidden" name="resourceKey" value={bookSlug} />
-            <button
-              type="submit"
-              name="isPrivate"
-              value={isPrivate ? "false" : "true"}
-              className="text-sm px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-            >
-              {isPrivate ? "Make Public" : "Make Private"}
-            </button>
-          </form>
+          <VisibilityToggle bookSlug={bookSlug} isPrivate={isPrivate} />
         </div>
       </section>
 
@@ -145,6 +132,7 @@ export default async function BookAccessPage({
               <tr className="text-left text-xs text-zinc-400 dark:text-zinc-500 border-b border-zinc-200 dark:border-zinc-800">
                 <th className="pb-2 font-medium">Type</th>
                 <th className="pb-2 font-medium">Grantee</th>
+                <th className="pb-2 font-medium">Granted</th>
                 <th className="pb-2 font-medium text-right">Action</th>
               </tr>
             </thead>
@@ -160,6 +148,15 @@ export default async function BookAccessPage({
                       {g.granteeType}
                     </td>
                     <td className="py-2 pr-4 text-zinc-800 dark:text-zinc-200">{label}</td>
+                    <td className="py-2 pr-4 text-zinc-500 dark:text-zinc-400 text-xs">
+                      {g.grantedAt
+                        ? g.grantedAt.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </td>
                     <td className="py-2 text-right">
                       <form action={removeAccessGrant}>
                         <input type="hidden" name="grantId" value={g.id} />
@@ -193,22 +190,28 @@ export default async function BookAccessPage({
             <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">
               Grant to User
             </label>
-            <select
-              name="granteeId"
-              className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 mb-3 focus:outline-none"
-            >
-              {allUsers.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.email}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="text-sm px-3 py-1.5 rounded border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-            >
-              Grant access
-            </button>
+            {ungrantedUsers.length === 0 ? (
+              <p className="text-sm text-zinc-400">All users already have access.</p>
+            ) : (
+              <>
+                <select
+                  name="granteeId"
+                  className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 mb-3 focus:outline-none"
+                >
+                  {ungrantedUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.email}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="text-sm px-3 py-1.5 rounded border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  Grant access
+                </button>
+              </>
+            )}
           </form>
 
           {/* Grant to org */}
@@ -226,25 +229,27 @@ export default async function BookAccessPage({
                   Create one
                 </Link>
               </p>
+            ) : ungrantedOrgs.length === 0 ? (
+              <p className="text-sm text-zinc-400">All organizations already have access.</p>
             ) : (
-              <select
-                name="granteeId"
-                className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 mb-3 focus:outline-none"
-              >
-                {allOrgs.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            {allOrgs.length > 0 && (
-              <button
-                type="submit"
-                className="text-sm px-3 py-1.5 rounded border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-              >
-                Grant access
-              </button>
+              <>
+                <select
+                  name="granteeId"
+                  className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded px-3 py-1.5 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 mb-3 focus:outline-none"
+                >
+                  {ungrantedOrgs.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="text-sm px-3 py-1.5 rounded border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  Grant access
+                </button>
+              </>
             )}
           </form>
         </div>
