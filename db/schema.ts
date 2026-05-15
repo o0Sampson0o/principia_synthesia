@@ -178,3 +178,69 @@ export const pdfCaches = pgTable("pdf_caches", {
   contentHash: text("content_hash").notNull(),
   generatedAt: timestamp("generated_at").defaultNow(),
 });
+
+/**
+ * A named group of users. Used as a grantee for `accessGrants`.
+ * Slug is unique and follows the same `kebab-case` regex as other slugs.
+ */
+export const organizations = pgTable("organizations", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").unique().notNull(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+/**
+ * Junction table linking users to organizations. `role` is `"owner"` or
+ * `"member"`. A user may belong to many orgs; uniqueness on (orgId, userId)
+ * prevents duplicate memberships. Both sides cascade-delete.
+ */
+export const orgMemberships = pgTable(
+  "org_memberships",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    joinedAt: timestamp("joined_at").defaultNow(),
+  },
+  (t) => [unique().on(t.orgId, t.userId)]
+);
+
+/**
+ * One row per private resource. Absent row means public (the default).
+ * `resourceType` is `"book"` or `"article"`. `resourceKey` is the slug
+ * (book slug or article slug). Unique on (resourceType, resourceKey).
+ */
+export const resourceVisibility = pgTable(
+  "resource_visibility",
+  {
+    id: serial("id").primaryKey(),
+    resourceType: text("resource_type").notNull(),
+    resourceKey: text("resource_key").notNull(),
+    isPrivate: boolean("is_private").default(false).notNull(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => [unique().on(t.resourceType, t.resourceKey)]
+);
+
+/**
+ * Grants viewing access to a private resource. `granteeType` is `"user"` or
+ * `"org"`. `granteeId` references either `users.id` or `organizations.id`
+ * depending on `granteeType` — it is not a foreign key for that reason. The
+ * unique constraint prevents duplicate grants for the same grantee on the
+ * same resource. `grantedBy` is the admin who created the grant.
+ */
+export const accessGrants = pgTable(
+  "access_grants",
+  {
+    id: serial("id").primaryKey(),
+    resourceType: text("resource_type").notNull(),
+    resourceKey: text("resource_key").notNull(),
+    granteeType: text("grantee_type").notNull(),
+    granteeId: integer("grantee_id").notNull(),
+    grantedAt: timestamp("granted_at").defaultNow(),
+    grantedBy: integer("granted_by").references(() => users.id, { onDelete: "set null" }),
+  },
+  (t) => [unique().on(t.resourceType, t.resourceKey, t.granteeType, t.granteeId)]
+);

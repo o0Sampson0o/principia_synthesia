@@ -92,3 +92,47 @@ export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
 });
+
+export const setVisibilitySchema = z.object({
+  resourceType: z.enum(["book", "article"]),
+  resourceKey: z.string().min(1, "Resource key is required"),
+  isPrivate: z.coerce.boolean(),
+});
+
+export const addAccessGrantSchema = z.object({
+  resourceType: z.enum(["book", "article"]),
+  resourceKey: z.string().min(1, "Resource key is required"),
+  granteeType: z.enum(["user", "org"]),
+  granteeId: z.coerce.number().int().positive("Invalid grantee ID"),
+});
+
+export const removeAccessGrantSchema = z.object({
+  grantId: z.coerce.number().int().positive("Invalid grant ID"),
+});
+
+export const createOrganizationSchema = z.object({
+  name: z.string().min(1, "Name is required").max(200, "Name too long"),
+  slug: z
+    .string()
+    .min(1, "Slug is required")
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase with hyphens only"),
+});
+
+export const deleteOrganizationSchema = z.object({
+  orgId: z.coerce.number().int().positive("Invalid org ID"),
+});
+
+export const addOrgMemberSchema = z.object({
+  orgId: z.coerce.number().int().positive("Invalid org ID"),
+  userId: z.coerce.number().int().positive("Invalid user ID"),
+  role: z.enum(["owner", "member"]),
+});
+
+export const removeOrgMemberSchema = z.object({
+  membershipId: z.coerce.number().int().positive("Invalid membership ID"),
+});
+
+export const createUserSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
