@@ -85,6 +85,13 @@
       "when": 1778863751018,
       "tag": "0011_broken_mother_askani",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1747958400000,
+      "tag": "0012_articles_metadata",
+      "breakpoints": true
     }
   ]
 }

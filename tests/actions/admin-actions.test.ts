@@ -60,6 +60,7 @@ import {
   deleteArticle,
   setArticleCategories,
   saveAnimation,
+  restoreRevision,
 } from "@/app/admin/actions";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -469,5 +470,219 @@ describe("saveAnimation", () => {
     await saveAnimation(fd);
     expect(mockInsert).not.toHaveBeenCalled();
     expect(mockUpdate).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Frontmatter / metadata tests ─────────────────────────────────────────────
+
+const VALID_FRONTMATTER_CONTENT = `---
+status: draft
+tags: ["physics"]
+description: "A test description"
+canvas: null
+---
+
+# Article body
+`;
+
+describe("createArticle — metadata", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("inserts with parsed metadata when content has a valid frontmatter block", async () => {
+    let capturedValues: any = null;
+    mockInsertReturning.mockResolvedValueOnce([{ id: 42, slug: "meta-article", title: "Meta Article" }]);
+    mockInsertValues.mockImplementation((vals: any) => {
+      capturedValues = vals;
+      return { returning: mockInsertReturning };
+    });
+    mockInsert.mockReturnValue({ values: mockInsertValues });
+
+    // setArticleCategories with empty slugs → delete
+    mockDeleteWhere.mockResolvedValue(undefined);
+    mockDelete.mockReturnValue({ where: mockDeleteWhere });
+
+    const fd = makeFormData({
+      title: "Meta Article",
+      slug: "meta-article",
+      summary: "",
+      content: VALID_FRONTMATTER_CONTENT,
+      categories: "",
+    });
+
+    await expect(createArticle(fd)).rejects.toThrow("NEXT_REDIRECT");
+    expect(capturedValues).toMatchObject({
+      metadata: {
+        status: "draft",
+        tags: ["physics"],
+        description: "A test description",
+        canvas: null,
+      },
+    });
+  });
+
+  it("inserts with default metadata when content has no frontmatter", async () => {
+    let capturedValues: any = null;
+    mockInsertReturning.mockResolvedValueOnce([{ id: 43, slug: "no-fm", title: "No FM" }]);
+    mockInsertValues.mockImplementation((vals: any) => {
+      capturedValues = vals;
+      return { returning: mockInsertReturning };
+    });
+    mockInsert.mockReturnValue({ values: mockInsertValues });
+
+    mockDeleteWhere.mockResolvedValue(undefined);
+    mockDelete.mockReturnValue({ where: mockDeleteWhere });
+
+    const fd = makeFormData({
+      title: "No FM",
+      slug: "no-fm",
+      summary: "",
+      content: "# Just a heading\n\nNo frontmatter.",
+      categories: "",
+    });
+
+    await expect(createArticle(fd)).rejects.toThrow("NEXT_REDIRECT");
+    expect(capturedValues).toMatchObject({
+      metadata: { status: "published", tags: [], description: "", canvas: null },
+    });
+  });
+});
+
+describe("updateArticle — metadata", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("includes metadata field in the .set() call reflecting parsed YAML", async () => {
+    let capturedSet: any = null;
+    mockSelectFromWhereLimit.mockResolvedValueOnce([
+      { id: 5, slug: "existing", content: "Old content", isInternal: false, parentBookSlug: null },
+    ]);
+    mockSelectFromWhere.mockReturnValue({ limit: mockSelectFromWhereLimit });
+    mockSelectFrom.mockReturnValue({ where: mockSelectFromWhere });
+    mockSelect.mockReturnValue({ from: mockSelectFrom });
+
+    mockInsertValues.mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: mockInsertValues });
+
+    mockUpdateSet.mockImplementation((setArg: any) => {
+      capturedSet = setArg;
+      return { where: mockUpdateSetWhere };
+    });
+    mockUpdateSetWhere.mockResolvedValue(undefined);
+    mockUpdate.mockReturnValue({ set: mockUpdateSet });
+
+    mockDeleteWhere.mockResolvedValue(undefined);
+    mockDelete.mockReturnValue({ where: mockDeleteWhere });
+
+    const fd = makeFormData({
+      id: "5",
+      title: "Updated",
+      slug: "existing",
+      summary: "",
+      content: VALID_FRONTMATTER_CONTENT,
+      categories: "",
+    });
+
+    await expect(updateArticle(null, fd)).rejects.toThrow("NEXT_REDIRECT");
+    expect(capturedSet).toMatchObject({
+      metadata: { status: "draft", tags: ["physics"], description: "A test description", canvas: null },
+    });
+  });
+
+  it("includes draft status in metadata when frontmatter sets status to draft", async () => {
+    let capturedSet: any = null;
+    const draftContent = `---
+status: draft
+tags: []
+description: ""
+canvas: null
+---
+
+Body.
+`;
+    mockSelectFromWhereLimit.mockResolvedValueOnce([
+      { id: 6, slug: "draft-art", content: "Old", isInternal: false, parentBookSlug: null },
+    ]);
+    mockSelectFromWhere.mockReturnValue({ limit: mockSelectFromWhereLimit });
+    mockSelectFrom.mockReturnValue({ where: mockSelectFromWhere });
+    mockSelect.mockReturnValue({ from: mockSelectFrom });
+
+    mockInsertValues.mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: mockInsertValues });
+
+    mockUpdateSet.mockImplementation((setArg: any) => {
+      capturedSet = setArg;
+      return { where: mockUpdateSetWhere };
+    });
+    mockUpdateSetWhere.mockResolvedValue(undefined);
+    mockUpdate.mockReturnValue({ set: mockUpdateSet });
+
+    mockDeleteWhere.mockResolvedValue(undefined);
+    mockDelete.mockReturnValue({ where: mockDeleteWhere });
+
+    const fd = makeFormData({
+      id: "6",
+      title: "Draft Art",
+      slug: "draft-art",
+      summary: "",
+      content: draftContent,
+      categories: "",
+    });
+
+    await expect(updateArticle(null, fd)).rejects.toThrow("NEXT_REDIRECT");
+    expect(capturedSet.metadata.status).toBe("draft");
+  });
+});
+
+describe("restoreRevision — metadata", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("re-parses metadata from revision content and writes both content and metadata", async () => {
+    let capturedSet: any = null;
+    const revisionContent = `---
+status: review
+tags: ["history"]
+description: "Old version"
+canvas: null
+---
+
+Old body.
+`;
+
+    // First select: get revision
+    mockSelectFromWhereLimit.mockResolvedValueOnce([
+      { id: 10, content: revisionContent, articleId: 7 },
+    ]);
+    // Second select: get current article
+    mockSelectFromWhereLimit.mockResolvedValueOnce([
+      { id: 7, slug: "restore-me", content: "Current content", isInternal: false, parentBookSlug: null },
+    ]);
+    mockSelectFromWhere.mockReturnValue({ limit: mockSelectFromWhereLimit });
+    mockSelectFrom.mockReturnValue({ where: mockSelectFromWhere });
+    mockSelect.mockReturnValue({ from: mockSelectFrom });
+
+    // insert revision (save before restore)
+    mockInsertValues.mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: mockInsertValues });
+
+    // update article
+    mockUpdateSet.mockImplementation((setArg: any) => {
+      capturedSet = setArg;
+      return { where: mockUpdateSetWhere };
+    });
+    mockUpdateSetWhere.mockResolvedValue(undefined);
+    mockUpdate.mockReturnValue({ set: mockUpdateSet });
+
+    const fd = makeFormData({ revisionId: "10", articleId: "7" });
+    await expect(restoreRevision(fd)).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(capturedSet).toMatchObject({
+      content: revisionContent,
+      metadata: { status: "review", tags: ["history"], description: "Old version", canvas: null },
+    });
   });
 });

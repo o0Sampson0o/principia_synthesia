@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/db";
 import { articles, curriculumEntries } from "@/db/schema";
-import { desc, asc, eq, count } from "drizzle-orm";
+import { desc, asc, eq, count, and, sql } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { getVisibleBookSlugs, getVisibleArticleSlugs } from "@/lib/access";
 
@@ -18,7 +18,12 @@ export default async function HomePage() {
         updatedAt: articles.updatedAt,
       })
       .from(articles)
-      .where(eq(articles.isInternal, false))
+      .where(
+        and(
+          eq(articles.isInternal, false),
+          session?.isAdmin ? undefined : sql`${articles.metadata}->>'status' = 'published'`,
+        )
+      )
       .orderBy(desc(articles.updatedAt))
       .limit(24),
 

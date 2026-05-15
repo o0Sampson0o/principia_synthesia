@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { categories, articleCategories, articles, curriculumEntries } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ArticleCard from "@/components/ArticleCard";
@@ -35,7 +35,13 @@ export default async function CategoryPage({
     })
     .from(articles)
     .innerJoin(articleCategories, eq(articles.id, articleCategories.articleId))
-    .where(and(eq(articleCategories.categoryId, category[0].id), eq(articles.isInternal, false)));
+    .where(
+      and(
+        eq(articleCategories.categoryId, category[0].id),
+        eq(articles.isInternal, false),
+        session?.isAdmin ? undefined : sql`${articles.metadata}->>'status' = 'published'`,
+      )
+    );
 
   // Filter by article visibility
   const visibleArticleSlugs = await getVisibleArticleSlugs(session, rawResults.map((a) => a.slug));

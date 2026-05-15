@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createKaoSchema, updateKaoSchema, pluginManifestSchema } from "@/lib/validations";
+import { createKaoSchema, updateKaoSchema, pluginManifestSchema, articleMetadataSchema } from "@/lib/validations";
 
 describe("createKaoSchema", () => {
   it("parses valid animation input successfully", () => {
@@ -163,5 +163,92 @@ describe("pluginManifestSchema", () => {
     });
     expect(result.success).toBe(false);
     expect(result.error!.flatten().fieldErrors).toHaveProperty("tags");
+  });
+});
+
+describe("articleMetadataSchema", () => {
+  it("applies all four defaults when input is {}", () => {
+    const result = articleMetadataSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.status).toBe("published");
+      expect(result.data.tags).toEqual([]);
+      expect(result.data.description).toBe("");
+      expect(result.data.canvas).toBeNull();
+    }
+  });
+
+  it("rejects an unknown status value", () => {
+    const result = articleMetadataSchema.safeParse({ status: "secret" });
+    expect(result.success).toBe(false);
+    expect(result.error!.flatten().fieldErrors).toHaveProperty("status");
+  });
+
+  it("rejects tags arrays longer than 20 items", () => {
+    const result = articleMetadataSchema.safeParse({
+      tags: Array.from({ length: 21 }, (_, i) => `tag${i}`),
+    });
+    expect(result.success).toBe(false);
+    expect(result.error!.flatten().fieldErrors).toHaveProperty("tags");
+  });
+
+  it("rejects individual tags longer than 50 chars", () => {
+    const result = articleMetadataSchema.safeParse({
+      tags: ["a".repeat(51)],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error!.flatten().fieldErrors).toHaveProperty("tags");
+  });
+
+  it("trims and lowercases each tag", () => {
+    const result = articleMetadataSchema.safeParse({
+      tags: ["  Physics  ", "MECHANICS"],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.tags).toEqual(["physics", "mechanics"]);
+    }
+  });
+
+  it("rejects description longer than 300 chars", () => {
+    const result = articleMetadataSchema.safeParse({
+      description: "x".repeat(301),
+    });
+    expect(result.success).toBe(false);
+    expect(result.error!.flatten().fieldErrors).toHaveProperty("description");
+  });
+
+  it("accepts null canvas", () => {
+    const result = articleMetadataSchema.safeParse({ canvas: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.canvas).toBeNull();
+    }
+  });
+
+  it("accepts a valid kebab-case canvas slug", () => {
+    const result = articleMetadataSchema.safeParse({ canvas: "double-pendulum" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.canvas).toBe("double-pendulum");
+    }
+  });
+
+  it("rejects canvas with spaces", () => {
+    const result = articleMetadataSchema.safeParse({ canvas: "With Spaces" });
+    expect(result.success).toBe(false);
+    expect(result.error!.flatten().fieldErrors).toHaveProperty("canvas");
+  });
+
+  it("rejects canvas with uppercase letters", () => {
+    const result = articleMetadataSchema.safeParse({ canvas: "UPPER" });
+    expect(result.success).toBe(false);
+    expect(result.error!.flatten().fieldErrors).toHaveProperty("canvas");
+  });
+
+  it("rejects empty string canvas (use null instead)", () => {
+    const result = articleMetadataSchema.safeParse({ canvas: "" });
+    expect(result.success).toBe(false);
+    expect(result.error!.flatten().fieldErrors).toHaveProperty("canvas");
   });
 });
