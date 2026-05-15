@@ -99,7 +99,7 @@ Math in generated PDFs renders with wrong/broken fonts on Vercel.
   New `objects` table with `type` (animation, dataset, diagram) and `content` (JSON). Embed via `[[object:pendulum]]` wikilink syntax.
 - [x] **Animation plugin registry** _(3–6 weeks)_
   Scan `plugins/animations/` for manifests. Reuse existing iframe sandbox. Add UI to install community animations from a gallery.
-- [ ] **Local-first bundle as sync bridge** _(2 weeks)_
+- [x] **Local-first bundle as sync bridge** _(2 weeks)_
   Export book as a folder with JSON + assets. User drops it into Dropbox/iCloud. On import, detect changes and merge (last-write-wins).
 - [ ] **Infinite canvas + native pen input** _(1–2 months)_
   New "Canvas Book" type — infinite zoom/pan, pen-optimized. Offer as opt-in beta.
