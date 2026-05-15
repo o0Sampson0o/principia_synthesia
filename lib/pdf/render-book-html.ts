@@ -15,7 +15,7 @@ export interface BookChapter {
   partTitle?: string | null;
 }
 
-function cleanMdx(mdx: string): string {
+export function cleanMdx(mdx: string): string {
   return mdx
     .replace(/\[\[([^\]]+)\]\]/g, (_, inner) => {
       const parts = inner.split("|");
@@ -25,7 +25,7 @@ function cleanMdx(mdx: string): string {
     .replace(/<[A-Z][A-Za-z]*[^>]*>[\s\S]*?<\/[A-Z][A-Za-z]*>/g, "");
 }
 
-async function mdxToHtml(mdx: string): Promise<string> {
+export async function mdxToHtml(mdx: string): Promise<string> {
   const file = await unified()
     .use(remarkParse)
     .use(remarkMath)
@@ -42,7 +42,7 @@ function getKatexCss(): string {
   return KATEX_CSS;
 }
 
-const PRINT_CSS = `
+export const PRINT_CSS = `
   @page { margin: 2.5cm 2.5cm; }
   body {
     font-family: Georgia, 'Times New Roman', serif;

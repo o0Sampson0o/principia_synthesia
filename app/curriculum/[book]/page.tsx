@@ -92,6 +92,12 @@ export default async function CurriculumBookPage({
           >
             ↓ Download EPUB
           </a>
+          <a
+            href={`/api/curriculum/${bookSlug}/export/bundle`}
+            className="text-xs themed-nav-link"
+          >
+            Offline bundle (.zip)
+          </a>
         </div>
         <p className="text-sm text-zinc-400 dark:text-zinc-500">
           <Link href={`/admin/articles/new`} className="underline underline-offset-2">
