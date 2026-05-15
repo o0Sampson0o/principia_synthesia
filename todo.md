@@ -74,7 +74,7 @@ Math in generated PDFs renders with wrong/broken fonts on Vercel.
 
 - [x] **PWA / Read-only offline caching** _(3–5 days)_
   Use `next-pwa` or Workbox. Cache articles, books, and assets. Disable editing offline with graceful error.
-- [ ] **Reorderable article sections** _(1 week)_
+- [x] **Reorderable article sections** _(1 week)_
   Use `@dnd-kit/sortable`. Store section order in article frontmatter.
 - [x] **Book → offline HTML/JS bundle export** _(1–2 weeks)_
   Export route that generates static HTML/CSS/JS for a book + its animations, zipped and served.
@@ -141,7 +141,7 @@ Math in generated PDFs renders with wrong/broken fonts on Vercel.
 - [ ] GitHub Sponsors has at least one sponsor
 - [ ] Custom domain live (or clear plan after first $100 MRR)
 - [x] PWA enabled — articles cache offline
-- [ ] Users can reorder article sections
+- [x] Users can reorder article sections
 - [x] Book export to offline bundle works
 - [x] Permissions editor UI complete
 - [ ] Print-on-demand integration ready
