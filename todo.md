@@ -95,7 +95,7 @@ Math in generated PDFs renders with wrong/broken fonts on Vercel.
 
 ### Phase D — Tier 2 Features (Months 4–9, if traction)
 
-- [ ] **Knowledge as an Object (KAO) schema — primitive** _(2–4 weeks)_
+- [x] **Knowledge as an Object (KAO) schema — primitive** _(2–4 weeks)_
   New `objects` table with `type` (animation, dataset, diagram) and `content` (JSON). Embed via `[[object:pendulum]]` wikilink syntax.
 - [ ] **Animation plugin registry** _(3–6 weeks)_
   Scan `plugins/animations/` for manifests. Reuse existing iframe sandbox. Add UI to install community animations from a gallery.
@@ -119,8 +119,8 @@ Math in generated PDFs renders with wrong/broken fonts on Vercel.
 
 ### Open Core — Paid Features for Self-Hosted
 
-- [ ] Move paid features behind a config flag (`config.features.PDF_EXPORT`, etc.)
-- [ ] Build license key validation (JWT + database lookup)
+- [x] Move paid features behind a config flag (`config.features.PDF_EXPORT`, etc.)
+- [x] Build license key validation (JWT + database lookup)
 - [ ] Define commercial license for: PDF/EPUB export, SSO (SAML/OAuth), audit logs, advanced RBAC, priority support SLA
 - [ ] Offer support contracts ($500/month for self-hosted enterprise)
 
