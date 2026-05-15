@@ -10,6 +10,7 @@ import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import "katex/dist/katex.min.css";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
+import { canViewArticle } from "@/lib/access";
 import DynamicAnimation from "@/components/DynamicAnimation";
 
 export default async function ArticlePage({
@@ -26,6 +27,8 @@ export default async function ArticlePage({
 
   if (!articleRows[0]) notFound();
   const article = articleRows[0];
+  if (article.isInternal) notFound();
+  if (!(await canViewArticle(slug, session))) notFound();
 
   const articleCats = await db
     .select({ id: categories.id, name: categories.name, slug: categories.slug })

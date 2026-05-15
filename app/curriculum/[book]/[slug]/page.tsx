@@ -10,6 +10,7 @@ import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import "katex/dist/katex.min.css";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
+import { canViewBook } from "@/lib/access";
 import DynamicAnimation from "@/components/DynamicAnimation";
 
 export default async function CurriculumArticlePage({
@@ -26,6 +27,7 @@ export default async function CurriculumArticlePage({
     .limit(1);
 
   if (!article[0]) notFound();
+  if (article[0].isInternal && article[0].parentBookSlug !== bookSlug) notFound();
 
   const entry = await db
     .select()
@@ -58,6 +60,7 @@ export default async function CurriculumArticlePage({
   const { title, summary, content, createdAt, updatedAt } = article[0];
   const bookTitle = entry[0].bookTitle;
   const session = await getSession();
+  if (!(await canViewBook(bookSlug, session))) notFound();
 
   const articleCats = await db
     .select({ id: categories.id, name: categories.name, slug: categories.slug })

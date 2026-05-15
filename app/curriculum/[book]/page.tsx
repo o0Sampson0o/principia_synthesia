@@ -3,6 +3,8 @@ import { articles, curriculumEntries } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getSession } from "@/lib/auth";
+import { canViewBook } from "@/lib/access";
 
 export default async function CurriculumBookPage({
   params,
@@ -27,6 +29,9 @@ export default async function CurriculumBookPage({
     .orderBy(asc(curriculumEntries.position));
 
   if (entries.length === 0) notFound();
+
+  const session = await getSession();
+  if (!(await canViewBook(bookSlug, session))) notFound();
 
   const bookTitle = entries[0].bookTitle;
 

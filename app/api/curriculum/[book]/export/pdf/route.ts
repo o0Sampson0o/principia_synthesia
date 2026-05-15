@@ -4,6 +4,8 @@ import { eq, asc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { renderBookHtml } from "@/lib/pdf/render-book-html";
 import { createHash } from "crypto";
+import { getSession } from "@/lib/auth";
+import { canViewBook } from "@/lib/access";
 
 export const maxDuration = 60;
 
@@ -12,6 +14,11 @@ export async function GET(
   { params }: { params: Promise<{ book: string }> }
 ) {
   const { book: bookSlug } = await params;
+
+  const session = await getSession();
+  if (!(await canViewBook(bookSlug, session))) {
+    return new NextResponse("Not found", { status: 404 });
+  }
 
   const entries = await db
     .select({

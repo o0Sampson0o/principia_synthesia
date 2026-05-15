@@ -3,11 +3,12 @@ import { db } from "@/db";
 import { articles, curriculumEntries } from "@/db/schema";
 import { desc, asc, eq, count } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
+import { getVisibleBookSlugs, getVisibleArticleSlugs } from "@/lib/access";
 
 export default async function HomePage() {
   const session = await getSession();
 
-  const [recent, entries, [{ total }]] = await Promise.all([
+  const [recentRaw, entries, [{ total }]] = await Promise.all([
     db
       .select({
         id: articles.id,
@@ -17,8 +18,9 @@ export default async function HomePage() {
         updatedAt: articles.updatedAt,
       })
       .from(articles)
+      .where(eq(articles.isInternal, false))
       .orderBy(desc(articles.updatedAt))
-      .limit(8),
+      .limit(24),
 
     db
       .select({
@@ -37,8 +39,24 @@ export default async function HomePage() {
     db.select({ total: count() }).from(articles),
   ]);
 
+  // Filter recent articles by visibility
+  const visibleRecentSlugs = await getVisibleArticleSlugs(session, recentRaw.map((a) => a.slug));
+  const recent = (
+    visibleRecentSlugs === "all"
+      ? recentRaw
+      : recentRaw.filter((a) => visibleRecentSlugs.has(a.slug))
+  ).slice(0, 8);
+
+  // Filter books by visibility
+  const allBookSlugs = [...new Set(entries.map((e) => e.bookSlug))];
+  const visibleBookSlugs = await getVisibleBookSlugs(session, allBookSlugs);
+  const filteredEntries =
+    visibleBookSlugs === "all"
+      ? entries
+      : entries.filter((e) => visibleBookSlugs.has(e.bookSlug));
+
   const books: Record<string, { bookTitle: string; entries: typeof entries }> = {};
-  for (const e of entries) {
+  for (const e of filteredEntries) {
     if (!books[e.bookSlug]) books[e.bookSlug] = { bookTitle: e.bookTitle, entries: [] };
     books[e.bookSlug].entries.push(e);
   }

@@ -1,7 +1,9 @@
 import { db } from "@/db";
-import { articles } from "@/db/schema";
-import { ilike, or } from "drizzle-orm";
+import { articles, curriculumEntries } from "@/db/schema";
+import { ilike, or, and, eq, inArray } from "drizzle-orm";
 import ArticleCard from "@/components/ArticleCard";
+import { getSession } from "@/lib/auth";
+import { getVisibleArticleSlugs, getVisibleBookSlugs } from "@/lib/access";
 
 export default async function SearchPage({
   searchParams,
@@ -10,8 +12,9 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams;
   const query = q || "";
+  const session = await getSession();
 
-  const results = query
+  const rawResults = query
     ? await db
         .select({
           id: articles.id,
@@ -22,13 +25,52 @@ export default async function SearchPage({
         })
         .from(articles)
         .where(
-          or(
-            ilike(articles.title, `%${query}%`),
-            ilike(articles.content, `%${query}%`),
-            ilike(articles.summary, `%${query}%`)
+          and(
+            eq(articles.isInternal, false),
+            or(
+              ilike(articles.title, `%${query}%`),
+              ilike(articles.content, `%${query}%`),
+              ilike(articles.summary, `%${query}%`)
+            )
           )
         )
     : [];
+
+  // Filter by article visibility
+  const visibleArticleSlugs = await getVisibleArticleSlugs(session, rawResults.map((a) => a.slug));
+  const filtered =
+    visibleArticleSlugs === "all"
+      ? rawResults
+      : rawResults.filter((a) => visibleArticleSlugs.has(a.slug));
+
+  // Filter out articles belonging only to private books
+  let finalResults = filtered;
+  if (filtered.length > 0) {
+    const articleBookSlugs = await db
+      .select({ articleSlug: articles.slug, bookSlug: curriculumEntries.bookSlug })
+      .from(articles)
+      .innerJoin(curriculumEntries, eq(curriculumEntries.articleId, articles.id))
+      .where(inArray(articles.slug, filtered.map((a) => a.slug)));
+
+    const allBookSlugs = [...new Set(articleBookSlugs.map((r) => r.bookSlug))];
+    const visibleBooks = await getVisibleBookSlugs(session, allBookSlugs);
+
+    const articleToBooks = new Map<string, string[]>();
+    for (const r of articleBookSlugs) {
+      const list = articleToBooks.get(r.articleSlug) ?? [];
+      list.push(r.bookSlug);
+      articleToBooks.set(r.articleSlug, list);
+    }
+
+    finalResults = filtered.filter((a) => {
+      const books = articleToBooks.get(a.slug);
+      if (!books || books.length === 0) return true; // standalone article — already gated above
+      if (visibleBooks === "all") return true;
+      return books.some((b) => visibleBooks.has(b));
+    });
+  }
+
+  const results = finalResults;
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">

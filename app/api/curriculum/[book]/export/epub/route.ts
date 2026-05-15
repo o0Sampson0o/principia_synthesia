@@ -3,6 +3,8 @@ import { articles, curriculumEntries } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { buildEpub } from "@/lib/epub";
+import { getSession } from "@/lib/auth";
+import { canViewBook } from "@/lib/access";
 
 /**
  * GET /api/curriculum/[book]/export/epub
@@ -19,6 +21,11 @@ export async function GET(
   { params }: { params: Promise<{ book: string }> }
 ) {
   const { book: bookSlug } = await params;
+
+  const session = await getSession();
+  if (!(await canViewBook(bookSlug, session))) {
+    return new NextResponse("Not found", { status: 404 });
+  }
 
   const entries = await db
     .select({

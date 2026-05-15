@@ -585,5 +585,15 @@ export async function searchAll(query: string) {
       .where(ilike(savedAnimations.name, q))
       .limit(8),
   ]);
-  return { articles: articleRows, books: bookRows, animations: animationRows };
+
+  if (session?.isAdmin) return { articles: articleRows, books: bookRows, animations: animationRows };
+
+  const visibleArticles = await getVisibleArticleSlugs(session, articleRows.map((a) => a.slug));
+  const visibleBooks = await getVisibleBookSlugs(session, bookRows.map((b) => b.bookSlug));
+
+  return {
+    articles: visibleArticles === "all" ? articleRows : articleRows.filter((a) => visibleArticles.has(a.slug)),
+    books: visibleBooks === "all" ? bookRows : bookRows.filter((b) => visibleBooks.has(b.bookSlug)),
+    animations: animationRows,
+  };
 }

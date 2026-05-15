@@ -1,19 +1,29 @@
 import type { MetadataRoute } from "next"
 import { db } from "@/db"
 import { articles, categories, curriculumEntries, savedAnimations } from "@/db/schema"
+import { eq } from "drizzle-orm"
+import { getVisibleArticleSlugs, getVisibleBookSlugs } from "@/lib/access"
 
 const BASE_URL = "https://principia-synthesia.vercel.app"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [allArticles, allCategories, allEntries, allAnimations] = await Promise.all([
-    db.select({ slug: articles.slug, updatedAt: articles.updatedAt }).from(articles),
+    db.select({ slug: articles.slug, updatedAt: articles.updatedAt }).from(articles).where(eq(articles.isInternal, false)),
     db.select({ slug: categories.slug }).from(categories),
     db.select({ bookSlug: curriculumEntries.bookSlug }).from(curriculumEntries),
     db.select({ slug: savedAnimations.slug, createdAt: savedAnimations.createdAt }).from(savedAnimations),
   ])
 
-  // Unique book slugs
-  const bookSlugs = [...new Set(allEntries.map((e) => e.bookSlug))]
+  // Filter private resources — sitemap runs without a session (null = unauthenticated visitor)
+  const articleVisibility = await getVisibleArticleSlugs(null, allArticles.map((a) => a.slug))
+  const publicArticles =
+    articleVisibility === "all"
+      ? allArticles
+      : allArticles.filter((a) => articleVisibility.has(a.slug))
+
+  const bookSlugsRaw = [...new Set(allEntries.map((e) => e.bookSlug))]
+  const bookVisibility = await getVisibleBookSlugs(null, bookSlugsRaw)
+  const bookSlugs = bookVisibility === "all" ? bookSlugsRaw : bookSlugsRaw.filter((s) => bookVisibility.has(s))
 
   const staticRoutes: MetadataRoute.Sitemap = [
     {
@@ -38,7 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ]
 
-  const articleRoutes: MetadataRoute.Sitemap = allArticles.map((a) => ({
+  const articleRoutes: MetadataRoute.Sitemap = publicArticles.map((a) => ({
     url: `${BASE_URL}/${a.slug}`,
     lastModified: a.updatedAt ?? undefined,
     changeFrequency: "monthly",

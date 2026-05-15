@@ -1,9 +1,11 @@
 import { db } from "@/db";
-import { categories, articleCategories, articles } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { categories, articleCategories, articles, curriculumEntries } from "@/db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ArticleCard from "@/components/ArticleCard";
+import { getSession } from "@/lib/auth";
+import { getVisibleArticleSlugs, getVisibleBookSlugs } from "@/lib/access";
 
 export default async function CategoryPage({
   params,
@@ -21,7 +23,9 @@ export default async function CategoryPage({
 
   if (!category[0]) notFound();
 
-  const results = await db
+  const session = await getSession();
+
+  const rawResults = await db
     .select({
       id: articles.id,
       title: articles.title,
@@ -31,7 +35,41 @@ export default async function CategoryPage({
     })
     .from(articles)
     .innerJoin(articleCategories, eq(articles.id, articleCategories.articleId))
-    .where(eq(articleCategories.categoryId, category[0].id));
+    .where(and(eq(articleCategories.categoryId, category[0].id), eq(articles.isInternal, false)));
+
+  // Filter by article visibility
+  const visibleArticleSlugs = await getVisibleArticleSlugs(session, rawResults.map((a) => a.slug));
+  const filtered =
+    visibleArticleSlugs === "all"
+      ? rawResults
+      : rawResults.filter((a) => visibleArticleSlugs.has(a.slug));
+
+  // Filter out articles belonging only to private books
+  let results = filtered;
+  if (filtered.length > 0) {
+    const articleBookSlugs = await db
+      .select({ articleSlug: articles.slug, bookSlug: curriculumEntries.bookSlug })
+      .from(articles)
+      .innerJoin(curriculumEntries, eq(curriculumEntries.articleId, articles.id))
+      .where(inArray(articles.slug, filtered.map((a) => a.slug)));
+
+    const allBookSlugs = [...new Set(articleBookSlugs.map((r) => r.bookSlug))];
+    const visibleBooks = await getVisibleBookSlugs(session, allBookSlugs);
+
+    const articleToBooks = new Map<string, string[]>();
+    for (const r of articleBookSlugs) {
+      const list = articleToBooks.get(r.articleSlug) ?? [];
+      list.push(r.bookSlug);
+      articleToBooks.set(r.articleSlug, list);
+    }
+
+    results = filtered.filter((a) => {
+      const books = articleToBooks.get(a.slug);
+      if (!books || books.length === 0) return true;
+      if (visibleBooks === "all") return true;
+      return books.some((b) => visibleBooks.has(b));
+    });
+  }
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">
