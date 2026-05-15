@@ -5,11 +5,12 @@ import { NextResponse } from "next/server";
 import { buildBookBundle } from "@/lib/bundle/build-book-bundle";
 import { getSession } from "@/lib/auth";
 import { canViewBook } from "@/lib/access";
+import { getLicenseFromRequest, featureEnabled } from "@/lib/license";
 
 export const maxDuration = 60;
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ book: string }> }
 ) {
   const { book: bookSlug } = await params;
@@ -17,6 +18,14 @@ export async function GET(
 
   if (!(await canViewBook(bookSlug, session))) {
     return new NextResponse("Not found", { status: 404 });
+  }
+
+  const license = await getLicenseFromRequest(req);
+  if (!featureEnabled("BUNDLE_EXPORT", license)) {
+    return new NextResponse(
+      JSON.stringify({ error: "Bundle export requires a Pro license. Set BUNDLE_EXPORT=true or provide a valid license key." }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   const entries = await db

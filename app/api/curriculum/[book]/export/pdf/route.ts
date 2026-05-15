@@ -6,6 +6,7 @@ import { renderBookHtml } from "@/lib/pdf/render-book-html";
 import { createHash } from "crypto";
 import { getSession } from "@/lib/auth";
 import { canViewBook } from "@/lib/access";
+import { getLicenseFromRequest, featureEnabled } from "@/lib/license";
 
 export const maxDuration = 60;
 
@@ -18,6 +19,14 @@ export async function GET(
   const session = await getSession();
   if (!(await canViewBook(bookSlug, session))) {
     return new NextResponse("Not found", { status: 404 });
+  }
+
+  const license = await getLicenseFromRequest(req);
+  if (!featureEnabled("PDF_EXPORT", license)) {
+    return new NextResponse(
+      JSON.stringify({ error: "PDF export requires a Pro license. Set PDF_EXPORT=true or provide a valid license key." }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   const entries = await db

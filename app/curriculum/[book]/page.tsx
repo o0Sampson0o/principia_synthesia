@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { canViewBook } from "@/lib/access";
+import { config } from "@/lib/config";
 
 export default async function CurriculumBookPage({
   params,
@@ -80,24 +81,51 @@ export default async function CurriculumBookPage({
 
       <div className="mt-12 pt-6 border-t border-zinc-200 dark:border-zinc-800 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <a
-            href={`/api/curriculum/${bookSlug}/export/pdf`}
-            className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-          >
-            ↓ Download PDF
-          </a>
-          <a
-            href={`/api/curriculum/${bookSlug}/export/epub`}
-            className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-          >
-            ↓ Download EPUB
-          </a>
-          <a
-            href={`/api/curriculum/${bookSlug}/export/bundle`}
-            className="text-xs themed-nav-link"
-          >
-            Offline bundle (.zip)
-          </a>
+          {config.features.PDF_EXPORT ? (
+            <a
+              href={`/api/curriculum/${bookSlug}/export/pdf`}
+              className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+            >
+              ↓ Download PDF
+            </a>
+          ) : (
+            <span
+              className="text-xs text-zinc-400 line-through cursor-not-allowed"
+              title="PDF export not enabled on this instance"
+            >
+              PDF
+            </span>
+          )}
+          {config.features.EPUB_EXPORT ? (
+            <a
+              href={`/api/curriculum/${bookSlug}/export/epub`}
+              className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+            >
+              ↓ Download EPUB
+            </a>
+          ) : (
+            <span
+              className="text-xs text-zinc-400 line-through cursor-not-allowed"
+              title="EPUB export not enabled on this instance"
+            >
+              EPUB
+            </span>
+          )}
+          {config.features.BUNDLE_EXPORT ? (
+            <a
+              href={`/api/curriculum/${bookSlug}/export/bundle`}
+              className="text-xs themed-nav-link"
+            >
+              Offline bundle (.zip)
+            </a>
+          ) : (
+            <span
+              className="text-xs text-zinc-400 line-through cursor-not-allowed"
+              title="Bundle export not enabled on this instance"
+            >
+              Bundle
+            </span>
+          )}
         </div>
         <p className="text-sm text-zinc-400 dark:text-zinc-500">
           <Link href={`/admin/articles/new`} className="underline underline-offset-2">

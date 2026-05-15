@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { buildEpub } from "@/lib/epub";
 import { getSession } from "@/lib/auth";
 import { canViewBook } from "@/lib/access";
+import { getLicenseFromRequest, featureEnabled } from "@/lib/license";
 
 /**
  * GET /api/curriculum/[book]/export/epub
@@ -17,7 +18,7 @@ import { canViewBook } from "@/lib/access";
  * Returns 404 if the book has no entries.
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ book: string }> }
 ) {
   const { book: bookSlug } = await params;
@@ -25,6 +26,14 @@ export async function GET(
   const session = await getSession();
   if (!(await canViewBook(bookSlug, session))) {
     return new NextResponse("Not found", { status: 404 });
+  }
+
+  const license = await getLicenseFromRequest(req);
+  if (!featureEnabled("EPUB_EXPORT", license)) {
+    return new NextResponse(
+      JSON.stringify({ error: "EPUB export requires a Pro license. Set EPUB_EXPORT=true or provide a valid license key." }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   const entries = await db
