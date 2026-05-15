@@ -100,6 +100,28 @@ export const savedAnimations = pgTable("saved_animations", {
 });
 
 /**
+ * Knowledge as an Object (KAO) primitive. Each row represents a typed knowledge
+ * object with a slug, a human-readable name, a type discriminator, and a JSONB
+ * `content` payload whose shape is governed by the type:
+ *   - "animation": { code: string }
+ *   - "dataset":   { headers: string[]; rows: unknown[][] }
+ *   - "diagram":   { format: "mermaid" | "graphviz"; source: string }
+ *
+ * Objects are embedded in articles via [[object:slug]] wikilinks and rendered
+ * via /api/objects/[slug]/preview for animation types.
+ */
+export const objects = pgTable("objects", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").unique().notNull(),
+  name: text("name").notNull(),
+  type: text("type").notNull(),          // "animation" | "dataset" | "diagram"
+  content: jsonb("content").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+/**
  * The 15 color tokens that make up one side (light or dark) of the site theme.
  * All values are CSS color strings (hex, rgb, hsl, etc.). Each token maps to a
  * CSS custom property — e.g. `primaryBtn` → `--primary-btn`. See `lib/theme.ts`

@@ -50,6 +50,10 @@ export function remarkWikilinks() {
           const animSlug = target.slice(5).trim()
           url = `/animations/${animSlug}`
           displayText = label ?? animSlug
+        } else if (target.startsWith("object:")) {
+          const objectSlug = target.slice(7).trim()
+          url = `/objects/${objectSlug}`
+          displayText = label ?? objectSlug
         } else {
           url = `/${target}`
           displayText = label ?? target

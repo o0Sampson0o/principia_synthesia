@@ -46,6 +46,12 @@ export default async function AdminPage({
           <Link href="/admin/curriculum" className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
             Curriculum →
           </Link>
+          <Link href="/admin/objects" className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
+            Objects →
+          </Link>
+          <Link href="/admin/license" className="text-sm text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
+            License →
+          </Link>
           <Link
             href="/admin/articles/new"
             className="px-4 py-2 text-sm rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity"

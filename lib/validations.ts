@@ -136,3 +136,25 @@ export const createUserSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
+
+export const kaoSlugSchema = z
+  .string()
+  .min(1, "Slug is required")
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase with hyphens only");
+
+export const createKaoSchema = z.object({
+  slug: kaoSlugSchema,
+  name: z.string().min(1, "Name is required").max(200),
+  type: z.enum(["animation", "dataset", "diagram"]),
+  content: z.string().min(2, "Content is required"),  // raw JSON string, parsed in action
+  description: z.string().max(1000).optional(),
+});
+
+export const updateKaoSchema = createKaoSchema.extend({
+  id: z.coerce.number().int().positive(),
+});
+
+export const deleteKaoSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  slug: z.string().min(1),
+});
