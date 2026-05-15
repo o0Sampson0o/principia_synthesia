@@ -2,8 +2,8 @@ import { db } from "@/db";
 import { articles, curriculumEntries, resourceVisibility } from "@/db/schema";
 import { asc, eq, and, inArray } from "drizzle-orm";
 import Link from "next/link";
-import { removeCurriculumEntry } from "@/app/admin/actions";
 import DeleteBookButton from "./DeleteBookButton";
+import SortableEntriesList from "./SortableEntriesList";
 import AddEntryForm from "./AddEntryForm";
 import CreateInternalArticleForm from "./CreateInternalArticleForm";
 
@@ -110,43 +110,16 @@ export default async function AdminCurriculumPage() {
                   <DeleteBookButton bookSlug={bookSlug} bookTitle={book.bookTitle} />
                 </div>
               </div>
-              <ol className="space-y-1">
-                {book.entries.map((e) => (
-                  <li key={e.id} className="flex items-center justify-between py-1 group">
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-xs text-zinc-300 dark:text-zinc-600 w-5 text-right shrink-0 tabular-nums">
-                        {e.position}
-                      </span>
-                      <Link
-                        href={e.isInternal ? `/curriculum/${e.bookSlug}/${e.articleSlug}` : `/${e.articleSlug}`}
-                        className="text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                      >
-                        {e.articleTitle}
-                      </Link>
-                      {e.isInternal && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
-                          Sub-page
-                        </span>
-                      )}
-                      {e.partTitle && (
-                        <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                          — {e.partTitle}
-                        </span>
-                      )}
-                    </div>
-                    <form action={removeCurriculumEntry}>
-                      <input type="hidden" name="id" value={e.id} />
-                      <input type="hidden" name="bookSlug" value={e.bookSlug} />
-                      <button
-                        type="submit"
-                        className="text-xs text-zinc-300 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        Remove
-                      </button>
-                    </form>
-                  </li>
-                ))}
-              </ol>
+              <SortableEntriesList
+                bookSlug={bookSlug}
+                entries={book.entries.map((e) => ({
+                  id: e.id,
+                  position: e.position,
+                  partTitle: e.partTitle,
+                  bookSlug: bookSlug,
+                  article: { slug: e.articleSlug, title: e.articleTitle, isInternal: e.isInternal },
+                }))}
+              />
               <CreateInternalArticleForm
                 bookSlug={bookSlug}
                 bookTitle={book.bookTitle}

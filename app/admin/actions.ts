@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod";
 import { db } from "@/db";
 import { articles, revisions, curriculumEntries, categories, articleCategories, savedAnimations, bookSnapshots, bookSnapshotEntries } from "@/db/schema";
 import { eq, asc, inArray, ilike, and } from "drizzle-orm";
@@ -308,6 +309,32 @@ export async function deleteCurriculumBook(formData: FormData) {
   for (const { articleId } of internalEntries) {
     await db.delete(articles).where(eq(articles.id, articleId));
   }
+
+  revalidatePath("/curriculum/" + bookSlug);
+  revalidatePath("/admin/curriculum");
+}
+
+/**
+ * Reorders curriculum entries within a book by updating each entry's position
+ * to match the supplied ordered array of IDs.
+ */
+export async function reorderCurriculumEntries(bookSlug: string, orderedIds: number[]) {
+  const session = await getSession();
+  if (!session?.isAdmin) return;
+
+  const slugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  const idsSchema = z.array(z.number().int().positive());
+  const parsedSlug = slugSchema.safeParse(bookSlug);
+  const parsedIds = idsSchema.safeParse(orderedIds);
+  if (!parsedSlug.success || !parsedIds.success) return;
+
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      db.update(curriculumEntries)
+        .set({ position: index })
+        .where(eq(curriculumEntries.id, id))
+    )
+  );
 
   revalidatePath("/curriculum/" + bookSlug);
   revalidatePath("/admin/curriculum");
