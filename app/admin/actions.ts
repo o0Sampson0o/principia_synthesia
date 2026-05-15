@@ -624,3 +624,27 @@ export async function searchAll(query: string) {
     animations: animationRows,
   };
 }
+
+/**
+ * Updates an article's content string directly (without creating a revision).
+ * Used for structural changes like section reordering.
+ */
+export async function updateArticleContent(slug: string, content: string): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session?.isAdmin) return { error: "Unauthorized" };
+
+  const slugParse = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).safeParse(slug);
+  if (!slugParse.success) return { error: "Invalid slug" };
+
+  const contentParse = z.string().min(1).max(512000).safeParse(content);
+  if (!contentParse.success) return { error: "Invalid content" };
+
+  const row = await db.select({ id: articles.id }).from(articles).where(eq(articles.slug, slug)).limit(1);
+  if (!row[0]) return { error: "Article not found" };
+
+  await db.update(articles).set({ content, updatedAt: new Date() }).where(eq(articles.id, row[0].id));
+
+  revalidatePath("/" + slug);
+  revalidatePath("/admin/articles/" + slug + "/edit");
+  return {};
+}

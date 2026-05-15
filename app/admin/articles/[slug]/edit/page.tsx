@@ -12,6 +12,7 @@ import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import "katex/dist/katex.min.css";
+import SectionReorderPanel from "@/app/admin/articles/SectionReorderPanel";
 
 export default async function EditArticlePage({
   params,
@@ -50,6 +51,14 @@ export default async function EditArticlePage({
       {/* Edit Form */}
       <EditForm article={a} existingCats={existingCats} />
 
+      <details className="border border-zinc-200 dark:border-zinc-800 rounded-lg mt-8">
+        <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors select-none">
+          Reorder sections
+        </summary>
+        <div className="px-4 pb-4 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+          <SectionReorderPanel articleSlug={a.slug} initialContent={a.content ?? ""} />
+        </div>
+      </details>
 
       {/* Revisions */}
       {revisionList.length > 0 && (
