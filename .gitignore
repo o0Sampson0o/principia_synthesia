@@ -49,6 +49,7 @@ db/*seed*.ts
 /public/sw.js.map
 /public/workbox-*.js
 /public/workbox-*.js.map
+/public/swe-worker-*.js
 
 # local config and tooling files
 CLAUDE.md
