@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Nav from "@/components/Nav";
+import Footer from "@/components/Footer";
 import CommandPalette from "@/components/CommandPalette";
 import "./globals.css";
 import { getSession } from "@/lib/auth";
@@ -64,6 +65,7 @@ export default async function RootLayout({
         <Nav />
         <CommandPalette />
         {children}
+        <Footer />
         <Analytics />
       </body>
     </html>
