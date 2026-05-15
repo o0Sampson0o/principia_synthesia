@@ -107,6 +107,13 @@ export default async function AdminCurriculumPage() {
                   >
                     [Lock] Access
                   </Link>
+                  <Link
+                    href={`/admin/curriculum/${bookSlug}/sync`}
+                    className="text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+                    aria-label={`Sync ${book.bookTitle}`}
+                  >
+                    Sync
+                  </Link>
                   <DeleteBookButton bookSlug={bookSlug} bookTitle={book.bookTitle} />
                 </div>
               </div>
