@@ -12,7 +12,7 @@ export async function buildBookBundle(
   bookTitle: string,
   chapters: BookChapter[],
   animationCodes: Map<string, string>
-): Promise<Buffer> {
+): Promise<ArrayBuffer> {
   const zip = new JSZip();
 
   // Build each chapter HTML
@@ -161,10 +161,10 @@ ${PRINT_CSS}
   zip.file("manifest.json", JSON.stringify(manifest, null, 2));
 
   return zip.generateAsync({
-    type: "nodebuffer",
+    type: "arraybuffer",
     compression: "DEFLATE",
     compressionOptions: { level: 6 },
-  }) as Promise<Buffer>;
+  });
 }
 
 function slugify(str: string): string {
