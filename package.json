@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
-    "generate:katex-css": "node scripts/generate-katex-css.mjs"
+    "generate:katex-css": "node scripts/generate-katex-css.mjs",
+    "seed": "npx tsx db/seed-demo.ts",
+    "seed:admin": "npx tsx db/seed-admin.ts"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.0",
