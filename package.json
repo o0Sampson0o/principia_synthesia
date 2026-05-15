@@ -10,8 +10,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "generate:katex-css": "node scripts/generate-katex-css.mjs",
-    "seed": "npx tsx --env-file=.env.local db/seed-demo.ts",
-    "seed:admin": "npx tsx --env-file=.env.local db/seed-admin.ts"
+    "seed": "npx tsx --env-file-if-exists=.env.local db/seed-demo.ts",
+    "seed:admin": "npx tsx --env-file-if-exists=.env.local db/seed-admin.ts"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.0",
