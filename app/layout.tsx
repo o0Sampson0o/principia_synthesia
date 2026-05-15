@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import CommandPalette from "@/components/CommandPalette";
+import OfflineGuard from "@/components/OfflineGuard";
 import "./globals.css";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
@@ -60,10 +61,12 @@ export default async function RootLayout({
     >
       <head>
         <style dangerouslySetInnerHTML={{ __html: themeStyle }} />
+        <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="min-h-full flex flex-col">
         <Nav />
         <CommandPalette />
+        <OfflineGuard />
         {children}
         <Footer />
         <Analytics />

@@ -1,0 +1,12 @@
+{
+  "name": "Principia Synthesia",
+  "short_name": "Principia",
+  "description": "A personal textbook of everything.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#18181b",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
+  ]
+}
