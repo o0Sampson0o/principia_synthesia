@@ -1,14 +1,19 @@
 import type { MetadataRoute } from "next"
 import { db } from "@/db"
 import { articles, categories, curriculumEntries, objects } from "@/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, and, sql } from "drizzle-orm"
 import { getVisibleArticleSlugs, getVisibleBookSlugs } from "@/lib/access"
 
 const BASE_URL = "https://principia-synthesia.vercel.app"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [allArticles, allCategories, allEntries, allAnimations] = await Promise.all([
-    db.select({ slug: articles.slug, updatedAt: articles.updatedAt }).from(articles).where(eq(articles.isInternal, false)),
+    db.select({ slug: articles.slug, updatedAt: articles.updatedAt }).from(articles).where(
+      and(
+        eq(articles.isInternal, false),
+        sql`${articles.metadata}->>'status' = 'published'`
+      )
+    ),
     db.select({ slug: categories.slug }).from(categories),
     db.select({ bookSlug: curriculumEntries.bookSlug }).from(curriculumEntries),
     db.select({ slug: objects.slug, createdAt: objects.createdAt }).from(objects).where(eq(objects.type, "animation")),

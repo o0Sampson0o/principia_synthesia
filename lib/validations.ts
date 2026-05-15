@@ -210,3 +210,23 @@ export const syncBundleManifestSchema = z.object({
 
 export type SyncBundleManifest = z.infer<typeof syncBundleManifestSchema>;
 export type SyncBundleChapter = z.infer<typeof syncBundleChapterSchema>;
+
+// ─── Article frontmatter metadata ────────────────────────────────────────────
+
+export const ARTICLE_STATUSES = ["draft", "review", "published", "archived"] as const;
+
+export const articleMetadataSchema = z.object({
+  status: z.enum(ARTICLE_STATUSES).default("published"),
+  tags: z
+    .array(z.string().trim().toLowerCase().min(1).max(50))
+    .max(20)
+    .default([]),
+  description: z.string().max(300).default(""),
+  canvas: z
+    .string()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .nullable()
+    .default(null),
+});
+
+export type ArticleMetadata = z.infer<typeof articleMetadataSchema>;

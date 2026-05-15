@@ -3,11 +3,12 @@
 import { z } from "zod";
 import { db } from "@/db";
 import { articles, revisions, curriculumEntries, categories, articleCategories, objects, bookSnapshots, bookSnapshotEntries } from "@/db/schema";
-import { eq, asc, inArray, ilike, and } from "drizzle-orm";
+import { eq, asc, inArray, ilike, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getVisibleArticleSlugs, getVisibleBookSlugs } from "@/lib/access";
+import { parseFrontmatter } from "@/lib/frontmatter";
 import {
   createArticleSchema,
   updateArticleSchema,
@@ -34,11 +35,14 @@ export async function createArticle(formData: FormData) {
   const validated = createArticleSchema.parse({ title, slug, summary, content, categories: categoriesStr });
   const categorySlugs = validated.categories?.split(",").filter(Boolean) || [];
 
+  const parsed = parseFrontmatter(validated.content ?? "");
+
   const [article] = await db.insert(articles).values({
     title: validated.title,
     slug: validated.slug,
     summary: validated.summary,
     content: validated.content,
+    metadata: parsed.metadata,
   }).returning();
 
   await setArticleCategories(article.id, categorySlugs);
@@ -82,6 +86,8 @@ export async function updateArticle(prevState: any, formData: FormData) {
 
   const categorySlugs = validated.categories?.split(",").filter(Boolean) || [];
 
+  const parsedFm = parseFrontmatter(validated.content ?? "");
+
   // Save revision first
   const current = await db
     .select()
@@ -103,6 +109,7 @@ export async function updateArticle(prevState: any, formData: FormData) {
       slug: validated.slug,
       summary: validated.summary,
       content: validated.content,
+      metadata: parsedFm.metadata,
       updatedAt: new Date(),
     })
     .where(eq(articles.id, validated.id));
@@ -159,10 +166,11 @@ export async function restoreRevision(formData: FormData) {
     editNote: "Before restore",
   });
 
-  // Restore the old content
+  // Restore the old content and re-parse metadata from it
+  const restoredFm = parseFrontmatter(revision[0].content ?? "");
   await db
     .update(articles)
-    .set({ content: revision[0].content, updatedAt: new Date() })
+    .set({ content: revision[0].content, metadata: restoredFm.metadata, updatedAt: new Date() })
     .where(eq(articles.id, validated.articleId));
 
   if (article[0].isInternal && article[0].parentBookSlug) {
@@ -607,11 +615,20 @@ export async function createInternalArticle(formData: FormData) {
 export async function searchAll(query: string) {
   const session = await getSession();
   const q = `%${query}%`;
+
+  const articleWhere = session?.isAdmin
+    ? and(eq(articles.isInternal, false), ilike(articles.title, q))
+    : and(
+        eq(articles.isInternal, false),
+        ilike(articles.title, q),
+        sql`${articles.metadata}->>'status' = 'published'`,
+      );
+
   const [articleRows, bookRows, animationRows] = await Promise.all([
     db
       .select({ id: articles.id, slug: articles.slug, title: articles.title })
       .from(articles)
-      .where(and(eq(articles.isInternal, false), ilike(articles.title, q)))
+      .where(articleWhere)
       .limit(8),
     db
       .selectDistinct({ bookSlug: curriculumEntries.bookSlug, bookTitle: curriculumEntries.bookTitle })
@@ -654,7 +671,8 @@ export async function updateArticleContent(slug: string, content: string): Promi
   const row = await db.select({ id: articles.id }).from(articles).where(eq(articles.slug, slug)).limit(1);
   if (!row[0]) return { error: "Article not found" };
 
-  await db.update(articles).set({ content, updatedAt: new Date() }).where(eq(articles.id, row[0].id));
+  const reorderedFm = parseFrontmatter(content);
+  await db.update(articles).set({ content, metadata: reorderedFm.metadata, updatedAt: new Date() }).where(eq(articles.id, row[0].id));
 
   revalidatePath("/" + slug);
   revalidatePath("/admin/articles/" + slug + "/edit");

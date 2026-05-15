@@ -12,6 +12,8 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { canViewArticle } from "@/lib/access";
 import DynamicAnimation from "@/components/DynamicAnimation";
+import ArticleMetadataDisplay from "@/components/ArticleMetadata";
+import { parseFrontmatter } from "@/lib/frontmatter";
 
 export default async function ArticlePage({
   params,
@@ -37,6 +39,18 @@ export default async function ArticlePage({
     .where(eq(articleCategories.articleId, article.id));
 
   const { title, summary, content, createdAt, updatedAt } = article;
+
+  // Parse and strip frontmatter before rendering
+  const { metadata, body } = parseFrontmatter(content ?? "");
+
+  // Auto-prepend canvas animation if set (re-validate slug format as defense in depth)
+  const safeCanvas =
+    metadata.canvas && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(metadata.canvas)
+      ? metadata.canvas
+      : null;
+  const renderedBody = safeCanvas
+    ? `<DynamicAnimation slug="${safeCanvas}" />\n\n${body}`
+    : body;
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">
@@ -100,13 +114,16 @@ export default async function ArticlePage({
             ))}
           </div>
         )}
+
+        {/* Frontmatter metadata: status badge, description, tags */}
+        <ArticleMetadataDisplay metadata={metadata} />
       </header>
 
       <hr className="border-zinc-200 dark:border-zinc-800 mb-8" />
 
       <article className="markdown-content">
         <MDXRemote
-          source={content || ""}
+          source={renderedBody}
           components={{ DynamicAnimation }}
           options={{
             mdxOptions: {

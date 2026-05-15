@@ -12,6 +12,8 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { canViewBook } from "@/lib/access";
 import DynamicAnimation from "@/components/DynamicAnimation";
+import ArticleMetadataDisplay from "@/components/ArticleMetadata";
+import { parseFrontmatter } from "@/lib/frontmatter";
 
 export default async function CurriculumArticlePage({
   params,
@@ -59,6 +61,18 @@ export default async function CurriculumArticlePage({
 
   const { title, summary, content, createdAt, updatedAt } = article[0];
   const bookTitle = entry[0].bookTitle;
+
+  // Parse and strip frontmatter before rendering
+  const { metadata, body: articleBody } = parseFrontmatter(content ?? "");
+
+  // Auto-prepend canvas animation if set (re-validate slug format as defense in depth)
+  const safeCanvas =
+    metadata.canvas && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(metadata.canvas)
+      ? metadata.canvas
+      : null;
+  const renderedBody = safeCanvas
+    ? `<DynamicAnimation slug="${safeCanvas}" />\n\n${articleBody}`
+    : articleBody;
   const session = await getSession();
   if (!(await canViewBook(bookSlug, session))) notFound();
 
@@ -137,13 +151,16 @@ export default async function CurriculumArticlePage({
             ))}
           </div>
         )}
+
+        {/* Frontmatter metadata: status badge, description, tags */}
+        <ArticleMetadataDisplay metadata={metadata} />
       </header>
 
       <hr className="border-zinc-200 dark:border-zinc-800 mb-8" />
 
       <article className="markdown-content">
         <MDXRemote
-          source={content || ""}
+          source={renderedBody}
           components={{ DynamicAnimation }}
           options={{
             mdxOptions: {

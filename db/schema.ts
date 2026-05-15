@@ -9,12 +9,27 @@ export const users = pgTable("users", {
 });
 
 /**
+ * Typed shape for the JSONB `metadata` column on articles.
+ * Populated by parsing the YAML frontmatter block at the top of `content`.
+ */
+export type ArticleMetadataShape = {
+  status: "draft" | "review" | "published" | "archived";
+  tags: string[];
+  description: string;
+  canvas: string | null;
+};
+
+/**
  * The primary content table. `content` is raw MDX stored as a string.
  *
  * `isInternal` marks articles that only exist inside a specific book — they
  * are not discoverable via direct URL, search, or category listings.
  * `parentBookSlug` records which book owns the internal article and is used
  * to enforce access control and to clean up on curriculum entry removal.
+ *
+ * `metadata` is a JSONB column derived from the YAML frontmatter block at
+ * the top of `content`. It drives status filtering, tag search, description
+ * display, and canvas auto-embed. Default value covers all existing rows.
  */
 export const articles = pgTable("articles", {
   id: serial("id").primaryKey(),
@@ -26,6 +41,10 @@ export const articles = pgTable("articles", {
   updatedAt: timestamp("updated_at").defaultNow(),
   isInternal: boolean("is_internal").default(false).notNull(),
   parentBookSlug: text("parent_book_slug"),
+  metadata: jsonb("metadata")
+    .$type<ArticleMetadataShape>()
+    .default({ status: "published", tags: [], description: "", canvas: null })
+    .notNull(),
 });
 
 /**
