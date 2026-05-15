@@ -5,7 +5,13 @@ import DeleteButton from "./DeleteButton";
 
 export default async function AnimationsPage() {
   const animations = await db
-    .select()
+    .select({
+      id: savedAnimations.id,
+      slug: savedAnimations.slug,
+      name: savedAnimations.name,
+      source: savedAnimations.source,
+      createdAt: savedAnimations.createdAt,
+    })
     .from(savedAnimations)
     .orderBy(savedAnimations.createdAt);
 
@@ -13,12 +19,20 @@ export default async function AnimationsPage() {
     <main className="max-w-4xl mx-auto px-4 py-10">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Animations</h1>
-        <Link
-          href="/admin/animations/new"
-          className="px-4 py-2 text-sm rounded bg-zinc-900 text-white hover:opacity-90 transition-opacity"
-        >
-          New Animation
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/admin/animations/plugins"
+            className="px-4 py-2 text-sm rounded border border-zinc-300 text-zinc-700 hover:bg-zinc-50 transition-colors"
+          >
+            Plugin gallery
+          </Link>
+          <Link
+            href="/admin/animations/new"
+            className="px-4 py-2 text-sm rounded bg-zinc-900 text-white hover:opacity-90 transition-opacity"
+          >
+            New Animation
+          </Link>
+        </div>
       </div>
 
       {animations.length === 0 ? (
@@ -36,7 +50,14 @@ export default async function AnimationsPage() {
           {animations.map((anim) => (
             <div key={anim.id} className="flex items-center justify-between p-4">
               <div>
-                <p className="font-medium text-zinc-900">{anim.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-zinc-900">{anim.name}</p>
+                  {anim.source === "plugin" && (
+                    <span className="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded font-medium">
+                      Plugin
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-zinc-400">
                   {anim.slug}
                 </p>

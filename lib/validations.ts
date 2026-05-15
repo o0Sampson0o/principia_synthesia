@@ -158,3 +158,21 @@ export const deleteKaoSchema = z.object({
   id: z.coerce.number().int().positive(),
   slug: z.string().min(1),
 });
+
+/**
+ * Validates a plugin manifest.json file. The `slug` must match the directory
+ * name (enforced by the scan action). `entrypoint` must be a `.js` filename.
+ * Required fields: slug, name, version, entrypoint.
+ */
+export const pluginManifestSchema = z.object({
+  slug: z.string().min(1).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  name: z.string().min(1).max(200),
+  version: z.string().min(1).max(30),
+  description: z.string().max(500).optional(),
+  author: z.string().max(200).optional(),
+  tags: z.array(z.string().max(50)).max(10).optional(),
+  license: z.string().max(100).optional(),
+  entrypoint: z.string().regex(/^[a-zA-Z0-9_\-]+\.js$/),
+});
+
+export type PluginManifest = z.infer<typeof pluginManifestSchema>;

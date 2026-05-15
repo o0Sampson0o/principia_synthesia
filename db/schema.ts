@@ -90,6 +90,10 @@ export const curriculumEntries = pgTable(
  * Canvas-based physics animations created and managed via the admin panel.
  * `code` stores the raw JavaScript that is injected into a sandboxed `<iframe>`
  * by `GET /api/animations/[slug]`. See `docs/animations.md` for authoring details.
+ *
+ * `source` is `"plugin"` for animations installed from the plugin registry and
+ * `null` for user-created animations. `pluginMeta` stores a snapshot of the
+ * manifest metadata (name, version, description, etc.) for display in the gallery.
  */
 export const savedAnimations = pgTable("saved_animations", {
   id: serial("id").primaryKey(),
@@ -97,6 +101,8 @@ export const savedAnimations = pgTable("saved_animations", {
   name: text("name").notNull(),
   code: text("code").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+  source: text("source"),
+  pluginMeta: jsonb("plugin_meta"),
 });
 
 /**
