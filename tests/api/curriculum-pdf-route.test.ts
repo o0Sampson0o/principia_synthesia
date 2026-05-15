@@ -7,6 +7,12 @@ vi.mock("@/lib/pdf/render-book-html", () => ({
   renderBookHtml: vi.fn().mockResolvedValue("<html><body>Test Book PDF</body></html>"),
 }));
 
+// Mock auth and access — default to no session (public access)
+const mockGetSession = vi.hoisted(() => vi.fn().mockResolvedValue(null));
+const mockCanViewBook = vi.hoisted(() => vi.fn().mockResolvedValue(true));
+vi.mock("@/lib/auth", () => ({ getSession: mockGetSession }));
+vi.mock("@/lib/access", () => ({ canViewBook: mockCanViewBook }));
+
 // Mock playwright-core and @sparticuz/chromium to avoid launching a real browser in tests
 vi.mock("playwright-core", () => ({
   chromium: {
@@ -338,5 +344,44 @@ describe("GET /api/curriculum/[book]/export/pdf", () => {
     expect(mockDeleteWhere).toHaveBeenCalled();
     expect(mockInsert).toHaveBeenCalled();
     expect(mockValues).toHaveBeenCalled();
+  });
+
+  // --- Access control tests ---
+
+  it("returns 404 for a private book when there is no session", async () => {
+    mockGetSession.mockResolvedValueOnce(null);
+    mockCanViewBook.mockResolvedValueOnce(false);
+
+    const res = await GET(
+      new Request("http://localhost/api/curriculum/private-book/export/pdf"),
+      makeParams("private-book"),
+    );
+    expect(res.status).toBe(404);
+    const text = await res.text();
+    expect(text).toContain("Not found");
+  });
+
+  it("returns 200 for a private book when the session has a grant", async () => {
+    mockGetSession.mockResolvedValueOnce({ userId: 2, email: "user@example.com", isAdmin: false });
+    mockCanViewBook.mockResolvedValueOnce(true);
+
+    const rows = [
+      {
+        bookTitle: "Private Book",
+        articleId: 1,
+        position: 0,
+        partTitle: null,
+        title: "Chapter 1",
+        content: "Secret content",
+      },
+    ];
+    setupDbMock(rows);
+
+    const res = await GET(
+      new Request("http://localhost/api/curriculum/private-book/export/pdf"),
+      makeParams("private-book"),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/pdf");
   });
 });

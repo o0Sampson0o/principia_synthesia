@@ -1,15 +1,17 @@
 import { db } from "@/db";
-import { articles, curriculumEntries } from "@/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { articles, curriculumEntries, resourceVisibility } from "@/db/schema";
+import { asc, eq, and, inArray } from "drizzle-orm";
 import Link from "next/link";
-import { upsertCurriculumEntry, removeCurriculumEntry, deleteCurriculumBook } from "@/app/admin/actions";
+import { removeCurriculumEntry } from "@/app/admin/actions";
 import DeleteBookButton from "./DeleteBookButton";
 import AddEntryForm from "./AddEntryForm";
+import CreateInternalArticleForm from "./CreateInternalArticleForm";
 
 export default async function AdminCurriculumPage() {
   const allArticles = await db
-    .select({ id: articles.id, slug: articles.slug, title: articles.title })
+    .select({ id: articles.id, slug: articles.slug, title: articles.title, isInternal: articles.isInternal })
     .from(articles)
+    .where(eq(articles.isInternal, false))
     .orderBy(asc(articles.title));
 
   const entries = await db
@@ -22,6 +24,7 @@ export default async function AdminCurriculumPage() {
       articleId: curriculumEntries.articleId,
       articleSlug: articles.slug,
       articleTitle: articles.title,
+      isInternal: articles.isInternal,
     })
     .from(curriculumEntries)
     .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
@@ -33,6 +36,21 @@ export default async function AdminCurriculumPage() {
     books[e.bookSlug].entries.push(e);
   }
   const bookList = Object.entries(books);
+
+  // Fetch visibility state for all books
+  const visibilityRows =
+    bookList.length > 0
+      ? await db
+          .select({ resourceKey: resourceVisibility.resourceKey, isPrivate: resourceVisibility.isPrivate })
+          .from(resourceVisibility)
+          .where(
+            and(
+              eq(resourceVisibility.resourceType, "book"),
+              inArray(resourceVisibility.resourceKey, bookList.map(([s]) => s))
+            )
+          )
+      : [];
+  const privateMap = new Map(visibilityRows.map((r) => [r.resourceKey, r.isPrivate]));
 
   const existingArticleIds = new Set(entries.map((e) => e.articleId));
 
@@ -70,13 +88,27 @@ export default async function AdminCurriculumPage() {
           {bookList.map(([bookSlug, book]) => (
             <div key={bookSlug}>
               <div className="flex items-baseline justify-between mb-3">
-                <h3 className="text-lg font-semibold">
+                <h3 className="text-lg font-semibold flex items-baseline gap-2">
                   {book.bookTitle}{" "}
                   <span className="text-xs font-normal text-zinc-400">
                     ({bookSlug})
                   </span>
+                  {privateMap.get(bookSlug) === true && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                      Private
+                    </span>
+                  )}
                 </h3>
-                <DeleteBookButton bookSlug={bookSlug} bookTitle={book.bookTitle} />
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={`/admin/curriculum/${bookSlug}/access`}
+                    className="text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+                    aria-label={`Manage access for ${book.bookTitle}`}
+                  >
+                    [Lock] Access
+                  </Link>
+                  <DeleteBookButton bookSlug={bookSlug} bookTitle={book.bookTitle} />
+                </div>
               </div>
               <ol className="space-y-1">
                 {book.entries.map((e) => (
@@ -86,11 +118,16 @@ export default async function AdminCurriculumPage() {
                         {e.position}
                       </span>
                       <Link
-                        href={`/${e.articleSlug}`}
+                        href={e.isInternal ? `/curriculum/${e.bookSlug}/${e.articleSlug}` : `/${e.articleSlug}`}
                         className="text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                       >
                         {e.articleTitle}
                       </Link>
+                      {e.isInternal && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                          Sub-page
+                        </span>
+                      )}
                       {e.partTitle && (
                         <span className="text-xs text-zinc-400 dark:text-zinc-500">
                           — {e.partTitle}
@@ -110,6 +147,11 @@ export default async function AdminCurriculumPage() {
                   </li>
                 ))}
               </ol>
+              <CreateInternalArticleForm
+                bookSlug={bookSlug}
+                bookTitle={book.bookTitle}
+                nextPosition={nextPositions[bookSlug]}
+              />
             </div>
           ))}
         </div>

@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Mock auth and access — default to no session (public access)
+const mockGetSession = vi.hoisted(() => vi.fn().mockResolvedValue(null));
+const mockCanViewBook = vi.hoisted(() => vi.fn().mockResolvedValue(true));
+vi.mock("@/lib/auth", () => ({ getSession: mockGetSession }));
+vi.mock("@/lib/access", () => ({ canViewBook: mockCanViewBook }));
+
 // --- Mock @/db ---
 const mockSelect = vi.hoisted(() => vi.fn());
 const mockFrom = vi.hoisted(() => vi.fn());
@@ -103,5 +109,36 @@ describe("GET /api/curriculum/[book]/export/epub", () => {
     ]);
     const res = await GET(new Request("http://localhost/api/curriculum/test-book/export/epub"), makeParams("test-book"));
     expect(res.status).toBe(200);
+  });
+
+  // --- Access control tests ---
+
+  it("returns 404 for a private book when there is no session", async () => {
+    mockGetSession.mockResolvedValueOnce(null);
+    mockCanViewBook.mockResolvedValueOnce(false);
+
+    const res = await GET(
+      new Request("http://localhost/api/curriculum/private-book/export/epub"),
+      makeParams("private-book"),
+    );
+    expect(res.status).toBe(404);
+    const text = await res.text();
+    expect(text).toContain("Not found");
+  });
+
+  it("returns 200 for a private book when the session has a grant", async () => {
+    mockGetSession.mockResolvedValueOnce({ userId: 2, email: "user@example.com", isAdmin: false });
+    mockCanViewBook.mockResolvedValueOnce(true);
+
+    setupDbMock([
+      { bookTitle: "Private Book", position: 0, partTitle: null, title: "Chapter 1", content: "Secret" },
+    ]);
+
+    const res = await GET(
+      new Request("http://localhost/api/curriculum/private-book/export/epub"),
+      makeParams("private-book"),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/epub+zip");
   });
 });
