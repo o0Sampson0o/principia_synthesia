@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Nav from "@/components/Nav";
+import CommandPalette from "@/components/CommandPalette";
 import "./globals.css";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
@@ -61,6 +62,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <Nav />
+        <CommandPalette />
         {children}
         <Analytics />
       </body>
