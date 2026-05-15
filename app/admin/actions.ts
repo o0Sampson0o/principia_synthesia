@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { db } from "@/db";
-import { articles, revisions, curriculumEntries, categories, articleCategories, savedAnimations, bookSnapshots, bookSnapshotEntries } from "@/db/schema";
+import { articles, revisions, curriculumEntries, categories, articleCategories, objects, bookSnapshots, bookSnapshotEntries } from "@/db/schema";
 import { eq, asc, inArray, ilike, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -395,9 +395,10 @@ export async function setArticleCategories(articleId: number, slugs: string[]) {
 // --- Animation actions ---
 
 /**
- * Creates or updates a saved animation. If an animation with the given slug
- * already exists, its `name` and `code` are updated. Otherwise a new row is
- * inserted. Revalidates the admin animations list and the public animations list.
+ * Creates or updates an animation object. If an animation with the given slug
+ * already exists in the objects table, its `name` and `content.code` are updated.
+ * Otherwise a new row is inserted with type="animation". Revalidates the admin
+ * animations list and the public animations list.
  * Silently returns early if any of `slug`, `name`, or `code` is empty.
  */
 export async function saveAnimation(formData: FormData) {
@@ -409,25 +410,31 @@ export async function saveAnimation(formData: FormData) {
 
   const existing = await db
     .select()
-    .from(savedAnimations)
-    .where(eq(savedAnimations.slug, slug))
+    .from(objects)
+    .where(and(eq(objects.slug, slug), eq(objects.type, "animation")))
     .limit(1);
 
   if (existing[0]) {
     await db
-      .update(savedAnimations)
-      .set({ name, code })
-      .where(eq(savedAnimations.id, existing[0].id));
+      .update(objects)
+      .set({ name, content: { code }, updatedAt: new Date() })
+      .where(eq(objects.id, existing[0].id));
   } else {
-    await db.insert(savedAnimations).values({ slug, name, code });
+    await db.insert(objects).values({
+      slug, name, type: "animation", content: { code },
+    });
   }
 
   revalidatePath("/admin/animations");
   revalidatePath("/animations");
+  revalidatePath(`/animations/${slug}`);
+  revalidatePath("/admin/objects");
+  revalidatePath("/objects");
 }
 
 /**
- * Deletes an animation by slug. Revalidates the admin animations list.
+ * Deletes an animation object by slug. Only deletes rows where type="animation".
+ * Revalidates the admin animations list and the public pages.
  * Silently returns early if `slug` is empty. Note: any iframes currently
  * embedding this animation will display a blank page after deletion.
  */
@@ -435,9 +442,14 @@ export async function deleteAnimation(formData: FormData) {
   const slug = (formData.get("slug") as string).trim();
   if (!slug) return;
 
-  await db.delete(savedAnimations).where(eq(savedAnimations.slug, slug));
+  await db
+    .delete(objects)
+    .where(and(eq(objects.slug, slug), eq(objects.type, "animation")));
 
   revalidatePath("/admin/animations");
+  revalidatePath("/animations");
+  revalidatePath("/admin/objects");
+  revalidatePath("/objects");
 }
 
 // --- Snapshot actions ---
@@ -607,9 +619,9 @@ export async function searchAll(query: string) {
       .where(ilike(curriculumEntries.bookTitle, q))
       .limit(8),
     db
-      .select({ slug: savedAnimations.slug, name: savedAnimations.name })
-      .from(savedAnimations)
-      .where(ilike(savedAnimations.name, q))
+      .select({ slug: objects.slug, name: objects.name })
+      .from(objects)
+      .where(and(eq(objects.type, "animation"), ilike(objects.name, q)))
       .limit(8),
   ]);
 

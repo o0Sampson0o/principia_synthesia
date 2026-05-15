@@ -1,19 +1,21 @@
 import { db } from "@/db";
-import { savedAnimations } from "@/db/schema";
+import { objects } from "@/db/schema";
+import { eq, asc } from "drizzle-orm";
 import Link from "next/link";
 import DeleteButton from "./DeleteButton";
 
 export default async function AnimationsPage() {
   const animations = await db
     .select({
-      id: savedAnimations.id,
-      slug: savedAnimations.slug,
-      name: savedAnimations.name,
-      source: savedAnimations.source,
-      createdAt: savedAnimations.createdAt,
+      id: objects.id,
+      slug: objects.slug,
+      name: objects.name,
+      source: objects.source,
+      createdAt: objects.createdAt,
     })
-    .from(savedAnimations)
-    .orderBy(savedAnimations.createdAt);
+    .from(objects)
+    .where(eq(objects.type, "animation"))
+    .orderBy(asc(objects.createdAt));
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-10">

@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { db } from "@/db";
-import { articles, curriculumEntries, savedAnimations, articleCategories } from "@/db/schema";
-import { desc, asc, eq, ilike, or, count } from "drizzle-orm";
+import { articles, curriculumEntries, objects, articleCategories } from "@/db/schema";
+import { desc, asc, eq, ilike, or, count, and } from "drizzle-orm";
 
 export const TAGS = {
   articles: "articles",
@@ -84,22 +84,20 @@ export const getBookEntries = unstable_cache(
 
 export const getAnimations = unstable_cache(
   async (query: string, limit: number, offset: number) => {
+    const baseWhere = eq(objects.type, "animation");
     const where = query
-      ? or(
-          ilike(savedAnimations.name, `%${query}%`),
-          ilike(savedAnimations.slug, `%${query}%`)
-        )
-      : undefined;
+      ? and(baseWhere, or(ilike(objects.name, `%${query}%`), ilike(objects.slug, `%${query}%`)))
+      : baseWhere;
 
     const [animations, [{ total }]] = await Promise.all([
       db
         .select()
-        .from(savedAnimations)
+        .from(objects)
         .where(where)
-        .orderBy(savedAnimations.createdAt)
+        .orderBy(asc(objects.createdAt))
         .limit(limit)
         .offset(offset),
-      db.select({ total: count() }).from(savedAnimations).where(where),
+      db.select({ total: count() }).from(objects).where(where),
     ]);
 
     return { animations, total };

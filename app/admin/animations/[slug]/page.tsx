@@ -1,6 +1,6 @@
 import { db } from "@/db"
-import { savedAnimations } from "@/db/schema"
-import { eq } from "drizzle-orm"
+import { objects } from "@/db/schema"
+import { and, eq } from "drizzle-orm"
 import { notFound } from "next/navigation"
 import AnimationEditor from "../AnimationEditor"
 
@@ -10,12 +10,20 @@ export default async function EditAnimationPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const anim = await db.select().from(savedAnimations).where(eq(savedAnimations.slug, slug)).limit(1)
-  if (!anim[0]) notFound()
+
+  const rows = await db
+    .select()
+    .from(objects)
+    .where(and(eq(objects.slug, slug), eq(objects.type, "animation")))
+    .limit(1)
+
+  if (!rows[0]) notFound()
+
+  const code = (rows[0].content as { code?: string }).code ?? ""
 
   return (
     <AnimationEditor
-      initial={{ slug: anim[0].slug, name: anim[0].name, code: anim[0].code }}
+      initial={{ slug: rows[0].slug, name: rows[0].name, code }}
     />
   )
 }

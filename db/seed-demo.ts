@@ -6,7 +6,6 @@ import {
   articleCategories,
   revisions,
   curriculumEntries,
-  savedAnimations,
   objects,
   bookSnapshots,
   bookSnapshotEntries,
@@ -199,14 +198,17 @@ $$\\nabla \\times \\mathbf{B} = \\mu_0 \\left( \\mathbf{J} + \\varepsilon_0 \\fr
   }
   console.log("✓ Curriculum books: classical-physics, modern-physics");
 
-  // ── Animations ───────────────────────────────────────────────────────────────
+  // ── KAO Objects (including animations) ───────────────────────────────────────
   await db
-    .insert(savedAnimations)
+    .insert(objects)
     .values([
       {
         slug: "pendulum",
         name: "Simple Pendulum",
-        code: `function Pendulum() {
+        type: "animation",
+        description: null,
+        content: {
+          code: `function Pendulum() {
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   canvas.width = canvas.offsetWidth || 600;
@@ -261,11 +263,15 @@ $$\\nabla \\times \\mathbf{B} = \\mu_0 \\left( \\mathbf{J} + \\varepsilon_0 \\fr
   }
   tick();
 }`,
+        },
       },
       {
         slug: "orbital-mechanics",
         name: "Orbital Mechanics",
-        code: `function OrbitalMechanics() {
+        type: "animation",
+        description: null,
+        content: {
+          code: `function OrbitalMechanics() {
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   canvas.width = canvas.offsetWidth || 600;
@@ -319,11 +325,15 @@ $$\\nabla \\times \\mathbf{B} = \\mu_0 \\left( \\mathbf{J} + \\varepsilon_0 \\fr
   }
   tick();
 }`,
+        },
       },
       {
         slug: "wave-superposition",
         name: "Wave Superposition",
-        code: `function WaveSuperposition() {
+        type: "animation",
+        description: null,
+        content: {
+          code: `function WaveSuperposition() {
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   canvas.width = canvas.offsetWidth || 600;
@@ -372,15 +382,8 @@ $$\\nabla \\times \\mathbf{B} = \\mu_0 \\left( \\mathbf{J} + \\varepsilon_0 \\fr
   }
   tick();
 }`,
+        },
       },
-    ])
-    .onConflictDoNothing();
-  console.log("✓ Animations: pendulum, orbital-mechanics, wave-superposition");
-
-  // ── KAO Objects ───────────────────────────────────────────────────────────────
-  await db
-    .insert(objects)
-    .values([
       {
         slug: "spring-animation",
         name: "Spring Oscillator",
@@ -476,7 +479,7 @@ $$\\nabla \\times \\mathbf{B} = \\mu_0 \\left( \\mathbf{J} + \\varepsilon_0 \\fr
       },
     ])
     .onConflictDoNothing();
-  console.log("✓ KAO objects: spring-animation (animation), periodic-table-sample (dataset), newtonian-mechanics-flow (diagram)");
+  console.log("✓ KAO objects: pendulum, orbital-mechanics, wave-superposition, spring-animation (animations), periodic-table-sample (dataset), newtonian-mechanics-flow (diagram)");
 
   // ── Book snapshots ────────────────────────────────────────────────────────────
   const classicalEntries = await db
