@@ -10,12 +10,16 @@ const mockUpdateSetWhere = vi.hoisted(() => vi.fn());
 const mockUpdate = vi.hoisted(() => vi.fn());
 const mockDeleteWhere = vi.hoisted(() => vi.fn());
 const mockDelete = vi.hoisted(() => vi.fn());
+const mockSelectFromWhere = vi.hoisted(() => vi.fn());
+const mockSelectFrom = vi.hoisted(() => vi.fn());
+const mockSelect = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db", () => ({
   db: {
     insert: mockInsert,
     update: mockUpdate,
     delete: mockDelete,
+    select: mockSelect,
   },
 }));
 
@@ -36,6 +40,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   return {
     ...actual,
     eq: vi.fn((col, val) => ({ _type: "eq", col, val })),
+    ilike: vi.fn((col, val) => ({ _type: "ilike", col, val })),
   };
 });
 
@@ -79,6 +84,14 @@ function setupUpdate() {
 function setupDelete() {
   mockDeleteWhere.mockResolvedValue(undefined);
   mockDelete.mockReturnValue({ where: mockDeleteWhere });
+}
+
+// Mocks db.select().from().where().limit() to return `rows`.
+// By default returns a non-plugin row so guards pass.
+function setupSelect(rows: unknown[] = [{ source: null }]) {
+  mockSelectFromWhere.mockReturnValue({ limit: vi.fn().mockResolvedValue(rows) });
+  mockSelectFrom.mockReturnValue({ where: mockSelectFromWhere });
+  mockSelect.mockReturnValue({ from: mockSelectFrom });
 }
 
 // ─── createKaoObject ──────────────────────────────────────────────────────────
@@ -157,6 +170,7 @@ describe("updateKaoObject", () => {
 
   it("calls db.update and redirect on valid input", async () => {
     setupUpdate();
+    setupSelect([{ source: null }]);
 
     const fd = makeFormData({
       id: "7",
@@ -196,6 +210,7 @@ describe("deleteKaoObject", () => {
 
   it("calls db.delete and redirects to /admin/objects on valid id and slug", async () => {
     setupDelete();
+    setupSelect([{ source: null }]);
 
     const fd = makeFormData({ id: "3", slug: "old-anim" });
 

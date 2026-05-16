@@ -94,7 +94,7 @@ export default async function PluginGalleryPage() {
                     href={`/admin/objects/${plugin.slug}`}
                     className="text-xs text-zinc-400 hover:text-zinc-700"
                   >
-                    Edit
+                    View
                   </Link>
                   <UninstallButton slug={plugin.slug} />
                 </div>
