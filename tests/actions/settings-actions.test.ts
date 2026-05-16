@@ -91,7 +91,7 @@ describe("saveColorSchemePreference", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: authenticated admin user
-    mockGetSession.mockResolvedValue({ userId: 1, email: "admin@example.com", isAdmin: true });
+    mockGetSession.mockResolvedValue({ userId: 1, email: "admin@example.com", userSlug: "admin", isRootAdmin: true });
     // Default: cookies().set is available
     mockCookies.mockResolvedValue({ set: mockCookieSet });
   });

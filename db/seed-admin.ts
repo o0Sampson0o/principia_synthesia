@@ -15,7 +15,7 @@ async function seedAdmin() {
   await db.insert(users).values({
     email,
     passwordHash: hash,
-    isAdmin: true,
+    isRootAdmin: true,
   }).onConflictDoNothing();
   console.log(`✓ Admin account seeded: ${email}`);
   process.exit(0);

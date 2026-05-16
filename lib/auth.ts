@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "dev-secret-change-in-production"
@@ -11,11 +12,15 @@ const BCRYPT_ROUNDS = 10;
 /**
  * The decoded payload stored inside the session JWT.
  * Extends jose's JWTPayload so standard claims (iat, exp) are also available.
+ *
+ * `userSlug` is the publisher slug for the logged-in user.
+ * `isRootAdmin` replaces the old binary `isAdmin` flag.
  */
 export interface SessionPayload extends JWTPayload {
   userId: number;
   email: string;
-  isAdmin: boolean;
+  userSlug: string;
+  isRootAdmin: boolean;
 }
 
 /**
@@ -39,7 +44,6 @@ export async function verifyPassword(
 
 /**
  * Signs a SessionPayload as an HS256 JWT with a 7-day expiry.
- * The secret is read from the `AUTH_SECRET` environment variable.
  */
 export async function createSessionToken(payload: SessionPayload): Promise<string> {
   return new SignJWT(payload)
@@ -67,19 +71,59 @@ export async function verifySessionToken(
 /**
  * Reads the `session` httpOnly cookie and verifies it.
  * Returns the decoded SessionPayload, or `null` if the user is not logged in
- * or the token has expired. Call this in Server Components to get the current user.
+ * or the token has expired.
+ *
+ * Defensive stale-cookie check: if the payload lacks `userSlug` or `isRootAdmin`
+ * (i.e. it is a pre-redesign token), the cookie is cleared and null is returned.
  */
 export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
-  return verifySessionToken(token);
+  const payload = await verifySessionToken(token);
+  if (!payload) return null;
+
+  // Defensive: reject stale cookies that carry the old shape
+  if (typeof payload.userSlug !== "string" || typeof payload.isRootAdmin !== "boolean") {
+    cookieStore.set(COOKIE_NAME, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0,
+      path: "/",
+    });
+    return null;
+  }
+
+  return payload;
+}
+
+/**
+ * Returns the current session, redirecting to `/login` if none exists.
+ * Use this in server actions and gated server components.
+ */
+export async function requireSession(): Promise<SessionPayload> {
+  const session = await getSession();
+  if (!session) {
+    redirect("/login");
+  }
+  return session;
+}
+
+/**
+ * Returns the current session, redirecting to `/` if the user is not root admin.
+ */
+export async function requireRootAdmin(): Promise<SessionPayload> {
+  const session = await requireSession();
+  if (!session.isRootAdmin) {
+    redirect("/");
+  }
+  return session;
 }
 
 /**
  * Creates a session JWT from `session` and writes it to the `session`
  * httpOnly cookie (7-day maxAge, SameSite=lax, Secure in production).
- * Call this after successful login.
  */
 export async function setSessionCookie(session: SessionPayload): Promise<void> {
   const token = await createSessionToken(session);
@@ -94,8 +138,7 @@ export async function setSessionCookie(session: SessionPayload): Promise<void> {
 }
 
 /**
- * Clears the `session` cookie by overwriting it with an empty value and
- * maxAge=0, effectively logging the user out. Call this from the logout handler.
+ * Clears the `session` cookie, effectively logging the user out.
  */
 export async function clearSessionCookie(): Promise<void> {
   const cookieStore = await cookies();

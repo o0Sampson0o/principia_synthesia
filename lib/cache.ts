@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { db } from "@/db";
-import { articles, curriculumEntries, articleCategories } from "@/db/schema";
+import { articles, curriculumEntries, books, articleCategories } from "@/db/schema";
 import { desc, asc, eq, count } from "drizzle-orm";
 
 export const TAGS = {
@@ -34,8 +34,9 @@ export const getAllBookEntries = unstable_cache(
   async () => {
     return db
       .select({
-        bookSlug: curriculumEntries.bookSlug,
-        bookTitle: curriculumEntries.bookTitle,
+        bookId: curriculumEntries.bookId,
+        bookSlug: books.slug,
+        bookTitle: books.title,
         position: curriculumEntries.position,
         partTitle: curriculumEntries.partTitle,
         articleSlug: articles.slug,
@@ -43,8 +44,9 @@ export const getAllBookEntries = unstable_cache(
         entryId: curriculumEntries.id,
       })
       .from(curriculumEntries)
+      .innerJoin(books, eq(curriculumEntries.bookId, books.id))
       .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
-      .orderBy(asc(curriculumEntries.bookSlug), asc(curriculumEntries.position));
+      .orderBy(asc(books.slug), asc(curriculumEntries.position));
   },
   ["all-book-entries"],
   { tags: [TAGS.curriculum], revalidate: 3600 }
@@ -62,11 +64,10 @@ export const getArticle = unstable_cache(
 );
 
 export const getBookEntries = unstable_cache(
-  async (bookSlug: string) => {
+  async (bookId: number) => {
     return db
       .select({
         id: curriculumEntries.id,
-        bookTitle: curriculumEntries.bookTitle,
         position: curriculumEntries.position,
         partTitle: curriculumEntries.partTitle,
         articleSlug: articles.slug,
@@ -75,7 +76,7 @@ export const getBookEntries = unstable_cache(
       })
       .from(curriculumEntries)
       .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
-      .where(eq(curriculumEntries.bookSlug, bookSlug))
+      .where(eq(curriculumEntries.bookId, bookId))
       .orderBy(asc(curriculumEntries.position));
   },
   ["book-entries"],

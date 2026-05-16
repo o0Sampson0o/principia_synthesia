@@ -1,12 +1,116 @@
-import { pgTable, serial, text, timestamp, integer, boolean, unique, jsonb } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  integer,
+  boolean,
+  unique,
+  jsonb,
+  index,
+} from "drizzle-orm/pg-core";
 
-/** Admin accounts. Only users with `isAdmin = true` can access `/admin/**`. */
+// ---------------------------------------------------------------------------
+// Publishers — global slug registry for both users and orgs
+// ---------------------------------------------------------------------------
+
+/**
+ * Enforces globally-unique publisher slugs across users and orgs.
+ * Exactly one of `userId` or `orgId` is non-null (enforced by CHECK).
+ * Cascade-deletes when the owning user or org is deleted.
+ */
+export const publishers = pgTable("publishers", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").unique().notNull(),
+  kind: text("kind").notNull(), // 'user' | 'org'
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Users
+// ---------------------------------------------------------------------------
+
+/**
+ * User accounts. `isRootAdmin` replaces the old binary `isAdmin` flag.
+ * `publisherSlug` is denormalised here (not a FK) to avoid circular dependency;
+ * the canonical slug lives in `publishers`.
+ */
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").unique().notNull(),
   passwordHash: text("password_hash").notNull(),
-  isAdmin: boolean("is_admin").default(false).notNull(),
+  isRootAdmin: boolean("is_root_admin").default(false).notNull(),
+  displayName: text("display_name").notNull().default(""),
+  publisherSlug: text("publisher_slug").unique().notNull().default(""),
 });
+
+// ---------------------------------------------------------------------------
+// Organizations
+// ---------------------------------------------------------------------------
+
+/**
+ * Named groups of users. `creatorId` records the user who created the org;
+ * they are automatically added as `super_admin`. `publisherSlug` is
+ * denormalised for the same reason as on `users`.
+ */
+export const organizations = pgTable("organizations", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").unique().notNull(),
+  name: text("name").notNull(),
+  creatorId: integer("creator_id").references(() => users.id, { onDelete: "set null" }),
+  publisherSlug: text("publisher_slug").unique().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+/**
+ * Junction table linking users to organizations.
+ * `role` is `'super_admin' | 'admin' | 'member'`.
+ * Both sides cascade-delete. Unique on (orgId, userId).
+ */
+export const orgMemberships = pgTable(
+  "org_memberships",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // 'super_admin' | 'admin' | 'member'
+    joinedAt: timestamp("joined_at").defaultNow(),
+  },
+  (t) => [unique().on(t.orgId, t.userId)]
+);
+
+// ---------------------------------------------------------------------------
+// Books (curriculum collections)
+// ---------------------------------------------------------------------------
+
+/**
+ * A book is an ordered collection of articles (curriculum).
+ * Slugs are unique only within a publisher (ownerType + ownerId).
+ * The old implicit book model (shared bookSlug on curriculumEntries) is replaced
+ * by this explicit table.
+ */
+export const books = pgTable(
+  "books",
+  {
+    id: serial("id").primaryKey(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    ownerType: text("owner_type").notNull(), // 'user' | 'org'
+    ownerId: integer("owner_id").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => [
+    unique().on(t.ownerType, t.ownerId, t.slug),
+    index("books_owner_idx").on(t.ownerType, t.ownerId),
+  ]
+);
+
+// ---------------------------------------------------------------------------
+// Articles
+// ---------------------------------------------------------------------------
 
 /**
  * Typed shape for the JSONB `metadata` column on articles.
@@ -22,35 +126,42 @@ export type ArticleMetadataShape = {
 /**
  * The primary content table. `content` is raw MDX stored as a string.
  *
- * `isInternal` marks articles that only exist inside a specific book — they
- * are not discoverable via direct URL, search, or category listings.
- * `parentBookSlug` records which book owns the internal article and is used
- * to enforce access control and to clean up on curriculum entry removal.
- *
- * `metadata` is a JSONB column derived from the YAML frontmatter block at
- * the top of `content`. It drives status filtering, tag search, description
- * display, and canvas auto-embed. Default value covers all existing rows.
+ * Slugs are unique only within a publisher (ownerType + ownerId).
+ * `isInternal` marks articles that only exist inside a specific book.
+ * `parentBookId` FK → books.id (replaces old parentBookSlug text column).
  */
-export const articles = pgTable("articles", {
-  id: serial("id").primaryKey(),
-  slug: text("slug").unique().notNull(),
-  title: text("title").notNull(),
-  content: text("content"),
-  summary: text("summary"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  isInternal: boolean("is_internal").default(false).notNull(),
-  parentBookSlug: text("parent_book_slug"),
-  metadata: jsonb("metadata")
-    .$type<ArticleMetadataShape>()
-    .default({ status: "published", tags: [], description: "", canvas: null })
-    .notNull(),
-});
+export const articles = pgTable(
+  "articles",
+  {
+    id: serial("id").primaryKey(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    content: text("content"),
+    summary: text("summary"),
+    ownerType: text("owner_type").notNull(), // 'user' | 'org'
+    ownerId: integer("owner_id").notNull(),
+    isInternal: boolean("is_internal").default(false).notNull(),
+    parentBookId: integer("parent_book_id").references(() => books.id, { onDelete: "cascade" }),
+    metadata: jsonb("metadata")
+      .$type<ArticleMetadataShape>()
+      .default({ status: "published", tags: [], description: "", canvas: null })
+      .notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => [
+    unique().on(t.ownerType, t.ownerId, t.slug),
+    index("articles_owner_idx").on(t.ownerType, t.ownerId),
+  ]
+);
+
+// ---------------------------------------------------------------------------
+// Categories (global taxonomy, unchanged)
+// ---------------------------------------------------------------------------
 
 /**
- * Flat category taxonomy. `parentId` allows hierarchical nesting but the UI
- * currently treats all categories as top-level. Categories are auto-created
- * by `setArticleCategories()` when an unknown slug is saved with an article.
+ * Flat category taxonomy. Categories are auto-created on save.
+ * They remain global (not per-publisher) and link out to publisher-scoped URLs.
  */
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
@@ -65,10 +176,13 @@ export const articleCategories = pgTable("article_categories", {
   categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
 });
 
+// ---------------------------------------------------------------------------
+// Revisions (unchanged structure, FK still → articles)
+// ---------------------------------------------------------------------------
+
 /**
- * Revision history for articles. A new row is inserted before every save and
- * before every revision restore, so the history is always complete. Rows are
- * cascade-deleted when the parent article is deleted.
+ * Revision history for articles. A new row is inserted before every save.
+ * Cascade-deletes when the parent article is deleted.
  */
 export const revisions = pgTable("revisions", {
   id: serial("id").primaryKey(),
@@ -78,113 +192,113 @@ export const revisions = pgTable("revisions", {
   editedAt: timestamp("edited_at").defaultNow(),
 });
 
+// ---------------------------------------------------------------------------
+// Curriculum entries
+// ---------------------------------------------------------------------------
+
 /**
- * Ordered reading lists ("books") for the curriculum feature.
- *
- * There is no dedicated `books` table — a book is implicitly defined by a
- * shared `bookSlug` across one or more rows in this table. The `bookTitle` is
- * denormalized onto every entry (all entries for a book should have the same
- * title). Deleting all entries for a given `bookSlug` effectively deletes the book.
- *
- * `position` controls the reading order within a book (ascending, 0-based).
- * `partTitle` is an optional section heading rendered above the entry in the
- * book's table of contents, allowing articles to be grouped into named parts.
- *
- * A unique constraint prevents the same article from appearing twice in one book.
+ * Ordered entries in a book. `bookId` FK replaces the old `bookSlug`/`bookTitle`
+ * denormalised text columns. Cascade-deletes when the book is deleted.
  */
 export const curriculumEntries = pgTable(
   "curriculum_entries",
   {
     id: serial("id").primaryKey(),
-    bookSlug: text("book_slug").notNull(),
-    bookTitle: text("book_title").notNull(),
+    bookId: integer("book_id").notNull().references(() => books.id, { onDelete: "cascade" }),
     articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
-    position: integer("position").notNull(), // ordering within the book
-    partTitle: text("part_title"),           // optional section heading above this entry
+    position: integer("position").notNull(),
+    partTitle: text("part_title"),
   },
-  (t) => [unique().on(t.bookSlug, t.articleId)]
+  (t) => [unique().on(t.bookId, t.articleId)]
 );
 
-/**
- * Canvas-based physics animations created and managed via the admin panel.
- * `code` stores the raw JavaScript that is injected into a sandboxed `<iframe>`
- * by `GET /api/animations/[slug]`. See `docs/animations.md` for authoring details.
- *
- * `source` is `"plugin"` for animations installed from the plugin registry and
- * `null` for user-created animations. `pluginMeta` stores a snapshot of the
- * manifest metadata (name, version, description, etc.) for display in the gallery.
- */
-export const savedAnimations = pgTable("saved_animations", {
-  id: serial("id").primaryKey(),
-  slug: text("slug").unique().notNull(),
-  name: text("name").notNull(),
-  code: text("code").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  source: text("source"),
-  pluginMeta: jsonb("plugin_meta"),
-});
+// ---------------------------------------------------------------------------
+// KAO Objects (plugin system removed; source/pluginMeta columns dropped)
+// ---------------------------------------------------------------------------
 
 /**
- * Knowledge as an Object (KAO) primitive. Each row represents a typed knowledge
- * object with a slug, a human-readable name, a type discriminator, and a JSONB
- * `content` payload whose shape is governed by the type:
+ * Knowledge as an Object (KAO) primitive.
+ * `type` discriminates the content shape:
  *   - "animation": { code: string }
  *   - "dataset":   { headers: string[]; rows: unknown[][] }
  *   - "diagram":   { format: "mermaid" | "graphviz"; source: string }
  *
- * Objects are embedded in articles via [[object:slug]] wikilinks and rendered
- * via /api/objects/[slug]/preview for animation types.
+ * Slugs are unique only within a publisher (ownerType + ownerId).
+ * The old plugin columns (`source`, `pluginMeta`) are not present in this schema.
  */
-export const objects = pgTable("objects", {
-  id: serial("id").primaryKey(),
-  slug: text("slug").unique().notNull(),
-  name: text("name").notNull(),
-  type: text("type").notNull(),          // "animation" | "dataset" | "diagram"
-  content: jsonb("content").notNull(),
-  description: text("description"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  // Provenance for objects installed from the on-disk plugin registry.
-  // For animation-type objects scanned from `plugins/animations/`, `source` is
-  // `"plugin"` and `pluginMeta` is the manifest snapshot. NULL for all others.
-  source: text("source"),
-  pluginMeta: jsonb("plugin_meta"),
-});
+export const objects = pgTable(
+  "objects",
+  {
+    id: serial("id").primaryKey(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    type: text("type").notNull(), // 'animation' | 'dataset' | 'diagram'
+    content: jsonb("content").notNull(),
+    description: text("description"),
+    ownerType: text("owner_type").notNull(), // 'user' | 'org'
+    ownerId: integer("owner_id").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => [
+    unique().on(t.ownerType, t.ownerId, t.slug),
+    index("objects_owner_idx").on(t.ownerType, t.ownerId),
+  ]
+);
+
+// ---------------------------------------------------------------------------
+// Themes (unchanged)
+// ---------------------------------------------------------------------------
 
 /**
  * The 15 color tokens that make up one side (light or dark) of the site theme.
- * All values are CSS color strings (hex, rgb, hsl, etc.). Each token maps to a
- * CSS custom property — e.g. `primaryBtn` → `--primary-btn`. See `lib/theme.ts`
- * for the full token-to-CSS-var mapping and `docs/theming.md` for usage guidance.
  */
 export type ThemeTokens = {
-  background: string
-  foreground: string
-  muted: string
-  mutedForeground: string
-  border: string
-  link: string
-  linkHover: string
-  codeBackground: string
-  // Extended tokens
-  surface: string         // card/nav/raised surface bg
-  surfaceHover: string    // hovered surface
-  primaryBtn: string      // primary button bg
-  primaryBtnText: string  // primary button text
-  inputBorder: string     // form input borders
-  inputFocusBorder: string // focused input border
-  secondaryText: string   // labels, section headers
-}
+  background: string;
+  foreground: string;
+  muted: string;
+  mutedForeground: string;
+  border: string;
+  link: string;
+  linkHover: string;
+  codeBackground: string;
+  surface: string;
+  surfaceHover: string;
+  primaryBtn: string;
+  primaryBtnText: string;
+  inputBorder: string;
+  inputFocusBorder: string;
+  secondaryText: string;
+};
+
+/**
+ * One row per user. Stores light + dark theme token overrides and
+ * the user's color-scheme preference cookie value.
+ */
+export const userThemes = pgTable("user_themes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  lightTokens: jsonb("light_tokens").$type<ThemeTokens>().notNull(),
+  darkTokens: jsonb("dark_tokens").$type<ThemeTokens>().notNull(),
+  colorSchemePreference: text("color_scheme_preference").default("system").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Book snapshots
+// ---------------------------------------------------------------------------
 
 /**
  * Point-in-time snapshots of a book's curriculum structure.
- * Each snapshot captures the ordered list of entries at the moment it was taken.
- * Rows in `bookSnapshotEntries` cascade-delete when the snapshot is deleted.
+ * `bookId` FK replaces the old `bookSlug`/`bookTitle` columns.
+ * Cascade-deletes when the book is deleted.
  */
 export const bookSnapshots = pgTable("book_snapshots", {
   id: serial("id").primaryKey(),
-  bookSlug: text("book_slug").notNull(),
-  bookTitle: text("book_title").notNull(),
+  bookId: integer("book_id").notNull().references(() => books.id, { onDelete: "cascade" }),
   note: text("note"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -192,8 +306,12 @@ export const bookSnapshots = pgTable("book_snapshots", {
 /** One row per curriculum entry captured inside a `bookSnapshot`. */
 export const bookSnapshotEntries = pgTable("book_snapshot_entries", {
   id: serial("id").primaryKey(),
-  snapshotId: integer("snapshot_id").notNull().references(() => bookSnapshots.id, { onDelete: "cascade" }),
-  articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+  snapshotId: integer("snapshot_id")
+    .notNull()
+    .references(() => bookSnapshots.id, { onDelete: "cascade" }),
+  articleId: integer("article_id")
+    .notNull()
+    .references(() => articles.id, { onDelete: "cascade" }),
   articleSlug: text("article_slug").notNull(),
   articleTitle: text("article_title").notNull(),
   articleContent: text("article_content"),
@@ -201,98 +319,85 @@ export const bookSnapshotEntries = pgTable("book_snapshot_entries", {
   partTitle: text("part_title"),
 });
 
-/**
- * Stores a user's custom color theme. One row per user (enforced by the unique
- * constraint on `userId`). Light and dark tokens are persisted as JSONB and
- * merged with the defaults at render time by the root layout.
- */
-export const userThemes = pgTable("user_themes", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
-  lightTokens: jsonb("light_tokens").$type<ThemeTokens>().notNull(),
-  darkTokens: jsonb("dark_tokens").$type<ThemeTokens>().notNull(),
-  colorSchemePreference: text("color_scheme_preference").default("system").notNull(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+// ---------------------------------------------------------------------------
+// PDF cache
+// ---------------------------------------------------------------------------
 
 /**
- * Cached PDF exports for curriculum books. The `contentHash` is a SHA-256
- * digest of the book's current state (title + all entry positions, part titles,
- * article titles, and article content). When any article or curriculum entry
- * changes the hash won't match, triggering a fresh PDF generation. Old entries
- * for the same `bookSlug` are deleted before inserting a new one, so there is
- * at most one cached PDF per book at any time.
+ * Cached PDF exports. `bookId` FK replaces the old `bookSlug` text column.
+ * At most one cached PDF per book (old entries replaced on regeneration).
  */
 export const pdfCaches = pgTable("pdf_caches", {
   id: serial("id").primaryKey(),
-  bookSlug: text("book_slug").notNull(),
+  bookId: integer("book_id").notNull().references(() => books.id, { onDelete: "cascade" }),
   pdfData: text("pdf_data").notNull(),
   contentHash: text("content_hash").notNull(),
   generatedAt: timestamp("generated_at").defaultNow(),
 });
 
-/**
- * A named group of users. Used as a grantee for `accessGrants`.
- * Slug is unique and follows the same `kebab-case` regex as other slugs.
- */
-export const organizations = pgTable("organizations", {
-  id: serial("id").primaryKey(),
-  slug: text("slug").unique().notNull(),
-  name: text("name").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+// ---------------------------------------------------------------------------
+// Visibility + grants (three-state visibility model)
+// ---------------------------------------------------------------------------
 
 /**
- * Junction table linking users to organizations. `role` is `"owner"` or
- * `"member"`. A user may belong to many orgs; uniqueness on (orgId, userId)
- * prevents duplicate memberships. Both sides cascade-delete.
- */
-export const orgMemberships = pgTable(
-  "org_memberships",
-  {
-    id: serial("id").primaryKey(),
-    orgId: integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    role: text("role").notNull(),
-    joinedAt: timestamp("joined_at").defaultNow(),
-  },
-  (t) => [unique().on(t.orgId, t.userId)]
-);
-
-/**
- * One row per private resource. Absent row means public (the default).
- * `resourceType` is `"book"` or `"article"`. `resourceKey` is the slug
- * (book slug or article slug). Unique on (resourceType, resourceKey).
+ * Per-resource visibility setting. Absent row means `'public'` (the default).
+ * `visibility` is `'public' | 'org' | 'private'`.
+ * `ownerType`/`ownerId` scope the row to the resource's publisher.
+ * `resourceKey` is the slug of the resource.
  */
 export const resourceVisibility = pgTable(
   "resource_visibility",
   {
     id: serial("id").primaryKey(),
-    resourceType: text("resource_type").notNull(),
-    resourceKey: text("resource_key").notNull(),
-    isPrivate: boolean("is_private").default(false).notNull(),
+    resourceType: text("resource_type").notNull(), // 'book' | 'article' | 'object'
+    ownerType: text("owner_type").notNull(),         // 'user' | 'org'
+    ownerId: integer("owner_id").notNull(),
+    resourceKey: text("resource_key").notNull(),     // slug
+    visibility: text("visibility").default("public").notNull(), // 'public' | 'org' | 'private'
     updatedAt: timestamp("updated_at").defaultNow(),
   },
-  (t) => [unique().on(t.resourceType, t.resourceKey)]
+  (t) => [unique().on(t.resourceType, t.ownerType, t.ownerId, t.resourceKey)]
 );
 
 /**
- * Grants viewing access to a private resource. `granteeType` is `"user"` or
- * `"org"`. `granteeId` references either `users.id` or `organizations.id`
- * depending on `granteeType` — it is not a foreign key for that reason. The
- * unique constraint prevents duplicate grants for the same grantee on the
- * same resource. `grantedBy` is the admin who created the grant.
+ * Grants viewing access to a private resource.
+ * `granteeType` is `"user"` or `"org"`.
+ * `ownerType`/`ownerId` scope the grant to the resource's publisher.
  */
 export const accessGrants = pgTable(
   "access_grants",
   {
     id: serial("id").primaryKey(),
     resourceType: text("resource_type").notNull(),
+    ownerType: text("owner_type").notNull(),
+    ownerId: integer("owner_id").notNull(),
     resourceKey: text("resource_key").notNull(),
-    granteeType: text("grantee_type").notNull(),
+    granteeType: text("grantee_type").notNull(), // 'user' | 'org'
     granteeId: integer("grantee_id").notNull(),
     grantedAt: timestamp("granted_at").defaultNow(),
     grantedBy: integer("granted_by").references(() => users.id, { onDelete: "set null" }),
   },
-  (t) => [unique().on(t.resourceType, t.resourceKey, t.granteeType, t.granteeId)]
+  (t) => [
+    unique().on(t.resourceType, t.ownerType, t.ownerId, t.resourceKey, t.granteeType, t.granteeId),
+  ]
+);
+
+// ---------------------------------------------------------------------------
+// Article views (homepage top-5 by 30-day views)
+// ---------------------------------------------------------------------------
+
+/**
+ * One row per article page render. No PII stored — just article + timestamp.
+ * Indexed on (articleId, viewedAt) for the monthly aggregation query.
+ */
+export const articleViews = pgTable(
+  "article_views",
+  {
+    id: serial("id").primaryKey(),
+    articleId: integer("article_id")
+      .notNull()
+      .references(() => articles.id, { onDelete: "cascade" }),
+    viewedAt: timestamp("viewed_at").defaultNow().notNull(),
+  },
+  (t) => [index("article_views_article_viewed_idx").on(t.articleId, t.viewedAt)]
 );

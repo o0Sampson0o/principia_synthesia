@@ -10,6 +10,8 @@ function mockGetComputedStyle(tokenValues: Record<string, string> = {}) {
   } as any);
 }
 
+const TEST_PUBLISHER = "alice";
+
 describe("buildAnimationSrc", () => {
   let computedStyleSpy: ReturnType<typeof mockGetComputedStyle>;
 
@@ -24,13 +26,13 @@ describe("buildAnimationSrc", () => {
     computedStyleSpy.mockRestore();
   });
 
-  it("returns a string starting with /api/animations/<slug>?theme=", () => {
-    const src = buildAnimationSrc("my-slug");
-    expect(src).toMatch(/^\/api\/animations\/my-slug\?theme=/);
+  it("returns a string starting with /api/publishers/<publisher>/animations/<slug>?theme=", () => {
+    const src = buildAnimationSrc(TEST_PUBLISHER, "anim-my-slug");
+    expect(src).toMatch(/^\/api\/publishers\/alice\/animations\/anim-my-slug\?theme=/);
   });
 
   it("encodes a valid JSON theme object in the ?theme= query param", () => {
-    const src = buildAnimationSrc("my-slug");
+    const src = buildAnimationSrc(TEST_PUBLISHER, "anim-my-slug");
     const url = new URL(src, "http://localhost");
     const raw = url.searchParams.get("theme");
     expect(raw).not.toBeNull();
@@ -42,7 +44,7 @@ describe("buildAnimationSrc", () => {
   });
 
   it("theme JSON has the 15 expected token keys", () => {
-    const src = buildAnimationSrc("my-slug");
+    const src = buildAnimationSrc(TEST_PUBLISHER, "anim-my-slug");
     const url = new URL(src, "http://localhost");
     const raw = url.searchParams.get("theme")!;
     const parsed = JSON.parse(decodeURIComponent(raw));
@@ -59,22 +61,27 @@ describe("buildAnimationSrc", () => {
   });
 
   it("reads from getComputedStyle(document.documentElement)", () => {
-    buildAnimationSrc("test-slug");
+    buildAnimationSrc(TEST_PUBLISHER, "anim-test-slug");
     expect(computedStyleSpy).toHaveBeenCalledWith(document.documentElement);
   });
 
   it("the slug appears verbatim in the returned URL", () => {
-    const src = buildAnimationSrc("orbit-sim");
-    expect(src).toContain("/api/animations/orbit-sim");
+    const src = buildAnimationSrc(TEST_PUBLISHER, "anim-orbit-sim");
+    expect(src).toContain("/api/publishers/alice/animations/anim-orbit-sim");
+  });
+
+  it("the publisher appears in the returned URL", () => {
+    const src = buildAnimationSrc("bob", "anim-wave");
+    expect(src).toContain("/api/publishers/bob/animations/anim-wave");
   });
 
   it("includes &v=<version> when version is provided", () => {
-    const src = buildAnimationSrc("my-slug", 3);
+    const src = buildAnimationSrc(TEST_PUBLISHER, "anim-my-slug", 3);
     expect(src).toContain("&v=3");
   });
 
   it("omits the v param when version is not provided", () => {
-    const src = buildAnimationSrc("my-slug");
+    const src = buildAnimationSrc(TEST_PUBLISHER, "anim-my-slug");
     expect(src).not.toContain("&v=");
   });
 });
@@ -91,36 +98,24 @@ describe("useAnimationSrc", () => {
   });
 
   it("returns null on initial render (before the effect fires)", () => {
-    // In React 19 with Testing Library, effects run synchronously as part of
-    // renderHook. We verify this by checking useState's initial value is null,
-    // which is the documented contract of the hook (SSR-safe: null on server).
-    // We verify the initial state by inspecting the hook's useState directly.
-    let initialValue: string | null | undefined;
-    const { result } = renderHook(() => {
-      const src = useAnimationSrc("my-slug");
-      if (initialValue === undefined) initialValue = null; // first call captures init
-      return src;
-    });
+    const { result } = renderHook(() => useAnimationSrc(TEST_PUBLISHER, "anim-my-slug"));
     // The hook's documented SSR behavior is: null before hydration.
     // In jsdom (client), effects run synchronously, so after mount it's a URL.
-    // We verify the hook starts with null by checking useState init in the source.
-    // The actual result after mount is a URL (effects flushed).
-    expect(result.current).toMatch(/^\/api\/animations\/my-slug\?theme=/);
+    expect(result.current).toMatch(/^\/api\/publishers\/alice\/animations\/anim-my-slug\?theme=/);
   });
 
   it("returns a URL string after mount (after the effect runs)", async () => {
-    const { result } = renderHook(() => useAnimationSrc("my-slug"));
+    const { result } = renderHook(() => useAnimationSrc(TEST_PUBLISHER, "anim-my-slug"));
 
-    // After effects flush (may already be set due to React 19 test behaviour)
     await act(async () => {});
 
     expect(result.current).not.toBeNull();
     expect(typeof result.current).toBe("string");
-    expect(result.current).toMatch(/^\/api\/animations\/my-slug\?theme=/);
+    expect(result.current).toMatch(/^\/api\/publishers\/alice\/animations\/anim-my-slug\?theme=/);
   });
 
   it("the URL after mount contains a valid JSON theme param", async () => {
-    const { result } = renderHook(() => useAnimationSrc("orbit-sim"));
+    const { result } = renderHook(() => useAnimationSrc(TEST_PUBLISHER, "anim-orbit-sim"));
     await act(async () => {});
 
     const src = result.current!;
@@ -134,21 +129,21 @@ describe("useAnimationSrc", () => {
 
   it("updates the src when slug changes", async () => {
     const { result, rerender } = renderHook(
-      ({ slug }) => useAnimationSrc(slug),
-      { initialProps: { slug: "slug-one" } }
+      ({ slug }) => useAnimationSrc(TEST_PUBLISHER, slug),
+      { initialProps: { slug: "anim-slug-one" } }
     );
     await act(async () => {});
 
-    expect(result.current).toContain("/api/animations/slug-one");
+    expect(result.current).toContain("/api/publishers/alice/animations/anim-slug-one");
 
-    rerender({ slug: "slug-two" });
+    rerender({ slug: "anim-slug-two" });
     await act(async () => {});
 
-    expect(result.current).toContain("/api/animations/slug-two");
+    expect(result.current).toContain("/api/publishers/alice/animations/anim-slug-two");
   });
 
   it("includes version param when version is provided", async () => {
-    const { result } = renderHook(() => useAnimationSrc("my-slug", 7));
+    const { result } = renderHook(() => useAnimationSrc(TEST_PUBLISHER, "anim-my-slug", 7));
     await act(async () => {});
 
     expect(result.current).toContain("&v=7");

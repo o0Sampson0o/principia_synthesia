@@ -1,0 +1,61 @@
+import { notFound, redirect } from "next/navigation";
+import { resolvePublisher } from "@/lib/publisher";
+import { requireSession } from "@/lib/auth";
+import { canEditContent } from "@/lib/roles";
+import { createBook } from "../actions";
+
+export default async function NewBookPage({
+  params,
+}: {
+  params: Promise<{ publisher: string }>;
+}) {
+  const { publisher: publisherSlug } = await params;
+
+  const pub = await resolvePublisher(publisherSlug);
+  if (!pub) notFound();
+
+  const session = await requireSession();
+  const ownerType = pub.kind === "user" ? "user" : "org";
+  const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
+
+  if (!(await canEditContent(session, ownerType, ownerId))) {
+    redirect(`/${publisherSlug}`);
+  }
+
+  const action = createBook.bind(null, publisherSlug);
+
+  return (
+    <main className="max-w-xl mx-auto px-6 py-10">
+      <h1 className="text-3xl font-bold themed-heading mb-6">New book</h1>
+      <form action={action} className="space-y-4">
+        <div>
+          <label htmlFor="title" className="block text-sm font-medium themed-secondary mb-1">
+            Title
+          </label>
+          <input id="title" name="title" type="text" required maxLength={200} className="themed-input" />
+        </div>
+        <div>
+          <label htmlFor="slug" className="block text-sm font-medium themed-secondary mb-1">
+            Slug
+          </label>
+          <div className="flex items-center gap-1">
+            <span className="text-sm themed-muted">book-</span>
+            <input
+              id="slug"
+              name="slug"
+              type="text"
+              required
+              placeholder="my-book"
+              className="themed-input flex-1"
+              pattern="^book-[a-z0-9]+(?:-[a-z0-9]+)*$"
+            />
+          </div>
+          <p className="text-xs themed-muted mt-1">Must start with &ldquo;book-&rdquo;.</p>
+        </div>
+        <button type="submit" className="themed-btn-primary">
+          Create book
+        </button>
+      </form>
+    </main>
+  );
+}

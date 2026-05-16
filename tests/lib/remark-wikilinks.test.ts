@@ -29,57 +29,57 @@ function getFirstParagraphChildren(markdown: string) {
 }
 
 describe("remarkWikilinks", () => {
-  it("transforms [[slug]] to a link with href /slug and display text 'slug'", () => {
-    const children = getFirstParagraphChildren("[[my-article]]");
+  it("transforms [[publisher:articles:slug]] to /<publisher>/articles/<slug>", () => {
+    const children = getFirstParagraphChildren("[[alice:articles:article-intro]]");
     expect(children).toHaveLength(1);
     const link = children[0] as Link;
     expect(link.type).toBe("link");
-    expect(link.url).toBe("/my-article");
-    expect((link.children[0] as Text).value).toBe("my-article");
+    expect(link.url).toBe("/alice/articles/article-intro");
+    expect((link.children[0] as Text).value).toBe("article-intro");
   });
 
-  it("transforms [[slug|Display Text]] with custom label and href /slug", () => {
-    const children = getFirstParagraphChildren("[[my-article|Display Text]]");
+  it("transforms [[publisher:articles:slug|Display Text]] with custom label", () => {
+    const children = getFirstParagraphChildren("[[alice:articles:article-intro|My Article]]");
     expect(children).toHaveLength(1);
     const link = children[0] as Link;
     expect(link.type).toBe("link");
-    expect(link.url).toBe("/my-article");
-    expect((link.children[0] as Text).value).toBe("Display Text");
+    expect(link.url).toBe("/alice/articles/article-intro");
+    expect((link.children[0] as Text).value).toBe("My Article");
   });
 
-  it("transforms [[book:my-book]] to href /curriculum/my-book with display text 'my-book'", () => {
-    const children = getFirstParagraphChildren("[[book:my-book]]");
+  it("transforms [[publisher:books:slug]] to /<publisher>/books/<slug>", () => {
+    const children = getFirstParagraphChildren("[[alice:books:book-calc]]");
     expect(children).toHaveLength(1);
     const link = children[0] as Link;
     expect(link.type).toBe("link");
-    expect(link.url).toBe("/curriculum/my-book");
-    expect((link.children[0] as Text).value).toBe("my-book");
+    expect(link.url).toBe("/alice/books/book-calc");
+    expect((link.children[0] as Text).value).toBe("book-calc");
   });
 
-  it("transforms [[book:my-book|My Book]] with display text 'My Book' and href /curriculum/my-book", () => {
-    const children = getFirstParagraphChildren("[[book:my-book|My Book]]");
+  it("transforms [[publisher:books:slug|Label]] with custom label", () => {
+    const children = getFirstParagraphChildren("[[alice:books:book-calc|Calculus]]");
     expect(children).toHaveLength(1);
     const link = children[0] as Link;
     expect(link.type).toBe("link");
-    expect(link.url).toBe("/curriculum/my-book");
-    expect((link.children[0] as Text).value).toBe("My Book");
+    expect(link.url).toBe("/alice/books/book-calc");
+    expect((link.children[0] as Text).value).toBe("Calculus");
   });
 
-  it("transforms [[anim:orbit-sim]] to href /objects/orbit-sim", () => {
-    const children = getFirstParagraphChildren("[[anim:orbit-sim]]");
+  it("transforms [[publisher:objects:slug]] to /<publisher>/objects/<slug>", () => {
+    const children = getFirstParagraphChildren("[[alice:objects:anim-pendulum]]");
     expect(children).toHaveLength(1);
     const link = children[0] as Link;
     expect(link.type).toBe("link");
-    expect(link.url).toBe("/objects/orbit-sim");
-    expect((link.children[0] as Text).value).toBe("orbit-sim");
+    expect(link.url).toBe("/alice/objects/anim-pendulum");
+    expect((link.children[0] as Text).value).toBe("anim-pendulum");
   });
 
-  it("transforms [[anim:orbit-sim|Orbit Simulation]] with custom label", () => {
-    const children = getFirstParagraphChildren("[[anim:orbit-sim|Orbit Simulation]]");
+  it("transforms [[publisher:objects:slug|Label]] with custom label", () => {
+    const children = getFirstParagraphChildren("[[alice:objects:anim-pendulum|Pendulum Sim]]");
     expect(children).toHaveLength(1);
     const link = children[0] as Link;
-    expect(link.url).toBe("/objects/orbit-sim");
-    expect((link.children[0] as Text).value).toBe("Orbit Simulation");
+    expect(link.url).toBe("/alice/objects/anim-pendulum");
+    expect((link.children[0] as Text).value).toBe("Pendulum Sim");
   });
 
   it("leaves text with no wikilinks unchanged", () => {
@@ -90,16 +90,26 @@ describe("remarkWikilinks", () => {
     expect(text.value).toBe("No wikilinks here, just regular text.");
   });
 
+  it("leaves old-style [[slug]] syntax unchanged (not matched)", () => {
+    const children = getFirstParagraphChildren("[[my-article]]");
+    // The new plugin requires [[publisher:type:slug]], so this is left as-is
+    expect(children).toHaveLength(1);
+    const node = children[0] as Text;
+    expect(node.type).toBe("text");
+  });
+
   it("transforms multiple wikilinks on the same line", () => {
-    const children = getFirstParagraphChildren("Read [[article-one]] and [[book:calc|Calculus]] for more.");
+    const children = getFirstParagraphChildren(
+      "Read [[alice:articles:article-one]] and [[alice:books:book-calc|Calculus]] for more."
+    );
     // Should be: text "Read ", link, text " and ", link, text " for more."
     expect(children.length).toBeGreaterThanOrEqual(4);
 
     const link1 = children.find(
-      (c) => c.type === "link" && (c as Link).url === "/article-one"
+      (c) => c.type === "link" && (c as Link).url === "/alice/articles/article-one"
     ) as Link | undefined;
     const link2 = children.find(
-      (c) => c.type === "link" && (c as Link).url === "/curriculum/calc"
+      (c) => c.type === "link" && (c as Link).url === "/alice/books/book-calc"
     ) as Link | undefined;
 
     expect(link1).toBeDefined();
@@ -109,36 +119,27 @@ describe("remarkWikilinks", () => {
   });
 
   it("preserves surrounding text around a wikilink", () => {
-    const children = getFirstParagraphChildren("Before [[slug]] after");
+    const children = getFirstParagraphChildren("Before [[alice:articles:article-hello]] after");
     expect(children).toHaveLength(3);
     expect((children[0] as Text).value).toBe("Before ");
-    expect((children[1] as Link).url).toBe("/slug");
+    expect((children[1] as Link).url).toBe("/alice/articles/article-hello");
     expect((children[2] as Text).value).toBe(" after");
   });
 
   it("handles multiple consecutive wikilinks without text between them", () => {
-    const children = getFirstParagraphChildren("[[a]][[b]]");
+    const children = getFirstParagraphChildren(
+      "[[alice:articles:article-a]][[bob:articles:article-b]]"
+    );
     const links = children.filter((c) => c.type === "link") as Link[];
     expect(links).toHaveLength(2);
-    expect(links[0].url).toBe("/a");
-    expect(links[1].url).toBe("/b");
+    expect(links[0].url).toBe("/alice/articles/article-a");
+    expect(links[1].url).toBe("/bob/articles/article-b");
   });
 
-  it("transforms [[object:pendulum]] to href /objects/pendulum with display text 'pendulum'", () => {
-    const children = getFirstParagraphChildren("[[object:pendulum]]");
+  it("ignores wikilinks with invalid type segments", () => {
+    // 'curriculum' and 'anim' are not valid types in the new format
+    const children = getFirstParagraphChildren("[[alice:curriculum:book-calc]]");
     expect(children).toHaveLength(1);
-    const link = children[0] as Link;
-    expect(link.type).toBe("link");
-    expect(link.url).toBe("/objects/pendulum");
-    expect((link.children[0] as Text).value).toBe("pendulum");
-  });
-
-  it("transforms [[object:my-dataset|My Dataset]] to href /objects/my-dataset with display text 'My Dataset'", () => {
-    const children = getFirstParagraphChildren("[[object:my-dataset|My Dataset]]");
-    expect(children).toHaveLength(1);
-    const link = children[0] as Link;
-    expect(link.type).toBe("link");
-    expect(link.url).toBe("/objects/my-dataset");
-    expect((link.children[0] as Text).value).toBe("My Dataset");
+    expect((children[0] as Text).type).toBe("text");
   });
 });

@@ -2,8 +2,14 @@
 
 import { useAnimationSrc } from "@/lib/useAnimationSrc";
 
-export default function AnimationPreview({ slug }: { slug: string }) {
-  const src = useAnimationSrc(slug);
+export default function AnimationPreview({
+  publisher,
+  slug,
+}: {
+  publisher: string;
+  slug: string;
+}) {
+  const src = useAnimationSrc(publisher, slug);
 
   return (
     <div className="themed-border border rounded p-4 themed-surface">

@@ -20,23 +20,36 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   };
 });
 
-import { canViewBook, canViewArticle, getVisibleBookSlugs, getVisibleArticleSlugs } from "@/lib/access";
+import { canView, filterVisible } from "@/lib/access";
+import type { ContentRef } from "@/lib/access";
 import type { SessionPayload } from "@/lib/auth";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeAdminSession(): SessionPayload {
-  return { userId: 1, email: "admin@example.com", isAdmin: true };
+function makeRootAdminSession(): SessionPayload {
+  return { userId: 1, email: "admin@example.com", userSlug: "admin", isRootAdmin: true };
 }
 
 function makeUserSession(userId = 2): SessionPayload {
-  return { userId, email: "user@example.com", isAdmin: false };
+  return { userId, email: "user@example.com", userSlug: "user", isRootAdmin: false };
+}
+
+function makeRef(overrides: Partial<ContentRef> = {}): ContentRef {
+  return {
+    type: "article",
+    ownerType: "user",
+    ownerId: 10,
+    slug: "article-test",
+    ...overrides,
+  };
 }
 
 /**
- * Creates a mock DB chain where each call to db.select() consumes one
- * result from the `resultQueue`. Results with `withLimit: true` attach a
- * `.limit()` terminal; otherwise `.where()` is the terminal.
+ * Sets up the mock DB chain.
+ * `canView` uses: db.select().from().where().limit(1)  for getVisibility
+ *                 db.select().from().where()            for getUserOrgIds (no limit)
+ *                 db.select().from().where().limit(1)  for hasGrant (user grant)
+ *                 db.select().from().where().limit(1)  for hasGrant (org grant)
  */
 function setupQueryQueue(queue: Array<{ result: any[]; withLimit?: boolean }>) {
   let idx = 0;
@@ -54,212 +67,164 @@ function setupQueryQueue(queue: Array<{ result: any[]; withLimit?: boolean }>) {
   });
 }
 
-// ─── canViewBook ──────────────────────────────────────────────────────────────
+// ─── canView ─────────────────────────────────────────────────────────────────
 
-describe("canViewBook", () => {
+describe("canView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("admin session → true without any DB hit", async () => {
-    const result = await canViewBook("my-book", makeAdminSession());
+  it("root admin session → true without any DB hit", async () => {
+    const result = await canView(makeRef(), makeRootAdminSession());
     expect(result).toBe(true);
     expect(mockSelect).not.toHaveBeenCalled();
   });
 
   it("no visibility row → true (public default)", async () => {
-    // isPrivate: .select().from().where().limit(1) → []
+    // getVisibility → [] → defaults to 'public'
     setupQueryQueue([{ result: [], withLimit: true }]);
-    const result = await canViewBook("my-book", null);
+    const result = await canView(makeRef(), null);
     expect(result).toBe(true);
   });
 
-  it("visibility row with isPrivate=false → true", async () => {
-    setupQueryQueue([{ result: [{ isPrivate: false }], withLimit: true }]);
-    const result = await canViewBook("my-book", null);
+  it("visibility row with visibility='public' → true", async () => {
+    setupQueryQueue([{ result: [{ visibility: "public" }], withLimit: true }]);
+    const result = await canView(makeRef(), null);
     expect(result).toBe(true);
   });
 
   it("private + no session → false", async () => {
-    setupQueryQueue([{ result: [{ isPrivate: true }], withLimit: true }]);
-    const result = await canViewBook("my-book", null);
+    setupQueryQueue([{ result: [{ visibility: "private" }], withLimit: true }]);
+    const result = await canView(makeRef(), null);
     expect(result).toBe(false);
   });
 
   it("private + session has user grant → true", async () => {
-    // 1. isPrivate → true  (withLimit)
+    // 1. getVisibility → private  (withLimit)
     // 2. getUserOrgIds → []  (no limit — .where() is terminal)
     // 3. user grant check → [{ id: 5 }]  (withLimit)
     setupQueryQueue([
-      { result: [{ isPrivate: true }], withLimit: true },
+      { result: [{ visibility: "private" }], withLimit: true },
       { result: [], withLimit: false },
       { result: [{ id: 5 }], withLimit: true },
     ]);
-    const result = await canViewBook("my-book", makeUserSession());
+    const result = await canView(makeRef(), makeUserSession());
     expect(result).toBe(true);
   });
 
   it("private + session has org grant via membership → true", async () => {
-    // 1. isPrivate → true
+    // 1. getVisibility → private
     // 2. getUserOrgIds → [{ orgId: 3 }]
     // 3. user grant → []
     // 4. org grant → [{ id: 7 }]
     setupQueryQueue([
-      { result: [{ isPrivate: true }], withLimit: true },
+      { result: [{ visibility: "private" }], withLimit: true },
       { result: [{ orgId: 3 }], withLimit: false },
       { result: [], withLimit: true },
       { result: [{ id: 7 }], withLimit: true },
     ]);
-    const result = await canViewBook("my-book", makeUserSession());
+    const result = await canView(makeRef(), makeUserSession());
     expect(result).toBe(true);
   });
 
   it("private + session has neither user nor org grant → false", async () => {
     setupQueryQueue([
-      { result: [{ isPrivate: true }], withLimit: true },
+      { result: [{ visibility: "private" }], withLimit: true },
       { result: [{ orgId: 3 }], withLimit: false },
       { result: [], withLimit: true },
       { result: [], withLimit: true },
     ]);
-    const result = await canViewBook("my-book", makeUserSession());
+    const result = await canView(makeRef(), makeUserSession());
+    expect(result).toBe(false);
+  });
+
+  it("org visibility + org-owned content + user is member → true", async () => {
+    // 1. getVisibility → org
+    // 2. getUserOrgIds → [{ orgId: 10 }]  (matches ownerId=10)
+    setupQueryQueue([
+      { result: [{ visibility: "org" }], withLimit: true },
+      { result: [{ orgId: 10 }], withLimit: false },
+    ]);
+    const result = await canView(
+      makeRef({ ownerType: "org", ownerId: 10 }),
+      makeUserSession()
+    );
+    expect(result).toBe(true);
+  });
+
+  it("org visibility + org-owned content + user is NOT member → false", async () => {
+    setupQueryQueue([
+      { result: [{ visibility: "org" }], withLimit: true },
+      { result: [{ orgId: 99 }], withLimit: false },
+    ]);
+    const result = await canView(
+      makeRef({ ownerType: "org", ownerId: 10 }),
+      makeUserSession()
+    );
     expect(result).toBe(false);
   });
 });
 
-// ─── canViewArticle ───────────────────────────────────────────────────────────
+// ─── filterVisible ────────────────────────────────────────────────────────────
 
-describe("canViewArticle", () => {
+describe("filterVisible", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("admin session → true without any DB hit", async () => {
-    const result = await canViewArticle("my-article", makeAdminSession());
-    expect(result).toBe(true);
+  it("root admin → returns all refs without DB hit", async () => {
+    const refs = [makeRef({ slug: "article-a" }), makeRef({ slug: "article-b" })];
+    const result = await filterVisible(refs, makeRootAdminSession());
+    expect(result).toEqual(refs);
     expect(mockSelect).not.toHaveBeenCalled();
   });
 
-  it("no visibility row → true (public default)", async () => {
-    setupQueryQueue([{ result: [], withLimit: true }]);
-    const result = await canViewArticle("my-article", null);
-    expect(result).toBe(true);
-  });
-
-  it("visibility row with isPrivate=false → true", async () => {
-    setupQueryQueue([{ result: [{ isPrivate: false }], withLimit: true }]);
-    const result = await canViewArticle("my-article", null);
-    expect(result).toBe(true);
-  });
-
-  it("private + no session → false", async () => {
-    setupQueryQueue([{ result: [{ isPrivate: true }], withLimit: true }]);
-    const result = await canViewArticle("my-article", null);
-    expect(result).toBe(false);
-  });
-
-  it("private + session has user grant → true", async () => {
-    setupQueryQueue([
-      { result: [{ isPrivate: true }], withLimit: true },
-      { result: [], withLimit: false },
-      { result: [{ id: 5 }], withLimit: true },
-    ]);
-    const result = await canViewArticle("my-article", makeUserSession());
-    expect(result).toBe(true);
-  });
-
-  it("private + session has org grant via membership → true", async () => {
-    setupQueryQueue([
-      { result: [{ isPrivate: true }], withLimit: true },
-      { result: [{ orgId: 3 }], withLimit: false },
-      { result: [], withLimit: true },
-      { result: [{ id: 7 }], withLimit: true },
-    ]);
-    const result = await canViewArticle("my-article", makeUserSession());
-    expect(result).toBe(true);
-  });
-
-  it("private + session has neither user nor org grant → false", async () => {
-    setupQueryQueue([
-      { result: [{ isPrivate: true }], withLimit: true },
-      { result: [{ orgId: 3 }], withLimit: false },
-      { result: [], withLimit: true },
-      { result: [], withLimit: true },
-    ]);
-    const result = await canViewArticle("my-article", makeUserSession());
-    expect(result).toBe(false);
-  });
-});
-
-// ─── getVisibleBookSlugs ──────────────────────────────────────────────────────
-
-describe("getVisibleBookSlugs", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("admin → 'all'", async () => {
-    const result = await getVisibleBookSlugs(makeAdminSession(), ["a", "b"]);
-    expect(result).toBe("all");
+  it("empty input → empty array without DB hit", async () => {
+    const result = await filterVisible([], null);
+    expect(result).toEqual([]);
     expect(mockSelect).not.toHaveBeenCalled();
   });
 
-  it("empty input → empty Set", async () => {
-    const result = await getVisibleBookSlugs(null, []);
-    expect(result).toBeInstanceOf(Set);
-    expect((result as Set<string>).size).toBe(0);
-    expect(mockSelect).not.toHaveBeenCalled();
+  it("all refs public (no visibility rows) → all returned", async () => {
+    // filterVisible fetches visibility for each owner pair; no rows → all public
+    // The implementation does a Promise.all over owner pairs; for one owner pair
+    // it issues one select().from().where() (no limit) returning []
+    const refs = [makeRef({ slug: "article-a" }), makeRef({ slug: "article-b" })];
+
+    // One query per unique ownerType:ownerId pair
+    mockSelect.mockImplementation(() => {
+      const whereFn = vi.fn().mockResolvedValue([]);
+      const fromFn = vi.fn().mockReturnValue({ where: whereFn });
+      return { from: fromFn };
+    });
+
+    const result = await filterVisible(refs, null);
+    expect(result).toHaveLength(2);
   });
 
-  it("all slugs public (no private rows) → all returned", async () => {
-    // privateRows: no rows → all public
-    setupQueryQueue([{ result: [], withLimit: false }]);
-    const result = await getVisibleBookSlugs(null, ["book-a", "book-b"]);
-    expect(result).toBeInstanceOf(Set);
-    const s = result as Set<string>;
-    expect(s.has("book-a")).toBe(true);
-    expect(s.has("book-b")).toBe(true);
-  });
+  it("mix of public and private → only public returned when no session", async () => {
+    const refs = [
+      makeRef({ slug: "article-a" }),
+      makeRef({ slug: "article-b" }),
+    ];
 
-  it("mix of public and private with no grants → only public returned", async () => {
-    // no session provided → after privateRows, no more queries
-    setupQueryQueue([
-      { result: [{ resourceKey: "book-b" }], withLimit: false }, // privateRows
-    ]);
-    const result = await getVisibleBookSlugs(null, ["book-a", "book-b"]);
-    const s = result as Set<string>;
-    expect(s.has("book-a")).toBe(true);
-    expect(s.has("book-b")).toBe(false);
-  });
+    // Visibility rows: article-b is private
+    mockSelect.mockImplementationOnce(() => {
+      const whereFn = vi.fn().mockResolvedValue([
+        {
+          resourceType: "article",
+          ownerType: "user",
+          ownerId: 10,
+          resourceKey: "article-b",
+          visibility: "private",
+        },
+      ]);
+      const fromFn = vi.fn().mockReturnValue({ where: whereFn });
+      return { from: fromFn };
+    });
 
-  it("private + user grant → grant slug included", async () => {
-    // 1. privateRows → [book-b private]
-    // 2. getUserOrgIds → []
-    // 3. user grants → [{ resourceKey: "book-b" }]
-    setupQueryQueue([
-      { result: [{ resourceKey: "book-b" }], withLimit: false }, // privateRows
-      { result: [], withLimit: false },                            // getUserOrgIds
-      { result: [{ resourceKey: "book-b" }], withLimit: false },  // user grants
-    ]);
-    const result = await getVisibleBookSlugs(makeUserSession(), ["book-a", "book-b"]);
-    const s = result as Set<string>;
-    expect(s.has("book-a")).toBe(true);
-    expect(s.has("book-b")).toBe(true);
-  });
-
-  it("private + org grant + member of org → grant slug included", async () => {
-    // 1. privateRows → [book-b private]
-    // 2. getUserOrgIds → [{ orgId: 5 }]
-    // 3. user grants → []
-    // 4. org grants → [{ resourceKey: "book-b" }]
-    setupQueryQueue([
-      { result: [{ resourceKey: "book-b" }], withLimit: false }, // privateRows
-      { result: [{ orgId: 5 }], withLimit: false },               // getUserOrgIds
-      { result: [], withLimit: false },                            // user grants
-      { result: [{ resourceKey: "book-b" }], withLimit: false },  // org grants
-    ]);
-    const result = await getVisibleBookSlugs(makeUserSession(), ["book-a", "book-b"]);
-    const s = result as Set<string>;
-    expect(s.has("book-a")).toBe(true);
-    expect(s.has("book-b")).toBe(true);
+    const result = await filterVisible(refs, null);
+    expect(result).toHaveLength(1);
+    expect(result[0].slug).toBe("article-a");
   });
 });

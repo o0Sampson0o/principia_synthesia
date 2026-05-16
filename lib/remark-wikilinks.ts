@@ -2,23 +2,25 @@ import { visit } from "unist-util-visit"
 import type { Root, Text, Link, PhrasingContent } from "mdast"
 
 /**
- * Remark plugin that transforms `[[wikilink]]` syntax in MDX/Markdown into
- * standard hyperlinks. Supported syntaxes:
+ * Remark plugin that transforms `[[publisher:type:slug]]` wikilink syntax in
+ * MDX/Markdown into standard hyperlinks.
  *
- * - `[[slug]]`            → link to `/<slug>` (article)
- * - `[[slug|Label]]`      → same, with custom display text
- * - `[[book:slug]]`       → link to `/curriculum/<slug>` (book table of contents)
- * - `[[anim:slug]]`       → link to `/objects/<slug>` (object detail page)
+ * Supported syntax:
+ * - `[[publisher:articles:article-slug]]`     → `/publisher/articles/article-slug`
+ * - `[[publisher:books:book-slug]]`            → `/publisher/books/book-slug`
+ * - `[[publisher:objects:object-slug]]`        → `/publisher/objects/object-slug`
+ * - `[[publisher:type:slug|Display text]]`     → same URL, custom display text
  *
- * The plugin operates on the MDAST `text` node level, splitting runs of text
- * that contain `[[...]]` patterns into text + link nodes in-place.
+ * Anything that does not match the three-segment `[[p:t:s]]` pattern is left
+ * as literal text.
  */
 export function remarkWikilinks() {
   return (tree: Root) => {
     visit(tree, "text", (node: Text, index, parent) => {
       if (!parent || index === undefined) return
 
-      const regex = /\[\[([^\]]+)\]\]/g
+      // Regex: [[publisher:type:slug]] or [[publisher:type:slug|Label]]
+      const regex = /\[\[([a-z0-9-]+):(articles|books|objects):([a-z0-9-]+)(?:\|([^\]]+))?\]\]/g
       const parts: PhrasingContent[] = []
       let lastIndex = 0
       let match
@@ -28,40 +30,13 @@ export function remarkWikilinks() {
           parts.push({ type: "text", value: node.value.slice(lastIndex, match.index) })
         }
 
-        const inner = match[1]
-
-        // Split on | for optional display label
-        const [target, label] = inner.includes("|")
-          ? inner.split("|").map((s) => s.trim())
-          : [inner.trim(), null]
-
-        // Resolve URL: 
-        // - book:slug → /curriculum/slug
-        // - anim:slug → /objects/slug
-        // - else → /slug
-        let url: string
-        let displayText: string
-
-        if (target.startsWith("book:")) {
-          const bookSlug = target.slice(5).trim()
-          url = `/curriculum/${bookSlug}`
-          displayText = label ?? bookSlug
-        } else if (target.startsWith("anim:")) {
-          const animSlug = target.slice(5).trim()
-          url = `/objects/${animSlug}`
-          displayText = label ?? animSlug
-        } else if (target.startsWith("object:")) {
-          const objectSlug = target.slice(7).trim()
-          url = `/objects/${objectSlug}`
-          displayText = label ?? objectSlug
-        } else {
-          url = `/${target}`
-          displayText = label ?? target
-        }
+        const [, publisher, type, slug, label] = match
+        const href = `/${publisher}/${type}/${slug}`
+        const displayText = label ?? slug
 
         const link: Link = {
           type: "link",
-          url,
+          url: href,
           children: [{ type: "text", value: displayText }],
         }
         parts.push(link)

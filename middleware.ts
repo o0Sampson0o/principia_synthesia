@@ -11,8 +11,10 @@ function buildCsp(nonce: string, allowEval: boolean = false): string {
   const scriptSrc = [
     `'nonce-${nonce}'`,
     "'strict-dynamic'",
-    (isDev || allowEval) ? "'unsafe-eval'" : "",
-  ].filter(Boolean).join(" ");
+    isDev || allowEval ? "'unsafe-eval'" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return [
     `default-src 'self'`,
@@ -30,47 +32,51 @@ function buildCsp(nonce: string, allowEval: boolean = false): string {
 
 /**
  * Middleware that:
- * 1. Attaches a per-request CSP nonce and enforces a Content-Security-Policy
+ * 1. Rate-limits `/login` and `/signup` routes.
+ * 2. Redirects unauthenticated requests to `/settings/**` to `/login`.
+ * 3. Attaches a per-request CSP nonce and enforces a Content-Security-Policy
  *    header on every response. The nonce is forwarded via `x-csp-nonce` so
  *    Server Components can stamp it onto inline `<script>` tags.
- * 2. Guards all `/admin/**` routes — redirects to `/login` if no valid admin
- *    session JWT is present.
+ *
+ * The old `/admin/**` guard is removed — there are no admin routes any more.
+ * `allowEval` is true for settings pages and publisher content editor pages
+ * (article/object create and edit), which need MDX previewing.
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
 
-  // Rate-limit login attempts
-  if (pathname === "/login") {
-    const allowed = rateLimit(`login:${ip}`, 10, 60_000);
+  // Rate-limit login and signup attempts
+  if (pathname === "/login" || pathname === "/signup") {
+    const allowed = rateLimit(`auth:${ip}`, 10, 60_000);
     if (!allowed) {
       return new NextResponse("Too Many Requests", { status: 429 });
     }
   }
 
-  const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
-  
-  // Allow unsafe-eval on routes that need MDX previewing or other evaluation
-  const allowEval = pathname.startsWith("/admin") || pathname.startsWith("/settings");
-  
-  const csp = buildCsp(nonce, allowEval);
-
-  // Admin auth check
-  if (pathname.startsWith("/admin")) {
+  // Thin auth gate for settings routes
+  if (pathname.startsWith("/settings")) {
     const token = request.cookies.get("session")?.value;
     if (!token) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     try {
-      const { payload } = await jwtVerify(token, JWT_SECRET);
-      const session = payload as { isAdmin?: boolean };
-      if (!session.isAdmin) {
-        return NextResponse.redirect(new URL("/", request.url));
-      }
+      await jwtVerify(token, JWT_SECRET);
     } catch {
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }
+
+  const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
+
+  // Allow unsafe-eval on settings pages and publisher content editor routes.
+  // Pattern matches: /<publisher>/articles/new, /<publisher>/articles/<slug>/edit,
+  //                  /<publisher>/objects/new, /<publisher>/objects/<slug>/edit
+  const allowEval =
+    pathname.startsWith("/settings") ||
+    /^\/[^/]+\/(?:articles|objects)\/(?:new|[^/]+\/edit)$/.test(pathname);
+
+  const csp = buildCsp(nonce, allowEval);
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-csp-nonce", nonce);

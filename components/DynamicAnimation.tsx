@@ -4,9 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAnimationSrc } from "@/lib/useAnimationSrc";
 
-export default function DynamicAnimation({ slug }: { slug: string }) {
+interface DynamicAnimationProps {
+  /** Publisher slug that owns this animation object. */
+  publisher: string;
+  /** Animation object slug (must start with `anim-`). */
+  slug: string;
+}
+
+export default function DynamicAnimation({ publisher, slug }: DynamicAnimationProps) {
   const [error, setError] = useState(false);
-  const src = useAnimationSrc(slug);
+  const src = useAnimationSrc(publisher, slug);
 
   if (error) {
     return (
@@ -29,7 +36,7 @@ export default function DynamicAnimation({ slug }: { slug: string }) {
       )}
       <div className="mt-2 text-right">
         <Link
-          href={`/objects/${slug}`}
+          href={`/${publisher}/objects/${slug}`}
           className="text-xs text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
         >
           View animation →

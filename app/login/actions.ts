@@ -13,26 +13,33 @@ export async function loginAction(formData: FormData) {
     password: formData.get("password"),
   });
 
-  const user = await db
-    .select()
+  const [row] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      passwordHash: users.passwordHash,
+      isRootAdmin: users.isRootAdmin,
+      userSlug: users.publisherSlug,
+    })
     .from(users)
     .where(eq(users.email, validated.email.toLowerCase().trim()))
     .limit(1);
 
-  if (!user[0]) {
+  if (!row) {
     redirect("/login?error=invalid");
   }
 
-  const valid = await verifyPassword(validated.password, user[0].passwordHash);
+  const valid = await verifyPassword(validated.password, row.passwordHash);
   if (!valid) {
     redirect("/login?error=invalid");
   }
 
   await setSessionCookie({
-    userId: user[0].id,
-    email: user[0].email,
-    isAdmin: user[0].isAdmin,
+    userId: row.id,
+    email: row.email,
+    userSlug: row.userSlug,
+    isRootAdmin: row.isRootAdmin,
   });
 
-  redirect("/");
+  redirect(`/${row.userSlug}`);
 }

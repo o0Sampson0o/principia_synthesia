@@ -7,7 +7,7 @@ describe("parseFrontmatter", () => {
 status: draft
 tags: ["physics","mechanics"]
 description: "A test article"
-canvas: my-animation
+canvas: anim-my-animation
 ---
 
 # Hello
@@ -18,7 +18,7 @@ Body text here.`;
     expect(metadata.status).toBe("draft");
     expect(metadata.tags).toEqual(["physics", "mechanics"]);
     expect(metadata.description).toBe("A test article");
-    expect(metadata.canvas).toBe("my-animation");
+    expect(metadata.canvas).toBe("anim-my-animation");
     expect(body).toContain("# Hello");
     expect(body).toContain("Body text here.");
     // body should not contain the YAML block
@@ -81,7 +81,7 @@ describe("serializeFrontmatter", () => {
       status: "draft" as const,
       tags: ["physics", "mechanics"],
       description: "A description",
-      canvas: "my-anim",
+      canvas: "anim-my-anim",
     };
     const body = "# Article body\n\nSome text.";
     const serialized = serializeFrontmatter(meta, body);
