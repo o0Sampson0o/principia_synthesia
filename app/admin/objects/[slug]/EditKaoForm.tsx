@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { updateKaoObject } from "../actions";
+import AnimationApiRef from "../AnimationApiRef";
 
 interface KaoObject {
   id: number;
@@ -18,6 +19,7 @@ interface Props {
 
 export default function EditKaoForm({ object }: Props) {
   const [state, formAction] = useActionState(updateKaoObject, null);
+  const [type, setType] = useState(object.type);
 
   return (
     <form action={formAction} className="space-y-6">
@@ -43,7 +45,7 @@ export default function EditKaoForm({ object }: Props) {
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
           Type
         </label>
-        <select name="type" defaultValue={object.type} className="themed-input">
+        <select name="type" defaultValue={object.type} onChange={(e) => setType(e.target.value)} className="themed-input">
           <option value="animation">Animation</option>
           <option value="dataset">Dataset</option>
           <option value="diagram">Diagram</option>
@@ -52,6 +54,8 @@ export default function EditKaoForm({ object }: Props) {
           <p className="text-xs text-red-500 mt-1">{state.errors.type[0]}</p>
         )}
       </div>
+
+      {type === "animation" && <AnimationApiRef />}
 
       <div>
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">

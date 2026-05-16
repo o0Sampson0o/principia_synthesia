@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createKaoObject } from "../actions";
+import AnimationApiRef from "../AnimationApiRef";
 
 const CONTENT_PLACEHOLDERS: Record<string, string> = {
   animation: JSON.stringify({ code: "function MyAnim() { /* ... */ }" }, null, 2),
@@ -82,6 +83,8 @@ export default function CreateKaoForm() {
           <p className="text-xs text-red-500 mt-1">{state.errors.type[0]}</p>
         )}
       </div>
+
+      {type === "animation" && <AnimationApiRef />}
 
       <div>
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
