@@ -6,6 +6,7 @@ import { updateKaoObject } from "./actions";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { javascript } from "@codemirror/lang-javascript";
 import { buildAnimationSrc } from "@/lib/useAnimationSrc";
+import AnimationApiRef from "./AnimationApiRef";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -28,7 +29,6 @@ export default function AnimationEditForm({ object }: Props) {
   const contentRef = useRef<HTMLInputElement>(null);
   const wasPending = useRef(false);
 
-  // Dark mode detection for editor theme
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     setIsDark(mq.matches);
@@ -37,14 +37,10 @@ export default function AnimationEditForm({ object }: Props) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Keep hidden input in sync with CodeMirror value
   useEffect(() => {
-    if (contentRef.current) {
-      contentRef.current.value = JSON.stringify({ code });
-    }
+    if (contentRef.current) contentRef.current.value = JSON.stringify({ code });
   }, [code]);
 
-  // Bump preview only after save completes
   useEffect(() => {
     if (wasPending.current && !isPending && !state?.errors) {
       setPreviewVersion((v) => v + 1);
@@ -52,16 +48,13 @@ export default function AnimationEditForm({ object }: Props) {
     wasPending.current = isPending;
   }, [isPending, state]);
 
-  const previewSrc = previewVersion > 0
-    ? buildAnimationSrc(object.slug, previewVersion)
-    : null;
+  const previewSrc = previewVersion > 0 ? buildAnimationSrc(object.slug, previewVersion) : null;
 
   return (
-    <form action={formAction}>
+    <form action={formAction} className="space-y-4">
       <input type="hidden" name="id" value={object.id} />
       <input type="hidden" name="slug" value={object.slug} />
       <input type="hidden" name="type" value="animation" />
-      {/* Updated by useEffect whenever code changes */}
       <input
         ref={contentRef}
         type="hidden"
@@ -69,71 +62,66 @@ export default function AnimationEditForm({ object }: Props) {
         defaultValue={JSON.stringify({ code: initialCode })}
       />
 
-      <div className="grid grid-cols-[1fr_300px] gap-4" style={{ height: 600 }}>
-        {/* CodeMirror */}
-        <div className="themed-border border rounded overflow-hidden">
-          <CodeMirror
-            value={code}
-            height="600px"
-            theme={isDark ? vscodeDark : "light"}
-            extensions={[javascript()]}
-            onChange={setCode}
+      {/* Metadata strip */}
+      <div className="flex gap-3 items-end">
+        <div className="flex-[1] min-w-0">
+          <label className="block text-xs font-medium themed-secondary mb-1">Name</label>
+          <input name="name" defaultValue={object.name} className="themed-input text-sm w-full" />
+          {state?.errors?.name && (
+            <p className="text-xs text-red-500 mt-1">{state.errors.name[0]}</p>
+          )}
+        </div>
+        <div className="flex-[2] min-w-0">
+          <label className="block text-xs font-medium themed-secondary mb-1">
+            Description <span className="text-zinc-400 font-normal">(optional)</span>
+          </label>
+          <input
+            name="description"
+            defaultValue={object.description ?? ""}
+            className="themed-input text-sm w-full"
           />
         </div>
+        <button
+          type="submit"
+          disabled={isPending}
+          className="shrink-0 px-4 py-2 text-sm rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {isPending ? "Saving…" : "Save"}
+        </button>
+      </div>
 
-        {/* Right panel */}
-        <div className="flex flex-col gap-4 overflow-y-auto">
-          <div>
-            <label className="block text-sm font-medium themed-secondary mb-1">Name</label>
-            <input
-              name="name"
-              defaultValue={object.name}
-              className="themed-input text-sm w-full"
-            />
-            {state?.errors?.name && (
-              <p className="text-xs text-red-500 mt-1">{state.errors.name[0]}</p>
-            )}
-          </div>
+      {state?.errors?._form && (
+        <p className="text-xs text-red-500">{state.errors._form[0]}</p>
+      )}
 
-          <div>
-            <label className="block text-sm font-medium themed-secondary mb-1">
-              Description <span className="text-zinc-400 font-normal">(optional)</span>
-            </label>
-            <textarea
-              name="description"
-              rows={3}
-              defaultValue={object.description ?? ""}
-              className="themed-input text-sm w-full"
-            />
-          </div>
+      {/* Contextual API reference */}
+      <AnimationApiRef />
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="px-4 py-2 text-sm rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {isPending ? "Saving…" : "Save"}
-          </button>
+      {/* Editor — full width */}
+      <div className="themed-border border rounded overflow-hidden">
+        <CodeMirror
+          value={code}
+          height="480px"
+          theme={isDark ? vscodeDark : "light"}
+          extensions={[javascript()]}
+          onChange={setCode}
+        />
+      </div>
 
-          {state?.errors?._form && (
-            <p className="text-xs text-red-500">{state.errors._form[0]}</p>
-          )}
-
-          <div className="flex-1 min-h-0">
-            <p className="text-xs themed-muted mb-2">
-              Preview{previewVersion === 0 ? " — save to load" : ""}
-            </p>
-            {previewSrc && (
-              <iframe
-                key={previewVersion}
-                src={previewSrc}
-                className="w-full themed-border border rounded"
-                style={{ height: 280 }}
-                title={`Preview: ${object.slug}`}
-              />
-            )}
-          </div>
-        </div>
+      {/* Preview */}
+      <div>
+        <p className="text-xs themed-muted mb-2">
+          Preview{previewVersion === 0 ? " — save to load" : ""}
+        </p>
+        {previewSrc && (
+          <iframe
+            key={previewVersion}
+            src={previewSrc}
+            className="w-full themed-border border rounded"
+            style={{ height: 360 }}
+            title={`Preview: ${object.slug}`}
+          />
+        )}
       </div>
     </form>
   );

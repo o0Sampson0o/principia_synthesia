@@ -55,71 +55,69 @@ export default function DiagramEditForm({ object }: Props) {
   }, [jsonText]);
 
   return (
-    <form action={formAction}>
+    <form action={formAction} className="space-y-4">
       <input type="hidden" name="id" value={object.id} />
       <input type="hidden" name="slug" value={object.slug} />
       <input type="hidden" name="type" value="diagram" />
       <input ref={contentRef} type="hidden" name="content" defaultValue={initialJson} />
 
-      <div className="grid grid-cols-[1fr_300px] gap-4" style={{ height: 600 }}>
-        <div className="themed-border border rounded overflow-hidden">
-          <CodeMirror
-            value={jsonText}
-            height="600px"
-            theme={isDark ? vscodeDark : "light"}
-            extensions={[json()]}
-            onChange={setJsonText}
+      {/* Metadata strip */}
+      <div className="flex gap-3 items-end">
+        <div className="flex-[1] min-w-0">
+          <label className="block text-xs font-medium themed-secondary mb-1">Name</label>
+          <input name="name" defaultValue={object.name} className="themed-input text-sm w-full" />
+          {state?.errors?.name && (
+            <p className="text-xs text-red-500 mt-1">{state.errors.name[0]}</p>
+          )}
+        </div>
+        <div className="flex-[2] min-w-0">
+          <label className="block text-xs font-medium themed-secondary mb-1">
+            Description <span className="text-zinc-400 font-normal">(optional)</span>
+          </label>
+          <input
+            name="description"
+            defaultValue={object.description ?? ""}
+            className="themed-input text-sm w-full"
           />
         </div>
+        <button
+          type="submit"
+          disabled={isPending}
+          className="shrink-0 px-4 py-2 text-sm rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {isPending ? "Saving…" : "Save"}
+        </button>
+      </div>
 
-        <div className="flex flex-col gap-4 overflow-y-auto">
-          <div>
-            <label className="block text-sm font-medium themed-secondary mb-1">Name</label>
-            <input name="name" defaultValue={object.name} className="themed-input text-sm w-full" />
-            {state?.errors?.name && (
-              <p className="text-xs text-red-500 mt-1">{state.errors.name[0]}</p>
-            )}
-          </div>
+      {state?.errors?._form && (
+        <p className="text-xs text-red-500">{state.errors._form[0]}</p>
+      )}
 
-          <div>
-            <label className="block text-sm font-medium themed-secondary mb-1">
-              Description <span className="text-zinc-400 font-normal">(optional)</span>
-            </label>
-            <textarea
-              name="description"
-              rows={3}
-              defaultValue={object.description ?? ""}
-              className="themed-input text-sm w-full"
-            />
-          </div>
+      {/* Editor — full width */}
+      <div className="themed-border border rounded overflow-hidden">
+        <CodeMirror
+          value={jsonText}
+          height="480px"
+          theme={isDark ? vscodeDark : "light"}
+          extensions={[json()]}
+          onChange={setJsonText}
+        />
+      </div>
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="px-4 py-2 text-sm rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {isPending ? "Saving…" : "Save"}
-          </button>
-
-          {state?.errors?._form && (
-            <p className="text-xs text-red-500">{state.errors._form[0]}</p>
-          )}
-
-          <div className="flex-1 min-h-0">
-            <p className="text-xs themed-muted mb-2">
-              Preview{parsed ? ` — ${parsed.format}` : ""}
-            </p>
-            {parsed ? (
-              <pre className="bg-zinc-50 dark:bg-zinc-800 rounded border themed-border p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all">
-                {parsed.source}
-              </pre>
-            ) : (
-              <p className="text-xs text-zinc-400 italic">
-                Invalid JSON — fix to see preview
-              </p>
-            )}
-          </div>
-        </div>
+      {/* Live preview */}
+      <div>
+        <p className="text-xs themed-muted mb-2">
+          Preview{parsed ? ` — ${parsed.format}` : ""}
+        </p>
+        {parsed ? (
+          <pre className="bg-zinc-50 dark:bg-zinc-800 rounded border themed-border p-4 text-sm font-mono overflow-x-auto whitespace-pre-wrap">
+            {parsed.source}
+          </pre>
+        ) : (
+          <p className="text-xs text-zinc-400 italic">
+            Invalid JSON — fix to see preview
+          </p>
+        )}
       </div>
     </form>
   );
