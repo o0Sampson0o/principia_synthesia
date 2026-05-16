@@ -4,6 +4,7 @@ import { useActionState, useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { createKaoObject } from "../actions";
 import AnimationApiRef from "../AnimationApiRef";
+import DiagramRenderer from "@/components/DiagramRenderer";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
@@ -200,9 +201,7 @@ export default function CreateKaoForm() {
           )}
           {type === "diagram" && (
             parsedDiagram ? (
-              <pre className="bg-zinc-50 dark:bg-zinc-800 rounded border themed-border p-4 text-sm font-mono overflow-x-auto whitespace-pre-wrap">
-                {parsedDiagram.source}
-              </pre>
+              <DiagramRenderer format={parsedDiagram.format} source={parsedDiagram.source} />
             ) : (
               <p className="text-xs text-zinc-400 italic">Invalid JSON — fix to see preview</p>
             )

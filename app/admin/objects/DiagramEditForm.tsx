@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { updateKaoObject } from "./actions";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { json } from "@codemirror/lang-json";
+import DiagramRenderer from "@/components/DiagramRenderer";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -110,9 +111,7 @@ export default function DiagramEditForm({ object }: Props) {
           Preview{parsed ? ` — ${parsed.format}` : ""}
         </p>
         {parsed ? (
-          <pre className="bg-zinc-50 dark:bg-zinc-800 rounded border themed-border p-4 text-sm font-mono overflow-x-auto whitespace-pre-wrap">
-            {parsed.source}
-          </pre>
+          <DiagramRenderer format={parsed.format} source={parsed.source} />
         ) : (
           <p className="text-xs text-zinc-400 italic">
             Invalid JSON — fix to see preview

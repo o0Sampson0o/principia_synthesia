@@ -6,6 +6,7 @@ import Link from "next/link";
 import { deleteKaoObject, cloneKaoObject } from "../actions";
 import EditKaoForm from "./EditKaoForm";
 import DynamicAnimation from "@/components/DynamicAnimation";
+import DiagramRenderer from "@/components/DiagramRenderer";
 import type { KaoContent, AnimationContent, DatasetContent, DiagramContent } from "@/lib/kao";
 import { isAnimationContent, isDatasetContent, isDiagramContent } from "@/lib/kao";
 import { canViewPluginCode, canClonePlugin } from "@/lib/plugin-license";
@@ -187,9 +188,10 @@ export default async function ObjectDetailPage({
             </div>
           )}
           {isDiagramContent(content) && (
-            <pre className="bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 text-sm overflow-x-auto">
-              <code>{(content as DiagramContent).source}</code>
-            </pre>
+            <DiagramRenderer
+              format={(content as DiagramContent).format}
+              source={(content as DiagramContent).source}
+            />
           )}
         </div>
       </main>

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { KaoContent, AnimationContent, DatasetContent, DiagramContent } from "@/lib/kao";
 import { isAnimationContent, isDatasetContent, isDiagramContent } from "@/lib/kao";
+import DiagramRenderer from "@/components/DiagramRenderer";
 
 const TYPE_BADGE: Record<string, string> = {
   animation: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
@@ -91,9 +92,10 @@ export default async function ObjectPage({
           </div>
         )}
         {isDiagramContent(content) && (
-          <pre className="bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 text-sm overflow-x-auto">
-            <code>{(content as DiagramContent).source}</code>
-          </pre>
+          <DiagramRenderer
+            format={(content as DiagramContent).format}
+            source={(content as DiagramContent).source}
+          />
         )}
       </div>
     </main>
