@@ -57,7 +57,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   };
 });
 
-import { scanAndInstallPlugins, uninstallPlugin } from "@/app/admin/animations/plugins/actions";
+import { scanAndInstallPlugins, uninstallPlugin } from "@/app/admin/objects/plugins/actions";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

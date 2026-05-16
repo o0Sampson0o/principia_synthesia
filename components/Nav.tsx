@@ -13,7 +13,6 @@ export default async function Nav() {
         <div className="flex items-center gap-6 text-sm">
           <Link href="/search" className="themed-nav-link">Search</Link>
           <Link href="/category" className="themed-nav-link">Categories</Link>
-          <Link href="/animations" className="themed-nav-link">Animations</Link>
           <Link href="/objects" className="themed-nav-link">Objects</Link>
           {session && (
             <Link href="/settings/theme" className="themed-nav-link">Theme</Link>

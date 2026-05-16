@@ -65,12 +65,12 @@ describe("remarkWikilinks", () => {
     expect((link.children[0] as Text).value).toBe("My Book");
   });
 
-  it("transforms [[anim:orbit-sim]] to href /animations/orbit-sim", () => {
+  it("transforms [[anim:orbit-sim]] to href /objects/orbit-sim", () => {
     const children = getFirstParagraphChildren("[[anim:orbit-sim]]");
     expect(children).toHaveLength(1);
     const link = children[0] as Link;
     expect(link.type).toBe("link");
-    expect(link.url).toBe("/animations/orbit-sim");
+    expect(link.url).toBe("/objects/orbit-sim");
     expect((link.children[0] as Text).value).toBe("orbit-sim");
   });
 
@@ -78,7 +78,7 @@ describe("remarkWikilinks", () => {
     const children = getFirstParagraphChildren("[[anim:orbit-sim|Orbit Simulation]]");
     expect(children).toHaveLength(1);
     const link = children[0] as Link;
-    expect(link.url).toBe("/animations/orbit-sim");
+    expect(link.url).toBe("/objects/orbit-sim");
     expect((link.children[0] as Text).value).toBe("Orbit Simulation");
   });
 

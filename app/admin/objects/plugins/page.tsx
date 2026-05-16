@@ -11,17 +11,15 @@ export default async function PluginGalleryPage() {
     .where(and(eq(objects.type, "animation"), eq(objects.source, "plugin")))
     .orderBy(asc(objects.name));
 
-  const installedSlugs = plugins.map((p) => p.slug);
-
   return (
     <main className="max-w-4xl mx-auto px-4 py-10">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-3xl font-bold">Plugin Gallery</h1>
         <Link
-          href="/admin/animations"
+          href="/admin/objects"
           className="text-sm text-zinc-500 hover:text-zinc-800 underline underline-offset-2"
         >
-          Back to Animations
+          Back to Objects
         </Link>
       </div>
       <p className="text-sm text-zinc-500 mb-8">
@@ -87,13 +85,13 @@ export default async function PluginGalleryPage() {
 
                 <div className="flex items-center gap-4 pt-1 border-t border-zinc-100">
                   <Link
-                    href={`/animations/${plugin.slug}`}
+                    href={`/objects/${plugin.slug}`}
                     className="text-xs text-zinc-400 hover:text-zinc-700"
                   >
                     Preview
                   </Link>
                   <Link
-                    href={`/admin/animations/${plugin.slug}`}
+                    href={`/admin/objects/${plugin.slug}`}
                     className="text-xs text-zinc-400 hover:text-zinc-700"
                   >
                     Edit
