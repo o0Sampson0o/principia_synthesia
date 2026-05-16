@@ -1,0 +1,10 @@
+{
+  "slug": "lorenz-attractor",
+  "name": "Lorenz Attractor",
+  "version": "1.0.0",
+  "description": "The Lorenz system projected onto the XZ plane, tracing the iconic butterfly-shaped strange attractor from chaos theory.",
+  "author": "Principia Synthesia",
+  "tags": ["chaos", "differential-equations", "dynamical-systems"],
+  "license": "MIT",
+  "entrypoint": "animation.js"
+}
