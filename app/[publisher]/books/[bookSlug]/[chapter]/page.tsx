@@ -14,6 +14,7 @@ import rehypeKatex from "rehype-katex";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import "katex/dist/katex.min.css";
 import DynamicAnimation from "@/components/DynamicAnimation";
+import ArticleImage from "@/components/ArticleImage";
 import { parseFrontmatter } from "@/lib/frontmatter";
 
 export default async function ChapterPage({
@@ -126,7 +127,7 @@ export default async function ChapterPage({
               rehypePlugins: [rehypeKatex],
             },
           }}
-          components={{ DynamicAnimation }}
+          components={{ DynamicAnimation, img: ArticleImage }}
         />
       </div>
 

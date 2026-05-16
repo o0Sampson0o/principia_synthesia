@@ -3,6 +3,7 @@ import { useRef, useEffect, useState, useCallback, useMemo, forwardRef, useImper
 import dynamic from "next/dynamic";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import type { EditorView } from "@codemirror/view";
 import Preview from "./Preview";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), {
@@ -14,6 +15,7 @@ const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), {
 
 export interface ContentEditorRef {
   compile: () => void;
+  insertText: (text: string) => void;
 }
 
 export default forwardRef<ContentEditorRef, {
@@ -25,6 +27,7 @@ export default forwardRef<ContentEditorRef, {
   const [isDark, setIsDark] = useState(false);
   const previewRef = useRef<{ updateSource: (src: string) => void } | null>(null);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const editorViewRef = useRef<EditorView | null>(null);
 
   // Simple extensions without loading all language data
   const extensions = useMemo(() => [
@@ -71,9 +74,22 @@ export default forwardRef<ContentEditorRef, {
     if (field) field.value = initial;
   }, []);
 
-  // Expose compile method to parent
+  const handleInsertText = useCallback((text: string) => {
+    const view = editorViewRef.current;
+    if (view) {
+      const cursor = view.state.selection.main.head;
+      view.dispatch({
+        changes: { from: cursor, to: cursor, insert: text },
+        selection: { anchor: cursor + text.length },
+      });
+      view.focus();
+    }
+  }, []);
+
+  // Expose compile and insertText methods to parent
   useImperativeHandle(ref, () => ({
     compile: handleCompile,
+    insertText: handleInsertText,
   }));
 
   return (
@@ -87,6 +103,7 @@ export default forwardRef<ContentEditorRef, {
             theme={theme}
             extensions={extensions}
             onChange={handleChange}
+            onCreateEditor={(view) => { editorViewRef.current = view; }}
             className="border rounded overflow-hidden"
           />
         </div>

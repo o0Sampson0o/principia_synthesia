@@ -3,6 +3,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { createArticle } from "../actions";
+import InsertImageButton from "@/components/InsertImageButton";
 
 export default async function NewArticlePage({
   params,
@@ -65,9 +66,12 @@ export default async function NewArticlePage({
           />
         </div>
         <div>
-          <label htmlFor="content" className="block text-sm font-medium themed-secondary mb-1">
-            Content (MDX)
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="content" className="block text-sm font-medium themed-secondary">
+              Content (MDX)
+            </label>
+            <InsertImageButton publisherSlug={publisherSlug} targetTextareaId="content" />
+          </div>
           <textarea
             id="content"
             name="content"

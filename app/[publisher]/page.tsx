@@ -86,6 +86,9 @@ export default async function PublisherProfilePage({
           <Link href={`/${publisherSlug}/objects/new`} className="themed-btn-primary text-sm px-4 py-2">
             New object
           </Link>
+          <Link href={`/${publisherSlug}/images`} className="themed-btn-ghost text-sm px-4 py-2">
+            Images
+          </Link>
         </div>
       )}
 

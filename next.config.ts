@@ -44,6 +44,15 @@ const nextConfig: NextConfig = {
     "@sparticuz/chromium",
     "epub-gen-memory",
   ],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+        pathname: "/**",
+      },
+    ],
+  },
 };
 
 export default withPWA(nextConfig);

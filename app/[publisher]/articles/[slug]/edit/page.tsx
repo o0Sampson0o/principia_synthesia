@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { updateArticle } from "../../actions";
+import InsertImageButton from "@/components/InsertImageButton";
 
 export default async function EditArticlePage({
   params,
@@ -103,9 +104,12 @@ export default async function EditArticlePage({
           />
         </div>
         <div>
-          <label htmlFor="content" className="block text-sm font-medium themed-secondary mb-1">
-            Content (MDX)
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="content" className="block text-sm font-medium themed-secondary">
+              Content (MDX)
+            </label>
+            <InsertImageButton publisherSlug={publisherSlug} targetTextareaId="content" />
+          </div>
           <textarea
             id="content"
             name="content"

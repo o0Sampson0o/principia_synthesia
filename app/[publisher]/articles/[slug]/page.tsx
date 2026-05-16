@@ -14,6 +14,7 @@ import { canView } from "@/lib/access";
 import { resolvePublisher } from "@/lib/publisher";
 import { canEditContent } from "@/lib/roles";
 import DynamicAnimation from "@/components/DynamicAnimation";
+import ArticleImage from "@/components/ArticleImage";
 import ArticleMetadataDisplay from "@/components/ArticleMetadata";
 import { parseFrontmatter } from "@/lib/frontmatter";
 
@@ -135,7 +136,7 @@ export default async function ArticlePage({
               rehypePlugins: [rehypeKatex],
             },
           }}
-          components={{ DynamicAnimation }}
+          components={{ DynamicAnimation, img: ArticleImage }}
         />
       </div>
     </main>

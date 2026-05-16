@@ -306,3 +306,30 @@ export const articleMetadataSchema = z.object({
 });
 
 export type ArticleMetadata = z.infer<typeof articleMetadataSchema>;
+
+// ---------------------------------------------------------------------------
+// Image upload schemas
+// ---------------------------------------------------------------------------
+
+/** Validates the `?publisher=` query parameter on the list and upload routes. */
+export const uploadImageQuerySchema = z.object({
+  publisher: publisherSlugSchema,
+});
+
+/** Validates the `?publisher=` query parameter on the list route. */
+export const listImagesQuerySchema = z.object({
+  publisher: publisherSlugSchema,
+});
+
+/**
+ * Validates the reconstructed blob pathname on the DELETE route.
+ * Accepts paths of the form `images/<publisher-slug>/<filename>.<ext>`.
+ */
+export const deleteImageBodySchema = z.object({
+  path: z
+    .string()
+    .regex(
+      /^images\/[a-z0-9-]+\/[a-z0-9-]+\.(?:jpg|jpeg|png|gif|webp)$/,
+      "Invalid blob path"
+    ),
+});
