@@ -39,6 +39,13 @@ vi.mock("@/lib/auth", () => ({
   getSession: mockGetSession,
 }));
 
+// ─── next/cache mock ──────────────────────────────────────────────────────────
+const mockRevalidatePath = vi.hoisted(() => vi.fn());
+
+vi.mock("next/cache", () => ({
+  revalidatePath: mockRevalidatePath,
+}));
+
 // ─── validate-animation mock ──────────────────────────────────────────────────
 const mockValidateAnimationScript = vi.hoisted(() => vi.fn());
 
@@ -57,7 +64,8 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   };
 });
 
-import { scanAndInstallPlugins, uninstallPlugin } from "@/app/admin/objects/plugins/actions";
+import { scanPlugins, installPlugin, uninstallPlugin } from "@/app/admin/objects/plugins/actions";
+import { revalidatePath } from "next/cache";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -85,6 +93,20 @@ function setupNoSession() {
   mockGetSession.mockResolvedValue(null);
 }
 
+/**
+ * Sets up the bulk-select chain used by scanPlugins to fetch all installed rows.
+ * scanPlugins does: db.select(...).from(objects).where(and(...))  (no .limit)
+ */
+function setupBulkSelectInstalled(rows: { slug: string; pluginMeta: unknown }[]) {
+  mockSelectFromWhere.mockResolvedValue(rows);
+  mockSelectFrom.mockReturnValue({ where: mockSelectFromWhere });
+  mockSelect.mockReturnValue({ from: mockSelectFrom });
+}
+
+/**
+ * Sets up the per-plugin select chain used by installPlugin.
+ * installPlugin does: db.select(...).from(objects).where(and(...)).limit(1)
+ */
 function setupSelectNoExisting() {
   mockSelectFromWhereLimit.mockResolvedValue([]);
   mockSelectFromWhere.mockReturnValue({ limit: mockSelectFromWhereLimit });
@@ -117,7 +139,7 @@ function setupDelete() {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe("scanAndInstallPlugins", () => {
+describe("scanPlugins", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockValidateAnimationScript.mockReturnValue({ ok: true });
@@ -125,127 +147,138 @@ describe("scanAndInstallPlugins", () => {
 
   it("returns { error } when session is not admin", async () => {
     setupNonAdminSession();
-    const result = await scanAndInstallPlugins();
+    const result = await scanPlugins();
     expect(result).toEqual({ error: "Unauthorized" });
   });
 
   it("returns { error } when session is null", async () => {
     setupNoSession();
-    const result = await scanAndInstallPlugins();
+    const result = await scanPlugins();
     expect(result).toEqual({ error: "Unauthorized" });
   });
 
   it("returns { warning } when plugins dir does not exist", async () => {
     setupAdminSession();
     mockReaddir.mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
-    const result = await scanAndInstallPlugins();
+    const result = await scanPlugins();
     expect(result).toEqual({ warning: "plugins/animations/ directory not found" });
   });
 
-  it("skips directory with no manifest.json", async () => {
+  it("returns not_installed status for a plugin not in the DB", async () => {
     setupAdminSession();
-    mockReaddir.mockResolvedValue(["no-manifest"]);
-    mockReadFile.mockRejectedValue(new Error("ENOENT"));
-    const result = await scanAndInstallPlugins();
+    mockReaddir.mockResolvedValue(["test-plugin"]);
+    mockReadFile
+      .mockResolvedValueOnce(VALID_MANIFEST)
+      .mockResolvedValueOnce(VALID_CODE);
+    setupBulkSelectInstalled([]);
+
+    const result = await scanPlugins();
     expect(result).toMatchObject({
-      installed: [],
-      skipped: [{ slug: "no-manifest", reason: "manifest.json not found" }],
+      plugins: [expect.objectContaining({ slug: "test-plugin", status: "not_installed" })],
+      skipped: [],
     });
   });
 
-  it("skips directory with invalid JSON in manifest", async () => {
+  it("returns installed status when DB version matches manifest version", async () => {
+    setupAdminSession();
+    mockReaddir.mockResolvedValue(["test-plugin"]);
+    mockReadFile
+      .mockResolvedValueOnce(VALID_MANIFEST)
+      .mockResolvedValueOnce(VALID_CODE);
+    setupBulkSelectInstalled([{ slug: "test-plugin", pluginMeta: { version: "1.0.0" } }]);
+
+    const result = await scanPlugins();
+    expect(result).toMatchObject({
+      plugins: [expect.objectContaining({ slug: "test-plugin", status: "installed" })],
+      skipped: [],
+    });
+  });
+
+  it("returns update_available status when DB version differs from manifest version", async () => {
+    setupAdminSession();
+    mockReaddir.mockResolvedValue(["test-plugin"]);
+    mockReadFile
+      .mockResolvedValueOnce(VALID_MANIFEST)  // version: "1.0.0"
+      .mockResolvedValueOnce(VALID_CODE);
+    setupBulkSelectInstalled([{ slug: "test-plugin", pluginMeta: { version: "0.9.0" } }]);
+
+    const result = await scanPlugins();
+    expect(result).toMatchObject({
+      plugins: [expect.objectContaining({ slug: "test-plugin", status: "update_available" })],
+      skipped: [],
+    });
+  });
+
+  it("skips directory with invalid manifest", async () => {
     setupAdminSession();
     mockReaddir.mockResolvedValue(["bad-json"]);
     mockReadFile.mockResolvedValue("{ invalid json }");
-    const result = await scanAndInstallPlugins();
+    setupBulkSelectInstalled([]);
+
+    const result = await scanPlugins();
     expect(result).toMatchObject({
-      installed: [],
+      plugins: [],
       skipped: [{ slug: "bad-json", reason: "manifest.json is invalid JSON" }],
     });
   });
 
-  it("skips directory when slug doesn't match directory name", async () => {
+  it("skips directory when manifest.json is missing", async () => {
     setupAdminSession();
-    mockReaddir.mockResolvedValue(["my-dir"]);
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({ slug: "different-slug", name: "X", version: "1.0.0", entrypoint: "a.js" })
-    );
-    const result = await scanAndInstallPlugins();
+    mockReaddir.mockResolvedValue(["no-manifest"]);
+    mockReadFile.mockRejectedValue(new Error("ENOENT"));
+    setupBulkSelectInstalled([]);
+
+    const result = await scanPlugins();
     expect(result).toMatchObject({
-      installed: [],
-      skipped: [
-        expect.objectContaining({
-          slug: "my-dir",
-          reason: expect.stringContaining("does not match directory name"),
-        }),
-      ],
+      plugins: [],
+      skipped: [{ slug: "no-manifest", reason: "manifest.json not found" }],
     });
   });
+});
 
-  it("skips directory when entrypoint file is missing", async () => {
-    setupAdminSession();
-    mockReaddir.mockResolvedValue(["test-plugin"]);
-    // First readFile call (manifest.json) succeeds; second (animation.js) fails
-    mockReadFile
-      .mockResolvedValueOnce(VALID_MANIFEST)
-      .mockRejectedValueOnce(new Error("ENOENT"));
-    const result = await scanAndInstallPlugins();
-    expect(result).toMatchObject({
-      installed: [],
-      skipped: [{ slug: "test-plugin", reason: 'Entrypoint "animation.js" not found' }],
-    });
+describe("installPlugin", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockValidateAnimationScript.mockReturnValue({ ok: true });
   });
 
-  it("skips directory when validateAnimationScript returns ok: false", async () => {
-    setupAdminSession();
-    mockReaddir.mockResolvedValue(["test-plugin"]);
-    mockReadFile
-      .mockResolvedValueOnce(VALID_MANIFEST)
-      .mockResolvedValueOnce("eval('bad')");
-    mockValidateAnimationScript.mockReturnValue({ ok: false, reason: "eval is not allowed" });
-    const result = await scanAndInstallPlugins();
-    expect(result).toMatchObject({
-      installed: [],
-      skipped: [
-        expect.objectContaining({
-          slug: "test-plugin",
-          reason: expect.stringContaining("eval is not allowed"),
-        }),
-      ],
-    });
+  it("returns { error } when session is not admin", async () => {
+    setupNonAdminSession();
+    const result = await installPlugin("test-plugin");
+    expect(result).toEqual({ error: "Unauthorized" });
   });
 
-  it("calls db.insert for a new valid plugin", async () => {
+  it("inserts a new row when plugin is not in DB and calls revalidatePath", async () => {
     setupAdminSession();
-    mockReaddir.mockResolvedValue(["test-plugin"]);
     mockReadFile
       .mockResolvedValueOnce(VALID_MANIFEST)
       .mockResolvedValueOnce(VALID_CODE);
     setupSelectNoExisting();
     setupInsert();
 
-    const result = await scanAndInstallPlugins();
+    const result = await installPlugin("test-plugin");
 
-    expect(result).toMatchObject({ installed: ["test-plugin"], skipped: [] });
+    expect(result).toEqual({ ok: true });
     expect(mockInsert).toHaveBeenCalled();
     expect(mockInsertValues).toHaveBeenCalledWith(
       expect.objectContaining({ slug: "test-plugin", source: "plugin" })
     );
     expect(mockUpdate).not.toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/objects/plugins");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/objects");
   });
 
-  it("calls db.update for an existing plugin", async () => {
+  it("updates an existing row when plugin is already in DB", async () => {
     setupAdminSession();
-    mockReaddir.mockResolvedValue(["test-plugin"]);
     mockReadFile
       .mockResolvedValueOnce(VALID_MANIFEST)
       .mockResolvedValueOnce(VALID_CODE);
     setupSelectExisting();
     setupUpdate();
 
-    const result = await scanAndInstallPlugins();
+    const result = await installPlugin("test-plugin");
 
-    expect(result).toMatchObject({ installed: ["test-plugin"], skipped: [] });
+    expect(result).toEqual({ ok: true });
     expect(mockUpdate).toHaveBeenCalled();
     expect(mockUpdateSet).toHaveBeenCalledWith(
       expect.objectContaining({ source: "plugin" })
@@ -253,23 +286,12 @@ describe("scanAndInstallPlugins", () => {
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
-  it("handles multiple plugins, installing some and skipping others", async () => {
+  it("returns { error } when plugin directory is not found", async () => {
     setupAdminSession();
-    mockReaddir.mockResolvedValue(["test-plugin", "bad-json-dir"]);
-    mockReadFile
-      .mockResolvedValueOnce(VALID_MANIFEST) // test-plugin manifest
-      .mockResolvedValueOnce(VALID_CODE)     // test-plugin code
-      .mockResolvedValueOnce("{ broken");    // bad-json-dir manifest (bad JSON)
+    mockReadFile.mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
 
-    setupSelectNoExisting();
-    setupInsert();
-
-    const result = await scanAndInstallPlugins();
-
-    expect(result).toMatchObject({
-      installed: ["test-plugin"],
-      skipped: [{ slug: "bad-json-dir", reason: "manifest.json is invalid JSON" }],
-    });
+    const result = await installPlugin("nonexistent-plugin");
+    expect(result).toEqual({ error: "manifest.json not found" });
   });
 });
 

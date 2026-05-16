@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { deleteKaoObject, cloneKaoObject } from "../actions";
 import EditKaoForm from "./EditKaoForm";
+import DynamicAnimation from "@/components/DynamicAnimation";
 import type { KaoContent, AnimationContent, DatasetContent, DiagramContent } from "@/lib/kao";
 import { isAnimationContent, isDatasetContent, isDiagramContent } from "@/lib/kao";
 import { canViewPluginCode, canClonePlugin } from "@/lib/plugin-license";
@@ -151,10 +152,7 @@ export default async function ObjectDetailPage({
         <div className="mt-4">
           <h2 className="text-lg font-semibold mb-4">Preview</h2>
           {isAnimationContent(content) && (
-            <iframe
-              src={`/api/objects/${obj.slug}/preview`}
-              className="w-full h-64 border rounded border-zinc-200 dark:border-zinc-700"
-            />
+            <DynamicAnimation slug={obj.slug} />
           )}
           {isDatasetContent(content) && (
             <div className="overflow-x-auto">
@@ -239,10 +237,7 @@ export default async function ObjectDetailPage({
       <div className="mt-10">
         <h2 className="text-lg font-semibold mb-4">Preview</h2>
         {isAnimationContent(content) && (
-          <iframe
-            src={`/api/objects/${obj.slug}/preview`}
-            className="w-full h-64 border rounded border-zinc-200 dark:border-zinc-700"
-          />
+          <DynamicAnimation slug={obj.slug} />
         )}
         {isDatasetContent(content) && (
           <div className="overflow-x-auto">
