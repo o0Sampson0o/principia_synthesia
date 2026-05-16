@@ -433,11 +433,9 @@ export async function saveAnimation(formData: FormData) {
     });
   }
 
-  revalidatePath("/admin/animations");
-  revalidatePath("/animations");
-  revalidatePath(`/animations/${slug}`);
   revalidatePath("/admin/objects");
   revalidatePath("/objects");
+  revalidatePath(`/objects/${slug}`);
 }
 
 /**
@@ -454,8 +452,6 @@ export async function deleteAnimation(formData: FormData) {
     .delete(objects)
     .where(and(eq(objects.slug, slug), eq(objects.type, "animation")));
 
-  revalidatePath("/admin/animations");
-  revalidatePath("/animations");
   revalidatePath("/admin/objects");
   revalidatePath("/objects");
 }

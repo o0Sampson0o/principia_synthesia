@@ -29,7 +29,7 @@ export default function DynamicAnimation({ slug }: { slug: string }) {
       )}
       <div className="mt-2 text-right">
         <Link
-          href={`/animations/${slug}`}
+          href={`/objects/${slug}`}
           className="text-xs text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
         >
           View animation →

@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { db } from "@/db";
-import { articles, curriculumEntries, objects, articleCategories } from "@/db/schema";
-import { desc, asc, eq, ilike, or, count, and } from "drizzle-orm";
+import { articles, curriculumEntries, articleCategories } from "@/db/schema";
+import { desc, asc, eq, count } from "drizzle-orm";
 
 export const TAGS = {
   articles: "articles",
@@ -9,7 +9,7 @@ export const TAGS = {
   curriculum: "curriculum",
   book: (slug: string) => `book:${slug}`,
   categories: "categories",
-  animations: "animations",
+  objects: "objects",
 } as const;
 
 export const getRecentArticles = unstable_cache(
@@ -82,29 +82,6 @@ export const getBookEntries = unstable_cache(
   { tags: [TAGS.curriculum], revalidate: 3600 }
 );
 
-export const getAnimations = unstable_cache(
-  async (query: string, limit: number, offset: number) => {
-    const baseWhere = eq(objects.type, "animation");
-    const where = query
-      ? and(baseWhere, or(ilike(objects.name, `%${query}%`), ilike(objects.slug, `%${query}%`)))
-      : baseWhere;
-
-    const [animations, [{ total }]] = await Promise.all([
-      db
-        .select()
-        .from(objects)
-        .where(where)
-        .orderBy(asc(objects.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.select({ total: count() }).from(objects).where(where),
-    ]);
-
-    return { animations, total };
-  },
-  ["animations"],
-  { tags: [TAGS.animations], revalidate: 3600 }
-);
 
 export const getArticlesByCategory = unstable_cache(
   async (categoryId: number, limit: number, offset: number) => {

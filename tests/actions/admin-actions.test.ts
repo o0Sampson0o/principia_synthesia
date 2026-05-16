@@ -427,8 +427,8 @@ describe("saveAnimation", () => {
 
     expect(mockInsert).toHaveBeenCalled();
     expect(mockUpdate).not.toHaveBeenCalled();
-    expect(revalidatePath).toHaveBeenCalledWith("/admin/animations");
-    expect(revalidatePath).toHaveBeenCalledWith("/animations");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/objects");
+    expect(revalidatePath).toHaveBeenCalledWith("/objects");
   });
 
   it("updates an existing animation when slug exists", async () => {
@@ -448,7 +448,7 @@ describe("saveAnimation", () => {
 
     expect(mockUpdate).toHaveBeenCalled();
     expect(mockInsert).not.toHaveBeenCalled();
-    expect(revalidatePath).toHaveBeenCalledWith("/admin/animations");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/objects");
   });
 
   it("does nothing when slug is empty", async () => {

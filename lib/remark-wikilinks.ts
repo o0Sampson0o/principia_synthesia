@@ -8,7 +8,7 @@ import type { Root, Text, Link, PhrasingContent } from "mdast"
  * - `[[slug]]`            → link to `/<slug>` (article)
  * - `[[slug|Label]]`      → same, with custom display text
  * - `[[book:slug]]`       → link to `/curriculum/<slug>` (book table of contents)
- * - `[[anim:slug]]`       → link to `/animations/<slug>` (animation preview page)
+ * - `[[anim:slug]]`       → link to `/objects/<slug>` (object detail page)
  *
  * The plugin operates on the MDAST `text` node level, splitting runs of text
  * that contain `[[...]]` patterns into text + link nodes in-place.
@@ -37,7 +37,7 @@ export function remarkWikilinks() {
 
         // Resolve URL: 
         // - book:slug → /curriculum/slug
-        // - anim:slug → /animations/slug (preview page)
+        // - anim:slug → /objects/slug
         // - else → /slug
         let url: string
         let displayText: string
@@ -48,7 +48,7 @@ export function remarkWikilinks() {
           displayText = label ?? bookSlug
         } else if (target.startsWith("anim:")) {
           const animSlug = target.slice(5).trim()
-          url = `/animations/${animSlug}`
+          url = `/objects/${animSlug}`
           displayText = label ?? animSlug
         } else if (target.startsWith("object:")) {
           const objectSlug = target.slice(7).trim()

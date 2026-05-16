@@ -162,7 +162,7 @@ export default function CommandPalette() {
                         key={a.slug}
                         icon="animation"
                         label={a.name}
-                        onClick={() => navigate(`/animations/${a.slug}`)}
+                        onClick={() => navigate(`/objects/${a.slug}`)}
                       />
                     ))}
                   </ResultGroup>

@@ -7,7 +7,7 @@ import { getVisibleArticleSlugs, getVisibleBookSlugs } from "@/lib/access"
 const BASE_URL = "https://principia-synthesia.vercel.app"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [allArticles, allCategories, allEntries, allAnimations] = await Promise.all([
+  const [allArticles, allCategories, allEntries, allObjects] = await Promise.all([
     db.select({ slug: articles.slug, updatedAt: articles.updatedAt }).from(articles).where(
       and(
         eq(articles.isInternal, false),
@@ -16,7 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ),
     db.select({ slug: categories.slug }).from(categories),
     db.select({ bookSlug: curriculumEntries.bookSlug }).from(curriculumEntries),
-    db.select({ slug: objects.slug, createdAt: objects.createdAt }).from(objects).where(eq(objects.type, "animation")),
+    db.select({ slug: objects.slug, updatedAt: objects.updatedAt }).from(objects),
   ])
 
   // Filter private resources — sitemap runs without a session (null = unauthenticated visitor)
@@ -37,7 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     {
-      url: `${BASE_URL}/animations`,
+      url: `${BASE_URL}/objects`,
       changeFrequency: "weekly",
       priority: 0.6,
     },
@@ -72,9 +72,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }))
 
-  const animationRoutes: MetadataRoute.Sitemap = allAnimations.map((a) => ({
-    url: `${BASE_URL}/animations/${a.slug}`,
-    lastModified: a.createdAt ?? undefined,
+  const objectRoutes: MetadataRoute.Sitemap = allObjects.map((o) => ({
+    url: `${BASE_URL}/objects/${o.slug}`,
+    lastModified: o.updatedAt ?? undefined,
     changeFrequency: "monthly",
     priority: 0.5,
   }))
@@ -84,6 +84,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...articleRoutes,
     ...categoryRoutes,
     ...bookRoutes,
-    ...animationRoutes,
+    ...objectRoutes,
   ]
 }
