@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { objects } from "@/db/schema";
-import { desc, isNull } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import Link from "next/link";
 
 const TYPE_BADGE: Record<string, string> = {
@@ -13,7 +13,6 @@ export default async function AdminObjectsPage() {
   const allObjects = await db
     .select()
     .from(objects)
-    .where(isNull(objects.source))
     .orderBy(desc(objects.createdAt));
 
   return (
@@ -38,7 +37,7 @@ export default async function AdminObjectsPage() {
 
       {allObjects.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-8 text-center">
-          <p className="text-zinc-400 dark:text-zinc-500 text-sm mb-3">No user-created objects yet. Plugin-installed objects appear in the Plugin Gallery.</p>
+          <p className="text-zinc-400 dark:text-zinc-500 text-sm mb-3">No objects yet.</p>
           <Link
             href="/admin/objects/new"
             className="text-sm font-medium underline underline-offset-2"
@@ -48,19 +47,20 @@ export default async function AdminObjectsPage() {
         </div>
       ) : (
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 divide-y divide-zinc-200 dark:divide-zinc-800">
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
             <span>Name</span>
             <span>Slug</span>
             <span>Type</span>
+            <span>Source</span>
             <span>Created</span>
           </div>
           {allObjects.map((obj) => (
             <div
               key={obj.id}
-              className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center px-4 py-3"
+              className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-4 py-3"
             >
               <Link
-                href={`/admin/objects/${obj.slug}`}
+                href={obj.source === "plugin" ? `/admin/objects/plugins` : `/admin/objects/${obj.slug}`}
                 className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline decoration-zinc-300 dark:decoration-zinc-600 underline-offset-2 truncate"
               >
                 {obj.name}
@@ -74,6 +74,15 @@ export default async function AdminObjectsPage() {
                 }`}
               >
                 {obj.type}
+              </span>
+              <span className="text-xs">
+                {obj.source === "plugin" ? (
+                  <span className="px-2 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300 font-medium">
+                    plugin
+                  </span>
+                ) : (
+                  <span className="text-zinc-300 dark:text-zinc-600">—</span>
+                )}
               </span>
               <span className="text-xs text-zinc-300 dark:text-zinc-600 whitespace-nowrap">
                 {obj.createdAt?.toLocaleDateString("en-US", {
