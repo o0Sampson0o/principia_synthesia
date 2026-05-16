@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
+import type { RefObject } from "react";
+import type { ContentEditorRef } from "./ContentEditor";
 
 type ImageItem = {
   url: string;
@@ -11,7 +13,9 @@ type ImageItem = {
 
 type Props = {
   publisherSlug: string;
-  /** ID of the <textarea> to insert the markdown snippet into. Defaults to "content". */
+  /** Ref to a ContentEditor — preferred insertion method. */
+  editorRef?: RefObject<ContentEditorRef | null>;
+  /** Fallback: ID of the <textarea> to insert the markdown snippet into. */
   targetTextareaId?: string;
 };
 
@@ -34,6 +38,7 @@ function insertAtCursor(textarea: HTMLTextAreaElement, text: string) {
 
 export default function InsertImageButton({
   publisherSlug,
+  editorRef,
   targetTextareaId = "content",
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -108,11 +113,13 @@ export default function InsertImageButton({
   function handleInsert() {
     if (!selectedUrl) return;
     const snippet = `![${altText}](${selectedUrl})`;
-    const textarea = document.getElementById(
-      targetTextareaId
-    ) as HTMLTextAreaElement | null;
-    if (textarea) {
-      insertAtCursor(textarea, snippet);
+    if (editorRef?.current) {
+      editorRef.current.insertText(snippet);
+    } else {
+      const textarea = document.getElementById(
+        targetTextareaId
+      ) as HTMLTextAreaElement | null;
+      if (textarea) insertAtCursor(textarea, snippet);
     }
     setOpen(false);
     setSelectedUrl(null);

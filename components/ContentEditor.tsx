@@ -16,13 +16,16 @@ const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), {
 export interface ContentEditorRef {
   compile: () => void;
   insertText: (text: string) => void;
+  getValue: () => string;
+  setValue: (text: string) => void;
 }
 
 export default forwardRef<ContentEditorRef, {
   initial: string;
   onChange?: (value: string) => void;
   onError?: (hasError: boolean) => void;
-}>(function ContentEditor({ initial, onChange, onError }, ref) {
+  toolbar?: React.ReactNode;
+}>(function ContentEditor({ initial, onChange, onError, toolbar }, ref) {
   const contentValue = useRef<string>(initial);
   const [isDark, setIsDark] = useState(false);
   const previewRef = useRef<{ updateSource: (src: string) => void } | null>(null);
@@ -86,25 +89,48 @@ export default forwardRef<ContentEditorRef, {
     }
   }, []);
 
-  // Expose compile and insertText methods to parent
+  const handleGetValue = useCallback(() => contentValue.current, []);
+
+  const handleSetValue = useCallback((text: string) => {
+    const view = editorViewRef.current;
+    if (view) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: text },
+      });
+    }
+    contentValue.current = text;
+    const field = document.getElementById("content-field") as HTMLInputElement | null;
+    if (field) field.value = text;
+    previewRef.current?.updateSource(text);
+  }, []);
+
+  // Expose compile, insertText, getValue, setValue to parent
   useImperativeHandle(ref, () => ({
     compile: handleCompile,
     insertText: handleInsertText,
+    getValue: handleGetValue,
+    setValue: handleSetValue,
   }));
 
   return (
     <>
       <input type="hidden" name="content" id="content-field" />
-      <div className="grid grid-cols-2 gap-4 h-[600px]">
-        <div className="relative">
+      <div className="grid grid-cols-2 gap-4 h-[640px]">
+        <div className="flex flex-col">
+          {toolbar && (
+            <div className="flex items-center justify-between px-2 py-1 mb-1 border rounded-t bg-zinc-50 dark:bg-zinc-900 border-b-0">
+              <span className="text-xs themed-muted">MDX</span>
+              <div className="flex items-center gap-2">{toolbar}</div>
+            </div>
+          )}
           <CodeMirror
             value={initial}
-            height="600px"
+            height={toolbar ? "608px" : "640px"}
             theme={theme}
             extensions={extensions}
             onChange={handleChange}
             onCreateEditor={(view) => { editorViewRef.current = view; }}
-            className="border rounded overflow-hidden"
+            className={toolbar ? "border border-t-0 rounded-b overflow-hidden flex-1" : "border rounded overflow-hidden flex-1"}
           />
         </div>
         <div className="border rounded p-4 overflow-y-auto max-w-none relative">

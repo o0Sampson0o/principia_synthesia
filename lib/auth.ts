@@ -83,15 +83,11 @@ export async function getSession(): Promise<SessionPayload | null> {
   const payload = await verifySessionToken(token);
   if (!payload) return null;
 
-  // Defensive: reject stale cookies that carry the old shape
+  // Defensive: reject stale cookies that carry the old shape (pre-redesign).
+  // Don't attempt to clear the cookie here — getSession() is called from Server
+  // Components where cookie writes are forbidden. The stale cookie will be
+  // replaced naturally on next login.
   if (typeof payload.userSlug !== "string" || typeof payload.isRootAdmin !== "boolean") {
-    cookieStore.set(COOKIE_NAME, "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 0,
-      path: "/",
-    });
     return null;
   }
 

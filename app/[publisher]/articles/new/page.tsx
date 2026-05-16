@@ -3,7 +3,8 @@ import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { createArticle } from "../actions";
-import InsertImageButton from "@/components/InsertImageButton";
+import ArticleEditorPanel from "@/components/ArticleEditorPanel";
+import { DEFAULT_ARTICLE_METADATA } from "@/lib/frontmatter";
 
 export default async function NewArticlePage({
   params,
@@ -65,20 +66,7 @@ export default async function NewArticlePage({
             className="themed-input w-full resize-y"
           />
         </div>
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label htmlFor="content" className="block text-sm font-medium themed-secondary">
-              Content (MDX)
-            </label>
-            <InsertImageButton publisherSlug={publisherSlug} targetTextareaId="content" />
-          </div>
-          <textarea
-            id="content"
-            name="content"
-            rows={20}
-            className="themed-input w-full font-mono text-sm resize-y"
-          />
-        </div>
+        <ArticleEditorPanel publisherSlug={publisherSlug} initialMetadata={DEFAULT_ARTICLE_METADATA} />
         <div>
           <label htmlFor="categories" className="block text-sm font-medium themed-secondary mb-1">
             Categories (comma-separated slugs)

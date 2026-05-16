@@ -140,7 +140,7 @@ describe("getSession", () => {
     expect(result).toBeNull();
   });
 
-  it("clears cookie and returns null when cookie has stale (pre-redesign) shape", async () => {
+  it("returns null when cookie has stale (pre-redesign) shape without writing cookie", async () => {
     const { SignJWT } = await import("jose");
     // Use the same secret the auth module sees at import time.
     // ESM imports are hoisted, so lib/auth.ts is loaded before the
@@ -155,11 +155,8 @@ describe("getSession", () => {
     mockCookieStore.get.mockReturnValue({ value: token });
     const result = await getSession();
     expect(result).toBeNull();
-    // Cookie cleared
-    expect(mockCookieStore.set).toHaveBeenCalledWith(
-      "session",
-      "",
-      expect.objectContaining({ maxAge: 0 })
-    );
+    // Cookie write must NOT be attempted — getSession() is called from Server Components
+    // where cookie writes are forbidden (Next.js 16 restriction).
+    expect(mockCookieStore.set).not.toHaveBeenCalled();
   });
 });

@@ -6,7 +6,8 @@ import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { updateArticle } from "../../actions";
-import InsertImageButton from "@/components/InsertImageButton";
+import ArticleEditorPanel from "@/components/ArticleEditorPanel";
+import { parseFrontmatter } from "@/lib/frontmatter";
 
 export default async function EditArticlePage({
   params,
@@ -39,6 +40,8 @@ export default async function EditArticlePage({
     .limit(1);
 
   if (!article) notFound();
+
+  const { metadata: initialMetadata } = parseFrontmatter(article.content ?? "");
 
   // Wrap to strip the error-return value so TypeScript sees void for the form action prop.
   async function action(formData: FormData): Promise<void> {
@@ -103,21 +106,7 @@ export default async function EditArticlePage({
             className="themed-input"
           />
         </div>
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label htmlFor="content" className="block text-sm font-medium themed-secondary">
-              Content (MDX)
-            </label>
-            <InsertImageButton publisherSlug={publisherSlug} targetTextareaId="content" />
-          </div>
-          <textarea
-            id="content"
-            name="content"
-            rows={30}
-            defaultValue={article.content ?? ""}
-            className="themed-input w-full font-mono text-sm resize-y"
-          />
-        </div>
+        <ArticleEditorPanel publisherSlug={publisherSlug} initial={article.content ?? ""} initialMetadata={initialMetadata} />
         <button type="submit" className="themed-btn-primary">
           Save changes
         </button>
