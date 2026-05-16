@@ -36,7 +36,7 @@
 
   function step() {
     // Double pendulum equations of motion (Lagrangian mechanics)
-    var delta = theta2 - theta1;
+    var delta = theta1 - theta2;
     var sinD = Math.sin(delta);
     var cosD = Math.cos(delta);
     var sin1 = Math.sin(theta1);
