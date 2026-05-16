@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { objects } from "@/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, isNull } from "drizzle-orm";
 import Link from "next/link";
 
 const TYPE_BADGE: Record<string, string> = {
@@ -13,6 +13,7 @@ export default async function AdminObjectsPage() {
   const allObjects = await db
     .select()
     .from(objects)
+    .where(isNull(objects.source))
     .orderBy(desc(objects.createdAt));
 
   return (
@@ -37,7 +38,7 @@ export default async function AdminObjectsPage() {
 
       {allObjects.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-8 text-center">
-          <p className="text-zinc-400 dark:text-zinc-500 text-sm mb-3">No objects yet.</p>
+          <p className="text-zinc-400 dark:text-zinc-500 text-sm mb-3">No user-created objects yet. Plugin-installed objects appear in the Plugin Gallery.</p>
           <Link
             href="/admin/objects/new"
             className="text-sm font-medium underline underline-offset-2"
