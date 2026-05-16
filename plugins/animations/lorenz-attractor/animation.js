@@ -8,10 +8,6 @@ function LorenzAttractor() {
   }
   resize();
 
-  var bg = (window.theme && window.theme.background) ? window.theme.background : "#ffffff";
-  var fg = (window.theme && window.theme.foreground) ? window.theme.foreground : "#18181b";
-  var accent = (window.theme && window.theme.primary) ? window.theme.primary : "#2563eb";
-
   // Lorenz parameters
   var sigma = 10;
   var rho = 28;
@@ -37,7 +33,6 @@ function LorenzAttractor() {
   function toCanvas(px, pz) {
     var w = canvas.width;
     var h = canvas.height;
-    // attractor spans roughly x in [-20,20], z in [0,50]
     var cx = w / 2 + (px / 22) * (w * 0.42);
     var cy = h * 0.9 - (pz / 52) * (h * 0.82);
     return { cx: cx, cy: cy };
@@ -60,7 +55,7 @@ function LorenzAttractor() {
     }
 
     // Fade
-    ctx.fillStyle = bg;
+    ctx.fillStyle = window.theme.background;
     ctx.globalAlpha = 0.12;
     ctx.fillRect(0, 0, w, h);
     ctx.globalAlpha = 1;
@@ -71,7 +66,7 @@ function LorenzAttractor() {
       var p0 = toCanvas(points[i - 1].x, points[i - 1].z);
       var p1 = toCanvas(points[i].x, points[i].z);
       ctx.beginPath();
-      ctx.strokeStyle = accent;
+      ctx.strokeStyle = window.theme.primaryBtn;
       ctx.globalAlpha = alpha * 0.7;
       ctx.lineWidth = 1;
       ctx.moveTo(p0.cx, p0.cy);
@@ -84,11 +79,11 @@ function LorenzAttractor() {
     var cur = toCanvas(x, z);
     ctx.beginPath();
     ctx.arc(cur.cx, cur.cy, 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = fg;
+    ctx.fillStyle = window.theme.foreground;
     ctx.fill();
 
     // Label
-    ctx.fillStyle = fg;
+    ctx.fillStyle = window.theme.foreground;
     ctx.globalAlpha = 0.4;
     ctx.font = "11px monospace";
     ctx.fillText("σ=" + sigma + "  ρ=" + rho + "  β=" + beta.toFixed(2) + "  (XZ plane)", 10, h - 10);
@@ -97,7 +92,7 @@ function LorenzAttractor() {
     requestAnimationFrame(draw);
   }
 
-  ctx.fillStyle = bg;
+  ctx.fillStyle = window.theme.background;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   draw();
 }

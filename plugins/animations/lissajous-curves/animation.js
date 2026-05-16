@@ -18,10 +18,6 @@ function LissajousCurves() {
   }
   resize();
 
-  var bg = (window.theme && window.theme.background) ? window.theme.background : "#ffffff";
-  var fg = (window.theme && window.theme.foreground) ? window.theme.foreground : "#18181b";
-  var accent = (window.theme && window.theme.primary) ? window.theme.primary : "#2563eb";
-
   function draw() {
     var w = canvas.width;
     var h = canvas.height;
@@ -38,11 +34,11 @@ function LissajousCurves() {
     var x = cx + r * Math.sin(A_FREQ * t + phase);
     var y = cy + r * Math.sin(B_FREQ * t);
 
-    trailPoints.push({ x: x, y: y, age: 0 });
+    trailPoints.push({ x: x, y: y });
     if (trailPoints.length > MAX_TRAIL) trailPoints.shift();
 
     // Fade background
-    ctx.fillStyle = bg;
+    ctx.fillStyle = window.theme.background;
     ctx.globalAlpha = 0.15;
     ctx.fillRect(0, 0, w, h);
     ctx.globalAlpha = 1;
@@ -51,7 +47,7 @@ function LissajousCurves() {
     for (var i = 1; i < trailPoints.length; i++) {
       var alpha = i / trailPoints.length;
       ctx.beginPath();
-      ctx.strokeStyle = accent;
+      ctx.strokeStyle = window.theme.primaryBtn;
       ctx.globalAlpha = alpha * 0.85;
       ctx.lineWidth = 1.5;
       ctx.moveTo(trailPoints[i - 1].x, trailPoints[i - 1].y);
@@ -63,11 +59,11 @@ function LissajousCurves() {
     // Draw current point
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = fg;
+    ctx.fillStyle = window.theme.foreground;
     ctx.fill();
 
     // Label
-    ctx.fillStyle = fg;
+    ctx.fillStyle = window.theme.foreground;
     ctx.globalAlpha = 0.4;
     ctx.font = "11px monospace";
     ctx.fillText("a=" + A_FREQ.toFixed(0) + "  b=" + B_FREQ.toFixed(0) + "  δ=" + phase.toFixed(2), 10, h - 10);
@@ -84,7 +80,7 @@ function LissajousCurves() {
     requestAnimationFrame(draw);
   }
 
-  ctx.fillStyle = bg;
+  ctx.fillStyle = window.theme.background;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   draw();
 }

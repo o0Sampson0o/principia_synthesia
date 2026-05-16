@@ -276,18 +276,19 @@ $$\\nabla \\times \\mathbf{B} = \\mu_0 \\left( \\mathbf{J} + \\varepsilon_0 \\fr
   canvas.height = canvas.offsetHeight || 400;
   const W = canvas.width, H = canvas.height;
   const pivotX = W / 2, pivotY = H * 0.12;
-  const L = H * 0.55;
+  const L_px = H * 0.55;
+  const L = 1.2;
   let angle = Math.PI / 3.5;
   let omega = 0;
-  const g = 9.8, dt = 0.016;
+  const g = 9.8, dt = 1 / 60;
   let trail = [];
 
   function tick() {
     const alpha = -(g / L) * Math.sin(angle);
-    omega += alpha * dt * 60;
+    omega += alpha * dt;
     angle += omega * dt;
-    const bobX = pivotX + L * Math.sin(angle);
-    const bobY = pivotY + L * Math.cos(angle);
+    const bobX = pivotX + L_px * Math.sin(angle);
+    const bobY = pivotY + L_px * Math.cos(angle);
     trail.push({ x: bobX, y: bobY });
     if (trail.length > 40) trail.shift();
 
@@ -354,7 +355,7 @@ $$\\nabla \\times \\mathbf{B} = \\mu_0 \\left( \\mathbf{J} + \\varepsilon_0 \\fr
     ctx.fillRect(0, 0, W, H);
 
     const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 36);
-    glow.addColorStop(0, '#f5a623');
+    glow.addColorStop(0, window.theme.link);
     glow.addColorStop(1, 'transparent');
     ctx.beginPath();
     ctx.arc(cx, cy, 36, 0, Math.PI * 2);
