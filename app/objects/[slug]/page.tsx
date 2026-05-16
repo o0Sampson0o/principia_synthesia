@@ -3,9 +3,10 @@ import { objects } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import type { KaoContent, AnimationContent, DatasetContent, DiagramContent } from "@/lib/kao";
+import type { KaoContent, DatasetContent, DiagramContent } from "@/lib/kao";
 import { isAnimationContent, isDatasetContent, isDiagramContent } from "@/lib/kao";
 import DiagramRenderer from "@/components/DiagramRenderer";
+import DynamicAnimation from "@/components/DynamicAnimation";
 
 const TYPE_BADGE: Record<string, string> = {
   animation: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
@@ -54,10 +55,7 @@ export default async function ObjectPage({
 
       <div className="mt-6">
         {isAnimationContent(content) && (
-          <iframe
-            src={`/api/objects/${obj.slug}/preview`}
-            className="w-full h-64 border rounded border-zinc-200 dark:border-zinc-700"
-          />
+          <DynamicAnimation slug={obj.slug} />
         )}
         {isDatasetContent(content) && (
           <div className="overflow-x-auto">
