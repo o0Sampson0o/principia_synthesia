@@ -1,8 +1,13 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { createKaoObject } from "../actions";
 import AnimationApiRef from "../AnimationApiRef";
+import { vscodeDark } from "@uiw/codemirror-theme-vscode";
+import { javascript } from "@codemirror/lang-javascript";
+
+const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
 const CONTENT_PLACEHOLDERS: Record<string, string> = {
   animation: JSON.stringify({ code: "function MyAnim() { /* ... */ }" }, null, 2),
@@ -22,6 +27,23 @@ export default function CreateKaoForm() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [type, setType] = useState<string>("animation");
+  const [animCode, setAnimCode] = useState("");
+  const [isDark, setIsDark] = useState(false);
+  const contentRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    setIsDark(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  useEffect(() => {
+    if (type === "animation" && contentRef.current) {
+      contentRef.current.value = JSON.stringify({ code: animCode });
+    }
+  }, [animCode, type]);
 
   function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
@@ -86,20 +108,46 @@ export default function CreateKaoForm() {
 
       {type === "animation" && <AnimationApiRef />}
 
-      <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-          Content (JSON)
-        </label>
-        <textarea
-          name="content"
-          rows={8}
-          className="themed-input font-mono text-sm"
-          placeholder={CONTENT_PLACEHOLDERS[type] ?? "{}"}
-        />
-        {state?.errors?.content && (
-          <p className="text-xs text-red-500 mt-1">{state.errors.content[0]}</p>
-        )}
-      </div>
+      {type === "animation" ? (
+        <div>
+          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            Animation code
+          </label>
+          <input
+            ref={contentRef}
+            type="hidden"
+            name="content"
+            defaultValue={JSON.stringify({ code: "" })}
+          />
+          <div className="themed-border border rounded overflow-hidden" style={{ height: 400 }}>
+            <CodeMirror
+              value={animCode}
+              height="400px"
+              theme={isDark ? vscodeDark : "light"}
+              extensions={[javascript()]}
+              onChange={setAnimCode}
+            />
+          </div>
+          {state?.errors?.content && (
+            <p className="text-xs text-red-500 mt-1">{state.errors.content[0]}</p>
+          )}
+        </div>
+      ) : (
+        <div>
+          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            Content (JSON)
+          </label>
+          <textarea
+            name="content"
+            rows={8}
+            className="themed-input font-mono text-sm"
+            placeholder={CONTENT_PLACEHOLDERS[type] ?? "{}"}
+          />
+          {state?.errors?.content && (
+            <p className="text-xs text-red-500 mt-1">{state.errors.content[0]}</p>
+          )}
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">

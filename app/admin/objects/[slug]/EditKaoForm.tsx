@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { updateKaoObject } from "../actions";
 import AnimationApiRef from "../AnimationApiRef";
+import AnimationEditForm from "../AnimationEditForm";
 
 interface KaoObject {
   id: number;
@@ -20,6 +21,10 @@ interface Props {
 export default function EditKaoForm({ object }: Props) {
   const [state, formAction] = useActionState(updateKaoObject, null);
   const [type, setType] = useState(object.type);
+
+  if (object.type === "animation") {
+    return <AnimationEditForm object={object as { id: number; slug: string; name: string; content: unknown; description: string | null }} />;
+  }
 
   return (
     <form action={formAction} className="space-y-6">
