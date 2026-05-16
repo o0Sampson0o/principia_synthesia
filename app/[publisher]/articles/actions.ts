@@ -117,13 +117,15 @@ export async function updateArticle(
 
   let validated: ReturnType<typeof updateArticleSchema.parse>;
   try {
+    // formData.get() returns null for missing fields; convert to undefined
+    // so z.string().optional() accepts them.
     validated = updateArticleSchema.parse({
       id: formData.get("id"),
       title: formData.get("title"),
       slug: formData.get("slug"),
-      summary: formData.get("summary"),
-      content: formData.get("content"),
-      categories: formData.get("categories"),
+      summary: formData.get("summary") ?? undefined,
+      content: formData.get("content") ?? undefined,
+      categories: formData.get("categories") ?? undefined,
     });
   } catch (err: unknown) {
     const zodErr = err as { name?: string; issues?: { path: string[]; message: string }[] };

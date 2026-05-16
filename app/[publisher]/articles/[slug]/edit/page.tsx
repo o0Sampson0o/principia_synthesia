@@ -3,7 +3,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
-import { articles } from "@/db/schema";
+import { articles, articleCategories, categories } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { updateArticle } from "../../actions";
 import ArticleEditorPanel from "@/components/ArticleEditorPanel";
@@ -42,6 +42,13 @@ export default async function EditArticlePage({
   if (!article) notFound();
 
   const { metadata: initialMetadata } = parseFrontmatter(article.content ?? "");
+
+  const articleCats = await db
+    .select({ slug: categories.slug })
+    .from(articleCategories)
+    .innerJoin(categories, eq(articleCategories.categoryId, categories.id))
+    .where(eq(articleCategories.articleId, article.id));
+  const currentCategories = articleCats.map((c) => c.slug).join(", ");
 
   // Wrap to strip the error-return value so TypeScript sees void for the form action prop.
   async function action(formData: FormData): Promise<void> {
@@ -103,6 +110,18 @@ export default async function EditArticlePage({
             name="editNote"
             type="text"
             defaultValue="Updated"
+            className="themed-input"
+          />
+        </div>
+        <div>
+          <label htmlFor="categories" className="block text-sm font-medium themed-secondary mb-1">
+            Categories (comma-separated slugs)
+          </label>
+          <input
+            id="categories"
+            name="categories"
+            type="text"
+            defaultValue={currentCategories}
             className="themed-input"
           />
         </div>
