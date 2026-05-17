@@ -37,7 +37,27 @@ const withPWA = withPWAInit({
   },
 });
 
+// Derive the public Vercel Blob base URL from the token so we can rewrite
+// /images/:path* → CDN URL without going through a function.
+// Token format: vercel_blob_rw_<STORE_ID>_<secret>
+const blobStoreId = process.env.BLOB_READ_WRITE_TOKEN?.match(
+  /^vercel_blob_rw_([^_]+)/
+)?.[1];
+const blobCdnBase = blobStoreId
+  ? `https://${blobStoreId}.public.blob.vercel-storage.com`
+  : null;
+
 const nextConfig: NextConfig = {
+  async rewrites() {
+    if (!blobCdnBase) return [];
+    return [
+      {
+        // /images/sampson/photo.png  →  CDN/images/sampson/photo.png
+        source: "/images/:path*",
+        destination: `${blobCdnBase}/images/:path*`,
+      },
+    ];
+  },
   serverExternalPackages: [
     "mathjax-full",
     "playwright-core",

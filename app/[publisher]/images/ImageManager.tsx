@@ -37,7 +37,7 @@ export default function ImageManager({ publisherSlug, initialImages }: Props) {
   function handleUploaded(image: UploadedImage) {
     setImages((prev) => [image, ...prev]);
     if (altText.trim()) {
-      setLastSnippet(`![${altText}](${image.url})`);
+      setLastSnippet(`![${altText}](/${image.pathname})`);
       setAltText("");
     }
   }

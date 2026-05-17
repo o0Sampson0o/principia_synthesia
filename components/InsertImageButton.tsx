@@ -44,12 +44,12 @@ export default function InsertImageButton({
   const [open, setOpen] = useState(false);
   const [images, setImages] = useState<ImageItem[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
+  const [selected, setSelected] = useState<{ url: string; pathname: string } | null>(null);
   const [altText, setAltText] = useState("");
 
   async function openModal() {
     setOpen(true);
-    setSelectedUrl(null);
+    setSelected(null);
     setAltText("");
     if (images === null) await fetchImages();
   }
@@ -73,12 +73,13 @@ export default function InsertImageButton({
 
   function handleUploaded(image: UploadedImage) {
     setImages((prev) => (prev ? [image, ...prev] : [image]));
-    setSelectedUrl(image.url);
+    setSelected({ url: image.url, pathname: image.pathname });
   }
 
   function handleInsert() {
-    if (!selectedUrl) return;
-    const snippet = `![${altText}](${selectedUrl})`;
+    if (!selected) return;
+    const src = `/${selected.pathname}`;
+    const snippet = `![${altText}](${src})`;
     if (editorRef?.current) {
       editorRef.current.insertText(snippet);
     } else {
@@ -86,7 +87,7 @@ export default function InsertImageButton({
       if (textarea) insertAtCursor(textarea, snippet);
     }
     setOpen(false);
-    setSelectedUrl(null);
+    setSelected(null);
     setAltText("");
   }
 
@@ -139,10 +140,10 @@ export default function InsertImageButton({
                     <button
                       key={img.pathname}
                       type="button"
-                      onClick={() => setSelectedUrl(img.url)}
+                      onClick={() => setSelected({ url: img.url, pathname: img.pathname })}
                       className={[
                         "rounded-md overflow-hidden border-2 text-left transition-colors",
-                        selectedUrl === img.url
+                        selected?.pathname === img.pathname
                           ? "border-blue-500"
                           : "border-transparent hover:border-zinc-300 dark:hover:border-zinc-600",
                       ].join(" ")}
@@ -163,11 +164,11 @@ export default function InsertImageButton({
             </div>
 
             {/* Alt text + insert */}
-            {selectedUrl && (
+            {selected && (
               <div className="space-y-2 border-t themed-border pt-4">
                 <p className="text-sm themed-muted">
                   Selected:{" "}
-                  <span className="font-mono text-xs">{filename(selectedUrl.split("?")[0])}</span>
+                  <span className="font-mono text-xs">{filename(selected.pathname)}</span>
                 </p>
                 <label htmlFor="insert-alt" className="block text-sm font-medium themed-secondary">
                   Alt text
