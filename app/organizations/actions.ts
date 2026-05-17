@@ -90,12 +90,16 @@ export async function deleteOrganization(formData: FormData) {
     throw new Error("Forbidden");
   }
 
-  // Remove all access grants for this org, then delete the org (cascades memberships + publishers)
-  await db
-    .delete(accessGrants)
-    .where(and(eq(accessGrants.granteeType, "org"), eq(accessGrants.granteeId, validated.orgId)));
-
-  await db.delete(organizations).where(eq(organizations.id, validated.orgId));
+  // Remove all access grants for this org, then delete the org (cascades memberships + publishers).
+  // Both deletes are wrapped in a transaction so a failure mid-way leaves the DB unchanged.
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(accessGrants)
+      .where(
+        and(eq(accessGrants.granteeType, "org"), eq(accessGrants.granteeId, validated.orgId))
+      );
+    await tx.delete(organizations).where(eq(organizations.id, validated.orgId));
+  });
 
   revalidatePath("/organizations");
   redirect("/organizations");
