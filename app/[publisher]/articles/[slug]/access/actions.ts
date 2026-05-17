@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { resourceVisibility, accessGrants } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -76,10 +76,20 @@ export async function removeArticleGrant(
   articleSlug: string,
   formData: FormData
 ) {
-  await assertEditRights(publisherSlug);
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
   const grantId = z.coerce.number().int().positive().parse(formData.get("grantId"));
 
-  await db.delete(accessGrants).where(eq(accessGrants.id, grantId));
+  await db
+    .delete(accessGrants)
+    .where(
+      and(
+        eq(accessGrants.id, grantId),
+        eq(accessGrants.resourceType, "article"),
+        eq(accessGrants.ownerType, ownerType),
+        eq(accessGrants.ownerId, ownerId),
+        eq(accessGrants.resourceKey, articleSlug)
+      )
+    );
 
   revalidatePath(`/${publisherSlug}/articles/${articleSlug}/access`);
 }

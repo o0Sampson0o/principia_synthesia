@@ -76,10 +76,20 @@ export async function removeBookGrant(
   bookSlug: string,
   formData: FormData
 ) {
-  await assertEditRights(publisherSlug);
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
   const grantId = z.coerce.number().int().positive().parse(formData.get("grantId"));
 
-  await db.delete(accessGrants).where(eq(accessGrants.id, grantId));
+  await db
+    .delete(accessGrants)
+    .where(
+      and(
+        eq(accessGrants.id, grantId),
+        eq(accessGrants.resourceType, "book"),
+        eq(accessGrants.ownerType, ownerType),
+        eq(accessGrants.ownerId, ownerId),
+        eq(accessGrants.resourceKey, bookSlug)
+      )
+    );
 
   revalidatePath(`/${publisherSlug}/books/${bookSlug}/access`);
 }
