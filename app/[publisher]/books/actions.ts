@@ -18,6 +18,7 @@ import { parseFrontmatter } from "@/lib/frontmatter";
 import {
   createBookSchema,
   deleteBookSchema,
+  updateBookSchema,
   upsertCurriculumEntrySchema,
   removeCurriculumEntrySchema,
   createInternalArticleSchema,
@@ -72,6 +73,31 @@ export async function deleteBook(publisherSlug: string, formData: FormData) {
 
   revalidatePath(`/${publisherSlug}`);
   redirect(`/${publisherSlug}`);
+}
+
+export async function updateBook(publisherSlug: string, formData: FormData) {
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  const validated = updateBookSchema.parse({
+    id: formData.get("id"),
+    slug: formData.get("slug"),
+    title: formData.get("title"),
+  });
+
+  const [current] = await db
+    .select({ slug: books.slug })
+    .from(books)
+    .where(eq(books.id, validated.id))
+    .limit(1);
+
+  await db
+    .update(books)
+    .set({ slug: validated.slug, title: validated.title, updatedAt: new Date() })
+    .where(eq(books.id, validated.id));
+
+  if (current) revalidatePath(`/${publisherSlug}/books/${current.slug}`);
+  revalidatePath(`/${publisherSlug}/books/${validated.slug}`);
+  redirect(`/${publisherSlug}/books/${validated.slug}`);
 }
 
 // ---------------------------------------------------------------------------

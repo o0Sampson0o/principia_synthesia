@@ -118,6 +118,13 @@ export const deleteBookSchema = z.object({
   bookId: z.coerce.number().int().positive("Invalid book ID"),
 });
 
+/** Validates form data for updating a book's title and slug. */
+export const updateBookSchema = z.object({
+  id: z.coerce.number().int().positive("Invalid book ID"),
+  slug: bookSlugSchema,
+  title: z.string().min(1, "Title is required").max(200, "Title too long"),
+});
+
 /**
  * Validates form data for adding or updating a curriculum (book) entry.
  * Uses `bookId` FK instead of the old `bookSlug`/`bookTitle` denormalised pair.
