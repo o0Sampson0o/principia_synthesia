@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { rateLimit } from "@/lib/rate-limit";
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { JWT_SECRET } from "@/lib/env";
 
 function buildCsp(nonce: string, allowEval: boolean = false): string {
   const isDev = process.env.NODE_ENV === "development";

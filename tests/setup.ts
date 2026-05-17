@@ -1,3 +1,6 @@
+// Set AUTH_SECRET before any module imports so lib/env.ts reads a valid secret.
+process.env.AUTH_SECRET = "test-secret-test-secret-please-replace";
+
 import "@testing-library/jest-dom";
 import { vi } from "vitest";
 

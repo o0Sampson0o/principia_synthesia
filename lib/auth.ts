@@ -2,10 +2,7 @@ import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { JWT_SECRET } from "@/lib/env";
 const COOKIE_NAME = "session";
 const BCRYPT_ROUNDS = 10;
 
