@@ -8,6 +8,7 @@ import { eq, and } from "drizzle-orm";
 import { updateArticle } from "../../actions";
 import ArticleEditorPanel from "@/components/ArticleEditorPanel";
 import { parseFrontmatter } from "@/lib/frontmatter";
+import Link from "next/link";
 
 export default async function EditArticlePage({
   params,
@@ -58,7 +59,15 @@ export default async function EditArticlePage({
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold themed-heading mb-6">Edit article</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold themed-heading">Edit article</h1>
+        <Link
+          href={`/${publisherSlug}/articles/${slug}/access`}
+          className="themed-btn-ghost text-sm px-3 py-1"
+        >
+          Access &amp; visibility
+        </Link>
+      </div>
       <form action={action} className="space-y-4">
         <input type="hidden" name="id" value={article.id} />
         <div>

@@ -5,6 +5,7 @@ import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
 import { books, curriculumEntries, articles } from "@/db/schema";
 import { eq, and, asc } from "drizzle-orm";
+import Link from "next/link";
 import {
   updateBook,
   deleteBook,
@@ -102,7 +103,15 @@ export default async function EditBookPage({
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold themed-heading mb-6">Edit book</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold themed-heading">Edit book</h1>
+        <Link
+          href={`/${publisherSlug}/books/${bookSlug}/access`}
+          className="themed-btn-ghost text-sm px-3 py-1"
+        >
+          Access &amp; visibility
+        </Link>
+      </div>
       <form action={action} className="space-y-4">
         <input type="hidden" name="id" value={bookRow.id} />
         <div>
