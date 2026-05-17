@@ -182,12 +182,14 @@ export async function reorderCurriculumEntries(
 ) {
   await assertEditRights(publisherSlug);
 
-  for (let i = 0; i < orderedIds.length; i++) {
-    await db
-      .update(curriculumEntries)
-      .set({ position: i })
-      .where(eq(curriculumEntries.id, orderedIds[i]));
-  }
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await tx
+        .update(curriculumEntries)
+        .set({ position: i })
+        .where(eq(curriculumEntries.id, orderedIds[i]));
+    }
+  });
 
   const [book] = await db.select({ slug: books.slug }).from(books).where(eq(books.id, bookId)).limit(1);
   if (book) revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
