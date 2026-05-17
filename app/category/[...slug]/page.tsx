@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { categories, articleCategories, articles, users, organizations, resourceVisibility } from "@/db/schema";
+import { categories, articleCategories, articles, publishers, resourceVisibility } from "@/db/schema";
 import { eq, and, sql, or, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -41,15 +41,14 @@ export default async function CategoryPage({
     );
   }
 
-  const rawResults = await db
+  const results = await db
     .select({
       id: articles.id,
       title: articles.title,
       slug: articles.slug,
       summary: articles.summary,
-      ownerType: articles.ownerType,
-      ownerId: articles.ownerId,
       updatedAt: articles.updatedAt,
+      publisherSlug: publishers.slug,
     })
     .from(articles)
     .innerJoin(articleCategories, eq(articles.id, articleCategories.articleId))
@@ -62,34 +61,14 @@ export default async function CategoryPage({
         eq(resourceVisibility.resourceKey, articles.slug)
       )
     )
+    .leftJoin(
+      publishers,
+      or(
+        and(eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
+        and(eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
+      )
+    )
     .where(and(...conditions));
-
-  // Resolve publisher slugs
-  const pubMap = new Map<string, string>();
-  for (const a of rawResults) {
-    const key = `${a.ownerType}:${a.ownerId}`;
-    if (pubMap.has(key)) continue;
-    if (a.ownerType === "user") {
-      const [row] = await db
-        .select({ publisherSlug: users.publisherSlug })
-        .from(users)
-        .where(eq(users.id, a.ownerId))
-        .limit(1);
-      if (row) pubMap.set(key, row.publisherSlug);
-    } else {
-      const [row] = await db
-        .select({ publisherSlug: organizations.publisherSlug })
-        .from(organizations)
-        .where(eq(organizations.id, a.ownerId))
-        .limit(1);
-      if (row) pubMap.set(key, row.publisherSlug);
-    }
-  }
-
-  const results = rawResults.map((a) => ({
-    ...a,
-    publisherSlug: pubMap.get(`${a.ownerType}:${a.ownerId}`) ?? "unknown",
-  }));
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">
@@ -113,7 +92,7 @@ export default async function CategoryPage({
           {results.map((a) => (
             <li key={a.id}>
               <ArticleCard
-                publisherSlug={a.publisherSlug}
+                publisherSlug={a.publisherSlug ?? "unknown"}
                 slug={a.slug}
                 title={a.title}
                 summary={a.summary}

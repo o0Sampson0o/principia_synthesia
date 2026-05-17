@@ -46,11 +46,11 @@ import { and } from "drizzle-orm";
 function setupEmptyResults() {
   mockSelectWhereLimit.mockResolvedValue([]);
   mockSelectWhere.mockReturnValue({ limit: mockSelectWhereLimit });
-  mockSelectLeftJoin.mockReturnValue({ where: mockSelectWhere });
-  mockSelectFrom.mockReturnValue({
-    leftJoin: mockSelectLeftJoin,
-    where: mockSelectWhere,
-  });
+  // Second leftJoin returns the where chain
+  const secondLeftJoin = { where: mockSelectWhere };
+  // First leftJoin returns an object that supports a second leftJoin
+  mockSelectLeftJoin.mockReturnValue({ leftJoin: () => secondLeftJoin, where: mockSelectWhere });
+  mockSelectFrom.mockReturnValue({ leftJoin: mockSelectLeftJoin, where: mockSelectWhere });
   mockSelect.mockReturnValue({ from: mockSelectFrom });
 }
 

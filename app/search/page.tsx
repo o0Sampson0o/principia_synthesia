@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { articles, publishers, users, organizations, resourceVisibility } from "@/db/schema";
+import { articles, publishers, resourceVisibility } from "@/db/schema";
 import { ilike, or, and, eq, sql, isNull } from "drizzle-orm";
 import ArticleCard from "@/components/ArticleCard";
 import { getSession } from "@/lib/auth";
@@ -56,16 +56,15 @@ export default async function SearchPage({
 
   const shouldRunQuery = !!query || tagList.length > 0;
 
-  const rawResults = shouldRunQuery
+  const results = shouldRunQuery
     ? await db
         .select({
           id: articles.id,
           slug: articles.slug,
           title: articles.title,
           summary: articles.summary,
-          ownerType: articles.ownerType,
-          ownerId: articles.ownerId,
           updatedAt: articles.updatedAt,
+          publisherSlug: publishers.slug,
         })
         .from(articles)
         .leftJoin(
@@ -77,35 +76,15 @@ export default async function SearchPage({
             eq(resourceVisibility.resourceKey, articles.slug)
           )
         )
+        .leftJoin(
+          publishers,
+          or(
+            and(eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
+            and(eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
+          )
+        )
         .where(and(...conditions))
     : [];
-
-  // Build publisher slug lookup for results
-  const pubMap = new Map<string, string>();
-  for (const a of rawResults) {
-    const key = `${a.ownerType}:${a.ownerId}`;
-    if (pubMap.has(key)) continue;
-    if (a.ownerType === "user") {
-      const [row] = await db
-        .select({ publisherSlug: users.publisherSlug })
-        .from(users)
-        .where(eq(users.id, a.ownerId))
-        .limit(1);
-      if (row) pubMap.set(key, row.publisherSlug);
-    } else {
-      const [row] = await db
-        .select({ publisherSlug: organizations.publisherSlug })
-        .from(organizations)
-        .where(eq(organizations.id, a.ownerId))
-        .limit(1);
-      if (row) pubMap.set(key, row.publisherSlug);
-    }
-  }
-
-  const results = rawResults.map((a) => ({
-    ...a,
-    publisherSlug: pubMap.get(`${a.ownerType}:${a.ownerId}`) ?? "unknown",
-  }));
 
   const hasActiveFilter = !!query || tagList.length > 0;
 
@@ -148,7 +127,7 @@ export default async function SearchPage({
         {results.map((a) => (
           <li key={a.id}>
             <ArticleCard
-              publisherSlug={a.publisherSlug}
+              publisherSlug={a.publisherSlug ?? "unknown"}
               slug={a.slug}
               title={a.title}
               summary={a.summary}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/db";
-import { articles, articleViews, publishers, users, organizations, resourceVisibility } from "@/db/schema";
+import { articles, articleViews, publishers, resourceVisibility } from "@/db/schema";
 import { desc, eq, count, sql, and, isNull, or } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
@@ -14,9 +14,8 @@ export default async function HomePage() {
       slug: articles.slug,
       title: articles.title,
       summary: articles.summary,
-      ownerType: articles.ownerType,
-      ownerId: articles.ownerId,
       viewCount: count(articleViews.id).as("view_count"),
+      publisherSlug: publishers.slug,
     })
     .from(articles)
     .innerJoin(articleViews, eq(articleViews.articleId, articles.id))
@@ -29,6 +28,13 @@ export default async function HomePage() {
         eq(resourceVisibility.resourceKey, articles.slug)
       )
     )
+    .leftJoin(
+      publishers,
+      or(
+        and(eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
+        and(eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
+      )
+    )
     .where(
       and(
         eq(articles.isInternal, false),
@@ -37,33 +43,9 @@ export default async function HomePage() {
         or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
       )
     )
-    .groupBy(articles.id)
+    .groupBy(articles.id, publishers.slug)
     .orderBy(desc(count(articleViews.id)))
     .limit(5);
-
-  // Resolve publisher slugs for top articles
-  const ownerKeys = topArticles.map((a) => ({ ownerType: a.ownerType, ownerId: a.ownerId }));
-  const publisherSlugsMap = new Map<string, string>();
-
-  for (const { ownerType, ownerId } of ownerKeys) {
-    const key = `${ownerType}:${ownerId}`;
-    if (publisherSlugsMap.has(key)) continue;
-    if (ownerType === "user") {
-      const [row] = await db
-        .select({ publisherSlug: users.publisherSlug })
-        .from(users)
-        .where(eq(users.id, ownerId))
-        .limit(1);
-      if (row) publisherSlugsMap.set(key, row.publisherSlug);
-    } else {
-      const [row] = await db
-        .select({ publisherSlug: organizations.publisherSlug })
-        .from(organizations)
-        .where(eq(organizations.id, ownerId))
-        .limit(1);
-      if (row) publisherSlugsMap.set(key, row.publisherSlug);
-    }
-  }
 
   return (
     <main>
@@ -122,18 +104,17 @@ export default async function HomePage() {
           <h2 className="text-2xl font-semibold themed-heading mb-6">Top articles this month</h2>
           <ul className="space-y-4">
             {topArticles.map((a) => {
-              const publisherSlug =
-                publisherSlugsMap.get(`${a.ownerType}:${a.ownerId}`) ?? "unknown";
+              const pubSlug = a.publisherSlug ?? "unknown";
               return (
                 <li key={a.id} className="border-b themed-border pb-4">
                   <Link
-                    href={`/${publisherSlug}/articles/${a.slug}`}
+                    href={`/${pubSlug}/articles/${a.slug}`}
                     className="text-lg font-medium themed-link"
                   >
                     {a.title}
                   </Link>
                   {a.summary && <p className="text-sm themed-muted mt-1 line-clamp-2">{a.summary}</p>}
-                  <p className="text-xs themed-muted mt-1">by @{publisherSlug}</p>
+                  <p className="text-xs themed-muted mt-1">by @{pubSlug}</p>
                 </li>
               );
             })}

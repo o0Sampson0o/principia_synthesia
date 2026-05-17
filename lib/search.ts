@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { articles, books, objects, publishers, users, organizations, resourceVisibility } from "@/db/schema";
+import { articles, books, objects, publishers, resourceVisibility } from "@/db/schema";
 import { ilike, and, eq, sql, or, isNull } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
@@ -33,24 +33,6 @@ export interface SearchAllResult {
   objects: SearchObjectResult[];
 }
 
-async function getPublisherSlug(ownerType: string, ownerId: number): Promise<string> {
-  if (ownerType === "user") {
-    const [row] = await db
-      .select({ publisherSlug: users.publisherSlug })
-      .from(users)
-      .where(eq(users.id, ownerId))
-      .limit(1);
-    return row?.publisherSlug ?? "unknown";
-  } else {
-    const [row] = await db
-      .select({ publisherSlug: organizations.publisherSlug })
-      .from(organizations)
-      .where(eq(organizations.id, ownerId))
-      .limit(1);
-    return row?.publisherSlug ?? "unknown";
-  }
-}
-
 /**
  * Searches articles, books, and objects by title/name. Returns up to 8 results
  * per category. Internal articles are excluded. Private resources are excluded
@@ -60,14 +42,13 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
   const session = await getSession();
   const q = `%${query}%`;
 
-  const [articleRows, bookRows, objectRows] = await Promise.all([
+  const [articleResults, bookResults, objectResults] = await Promise.all([
     db
       .select({
         id: articles.id,
         title: articles.title,
         slug: articles.slug,
-        ownerType: articles.ownerType,
-        ownerId: articles.ownerId,
+        publisherSlug: publishers.slug,
       })
       .from(articles)
       .leftJoin(
@@ -77,6 +58,13 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
           eq(resourceVisibility.ownerType, articles.ownerType),
           eq(resourceVisibility.ownerId, articles.ownerId),
           eq(resourceVisibility.resourceKey, articles.slug)
+        )
+      )
+      .leftJoin(
+        publishers,
+        or(
+          and(eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
+          and(eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
         )
       )
       .where(
@@ -98,8 +86,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
         id: books.id,
         title: books.title,
         slug: books.slug,
-        ownerType: books.ownerType,
-        ownerId: books.ownerId,
+        publisherSlug: publishers.slug,
       })
       .from(books)
       .leftJoin(
@@ -109,6 +96,13 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
           eq(resourceVisibility.ownerType, books.ownerType),
           eq(resourceVisibility.ownerId, books.ownerId),
           eq(resourceVisibility.resourceKey, books.slug)
+        )
+      )
+      .leftJoin(
+        publishers,
+        or(
+          and(eq(publishers.kind, "user"), eq(publishers.userId, books.ownerId)),
+          and(eq(publishers.kind, "org"), eq(publishers.orgId, books.ownerId))
         )
       )
       .where(
@@ -127,42 +121,23 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
         name: objects.name,
         slug: objects.slug,
         type: objects.type,
-        ownerType: objects.ownerType,
-        ownerId: objects.ownerId,
+        publisherSlug: publishers.slug,
       })
       .from(objects)
+      .leftJoin(
+        publishers,
+        or(
+          and(eq(publishers.kind, "user"), eq(publishers.userId, objects.ownerId)),
+          and(eq(publishers.kind, "org"), eq(publishers.orgId, objects.ownerId))
+        )
+      )
       .where(ilike(objects.name, q))
       .limit(8),
   ]);
 
-  // Resolve publisher slugs
-  const articleResults: SearchArticleResult[] = await Promise.all(
-    articleRows.map(async (a) => ({
-      id: a.id,
-      title: a.title,
-      slug: a.slug,
-      publisherSlug: await getPublisherSlug(a.ownerType, a.ownerId),
-    }))
-  );
-
-  const bookResults: SearchBookResult[] = await Promise.all(
-    bookRows.map(async (b) => ({
-      id: b.id,
-      title: b.title,
-      slug: b.slug,
-      publisherSlug: await getPublisherSlug(b.ownerType, b.ownerId),
-    }))
-  );
-
-  const objectResults: SearchObjectResult[] = await Promise.all(
-    objectRows.map(async (o) => ({
-      id: o.id,
-      name: o.name,
-      slug: o.slug,
-      type: o.type,
-      publisherSlug: await getPublisherSlug(o.ownerType, o.ownerId),
-    }))
-  );
-
-  return { articles: articleResults, books: bookResults, objects: objectResults };
+  return {
+    articles: articleResults.map((a) => ({ ...a, publisherSlug: a.publisherSlug ?? "unknown" })),
+    books: bookResults.map((b) => ({ ...b, publisherSlug: b.publisherSlug ?? "unknown" })),
+    objects: objectResults.map((o) => ({ ...o, publisherSlug: o.publisherSlug ?? "unknown" })),
+  };
 }
