@@ -48,6 +48,8 @@ export default function InsertImageButton({
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [altText, setAltText] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [customName, setCustomName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function openModal() {
@@ -55,6 +57,8 @@ export default function InsertImageButton({
     setSelectedUrl(null);
     setAltText("");
     setUploadError(null);
+    setPendingFile(null);
+    setCustomName("");
     if (images === null) {
       await fetchImages();
     }
@@ -79,19 +83,28 @@ export default function InsertImageButton({
     }
   }
 
-  async function handleQuickUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploadError(null);
+    setPendingFile(file);
+    // Pre-fill name from original filename, strip extension
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    setCustomName(baseName);
+  }
+
+  async function handleUpload() {
+    if (!pendingFile) return;
     setUploadError(null);
     setUploading(true);
 
     const fd = new FormData();
     fd.append("publisher", publisherSlug);
-    fd.append("file", file);
+    fd.append("file", pendingFile);
+    if (customName.trim()) fd.append("name", customName.trim());
 
     const res = await fetch("/api/images/upload", { method: "POST", body: fd });
     setUploading(false);
-    if (fileRef.current) fileRef.current.value = "";
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -103,11 +116,14 @@ export default function InsertImageButton({
     const newItem: ImageItem = {
       url: data.url,
       pathname: data.pathname,
-      size: file.size,
+      size: pendingFile.size,
       uploadedAt: new Date().toISOString(),
     };
     setImages((prev) => (prev ? [newItem, ...prev] : [newItem]));
     setSelectedUrl(data.url);
+    setPendingFile(null);
+    setCustomName("");
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   function handleInsert() {
@@ -159,24 +175,51 @@ export default function InsertImageButton({
               </button>
             </div>
 
-            {/* Quick upload */}
-            <div>
-              <label className="block text-sm font-medium themed-secondary mb-1">
-                Quick upload
+            {/* Upload */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium themed-secondary">
+                Upload image
               </label>
               <input
                 ref={fileRef}
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp"
-                onChange={handleQuickUpload}
+                onChange={handleFilePick}
                 disabled={uploading}
                 className="themed-input text-sm"
               />
-              {uploading && (
-                <p className="text-xs themed-muted mt-1">Uploading…</p>
+              {pendingFile && (
+                <>
+                  <div>
+                    <label className="block text-xs themed-muted mb-1">
+                      Filename (without extension)
+                    </label>
+                    <input
+                      type="text"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder="my-image-name"
+                      className="themed-input text-sm w-full"
+                    />
+                    <p className="text-xs themed-muted mt-1">
+                      Special characters will be removed automatically.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleUpload}
+                    disabled={uploading}
+                    className="themed-btn-primary text-sm"
+                  >
+                    {uploading ? "Uploading…" : "Upload"}
+                  </button>
+                </>
+              )}
+              {!pendingFile && uploading && (
+                <p className="text-xs themed-muted">Uploading…</p>
               )}
               {uploadError && (
-                <p className="text-xs text-red-500 mt-1">{uploadError}</p>
+                <p className="text-xs text-red-500">{uploadError}</p>
               )}
             </div>
 

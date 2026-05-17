@@ -8,6 +8,7 @@ import {
   ALLOWED_MIME_TYPES,
   extensionForMime,
   buildBlobKey,
+  buildBlobKeyWithName,
 } from "@/lib/images";
 import { uploadImageQuerySchema } from "@/lib/validations";
 
@@ -74,7 +75,11 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: "Unsupported file type" }, { status: 415 });
   }
 
-  const blobKey = buildBlobKey(publisherSlug, ext);
+  const customName = formData.get("name");
+  const blobKey =
+    typeof customName === "string" && customName.trim()
+      ? buildBlobKeyWithName(publisherSlug, customName, ext)
+      : buildBlobKey(publisherSlug, ext);
 
   // BLOB_READ_WRITE_TOKEN may not be set in local dev — surface a clear 503
   if (!process.env.BLOB_READ_WRITE_TOKEN) {

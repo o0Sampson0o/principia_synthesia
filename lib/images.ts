@@ -44,6 +44,28 @@ export function buildBlobKey(publisherSlug: string, ext: string): string {
 }
 
 /**
+ * Sanitizes a user-provided filename and builds a blob key.
+ * Falls back to a UUID name if the sanitized result is empty.
+ */
+export function buildBlobKeyWithName(
+  publisherSlug: string,
+  rawName: string,
+  ext: string
+): string {
+  const sanitized = rawName
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")          // spaces → hyphens
+    .replace(/[^a-z0-9._-]/g, "")  // strip everything else
+    .replace(/\.+/g, ".")           // collapse consecutive dots
+    .replace(/^[.-]+|[.-]+$/g, "") // strip leading/trailing dots/hyphens
+    .slice(0, 100);
+
+  const name = sanitized || crypto.randomUUID();
+  return `images/${publisherSlug}/${name}.${ext}`;
+}
+
+/**
  * Returns true if the given URL's hostname matches
  * `*.public.blob.vercel-storage.com`.
  */
