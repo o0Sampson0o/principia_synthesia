@@ -6,14 +6,15 @@ import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth";
-import { canManageOrg, isSuperAdminProtected } from "@/lib/roles";
+import { requireSession, hashPassword } from "@/lib/auth";
+import { canManageOrg, isSuperAdminProtected, getOrgRole } from "@/lib/roles";
 import {
   createOrganizationSchema,
   deleteOrganizationSchema,
   addOrgMemberSchema,
   removeOrgMemberSchema,
   updateOrgMemberRoleSchema,
+  createUserSchema,
 } from "@/lib/validations";
 
 export async function createOrganization(formData: FormData) {
@@ -231,7 +232,6 @@ export async function updateOrgMemberRole(formData: FormData) {
   if (!(await canManageOrg(session, membership.orgId))) throw new Error("Forbidden");
 
   // Admins cannot assign super_admin
-  const { getOrgRole } = await import("@/lib/roles");
   const sessionRole = await getOrgRole(session.userId, membership.orgId);
   if (sessionRole === "admin" && validated.role === "super_admin") {
     throw new Error("Admins cannot assign super_admin role");
@@ -265,10 +265,6 @@ export async function updateOrgMemberRole(formData: FormData) {
 export async function createUser(formData: FormData) {
   const session = await requireSession();
   if (!session.isRootAdmin) throw new Error("Forbidden");
-
-  const { createUserSchema } = await import("@/lib/validations");
-  const { hashPassword } = await import("@/lib/auth");
-  const { publisherSlugSchema } = await import("@/lib/validations");
 
   const validated = createUserSchema.parse({
     email: formData.get("email"),

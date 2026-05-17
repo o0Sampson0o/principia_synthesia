@@ -267,7 +267,6 @@ export async function updateArticleContent(
 ) {
   await assertEditRights(publisherSlug);
 
-  const { parseFrontmatter } = await import("@/lib/frontmatter");
   const parsed = parseFrontmatter(content);
 
   await db
