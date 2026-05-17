@@ -1,52 +1,106 @@
-# Proposal: Internal (Book-Only) Articles
+# Internal (Book-Only) Articles
 
-This document proposes a structural change to support articles that are inherently part of a specific book and cannot be accessed or managed as standalone entities.
+Internal articles are articles that belong exclusively to one book and cannot
+be accessed or managed as standalone entities. This document describes the
+implemented design.
 
 ---
 
-## 1. Problem Statement
-Currently, all articles in Principia Synthesia are "top-level" entities. Even if they are added to a book (Curriculum), they still exist as standalone pages (e.g., `/my-article`) and appear in global search/category listings. This makes it difficult to create "sub-pages" or "chapters" that only make sense within the context of a specific book.
+## Overview
 
-## 2. Technical Design
+An internal article is created from within the book's admin page and is
+permanently linked to that book. It does not appear in global search, category
+listings, the homepage, the sitemap, or the command palette. It can only be
+read at the book chapter URL.
 
-### A. Database Schema
-Modify the `articles` table in `db/schema.ts` to track "internal" status:
+---
 
-```typescript
-export const articles = pgTable("articles", {
-  // ... existing fields ...
-  isInternal: boolean("is_internal").default(false).notNull(),
-  parentBookSlug: text("parent_book_slug"), // The slug of the book it belongs to
-});
+## Database schema
+
+Two columns on the `articles` table track internal status:
+
+```ts
+isInternal: boolean("is_internal").default(false).notNull(),
+parentBookId: integer("parent_book_id").references(() => books.id, { onDelete: "cascade" }),
 ```
 
-### B. Routing & Access Control
-Restrict how these articles are resolved to enforce the "Book-Only" nature:
+- `isInternal = true` marks the article as book-only.
+- `parentBookId` is a FK to `books.id`. When the parent book is deleted,
+  internal articles cascade-delete automatically.
 
-1.  **Standalone Route (`app/[slug]/page.tsx`)**:
-    - Update to query the `isInternal` flag.
-    - If `isInternal` is `true`, return `notFound()`.
-2.  **Curriculum Route (`app/curriculum/[book]/[slug]/page.tsx`)**:
-    - Add a check: if the article is internal, verify that the `[book]` URL segment matches the `parentBookSlug`.
-    - If it doesn't match, return `notFound()`.
+(Note: the column is `parentBookId` FK to `books.id`, not a text `parentBookSlug`
+column.)
 
-### C. Filtering (Global Discovery)
-Ensure internal articles don't leak into general site navigation:
-- **Search**: Filter out `isInternal = true` from search results.
-- **Categories**: Exclude internal articles from category-based listings.
-- **Sitemap**: Exclude internal articles from `sitemap.ts`.
+---
 
-### D. Admin Workflow
-- **Curriculum Manager**: Add a "Create Internal Article" button within each book's entry list.
-- **Auto-linking**: When creating an internal article, the system automatically creates the corresponding `curriculum_entries` row with the correct `book_slug`.
-- **UI Distinction**: In the main Article List, internal articles should be visually distinguished (e.g., a "Sub-page" badge) or hidden behind a toggle.
+## Routing and access control
 
-## 3. Lifecycle & Data Integrity
-- **Deletion**: When a `curriculum_entry` for an internal article is deleted, the underlying `article` row should also be deleted (enforced via cascading or application logic).
-- **Snapshots**: Existing snapshot logic is already robust enough to handle this, as it copies content directly into `book_snapshot_entries`.
+### Standalone article route (`/:publisher/articles/[slug]`)
 
-## 4. Implementation Steps
-1. **Migration**: Generate and run a Drizzle migration to add the new columns.
-2. **Middleware/Logic**: Update the public page routes to respect the `isInternal` flag.
-3. **Actions**: Update `app/admin/actions.ts` to support the creation and deletion of internal articles.
-4. **UI**: Enhance the Curriculum Management interface.
+If `article.isInternal === true`, the route calls `notFound()` immediately.
+Internal articles are never accessible via their standalone URL.
+
+### Book chapter route (`/:publisher/books/[bookSlug]/[chapter]`)
+
+The route verifies two conditions for internal articles:
+1. The article's `parentBookId` must match the resolved book's `id`.
+2. If it does not match, `notFound()` is returned — an internal article cannot
+   be read through a different book's URL.
+
+---
+
+## Filtering from global discovery
+
+Internal articles are excluded from:
+
+- **Search** — the search query filters out `isInternal = true` rows.
+- **Categories** — category listing pages exclude internal articles.
+- **Homepage** — the "recently updated" query filters out `isInternal = true`.
+- **Sitemap** — internal articles are not included in `sitemap.ts`.
+- **Command palette** — `searchAll()` excludes internal articles.
+
+---
+
+## Admin workflow
+
+The "New internal article" form lives on the book's admin page. It calls
+`createInternalArticle()` in the publisher's server actions file, which
+atomically:
+
+1. Inserts the article with `isInternal = true` and `parentBookId` set to the
+   book's `id`.
+2. Inserts the corresponding `curriculumEntries` row at the next available
+   position.
+
+The article immediately appears in the book's entry list on the admin page and
+is accessible at `/:publisher/books/[bookSlug]/[chapter]`.
+
+---
+
+## Lifecycle and data integrity
+
+### Removing a curriculum entry
+
+`removeCurriculumEntry()` checks `article.isInternal`. If true, it
+permanently deletes the article (revisions and category links cascade-delete).
+If false (a regular article), only the `curriculumEntries` row is removed — the
+article itself is preserved.
+
+### Deleting a book
+
+`deleteBook()` (or removing all entries for a book) also permanently deletes
+all internal articles owned by that book because `parentBookId` has
+`onDelete: "cascade"`.
+
+### Editing and revisions
+
+`updateArticle()` and `restoreRevision()` are aware of `isInternal`. After
+saving, they redirect to `/:publisher/books/[parentBookSlug]/[slug]` rather than
+`/:publisher/articles/[slug]`.
+
+### Snapshots
+
+Snapshot logic (`snapshotBook()`, `restoreBookSnapshot()`) treats internal
+articles the same as regular articles — content is copied into
+`bookSnapshotEntries` as usual. The `articleContent` field in the snapshot entry
+allows content to be optionally rolled back.

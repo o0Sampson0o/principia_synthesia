@@ -8,11 +8,14 @@ animations.
 
 ## How the animation system works
 
-1. Admin writes a JavaScript function body in the editor at `/admin/animations`.
-2. The code string is saved to the `savedAnimations` table (columns: `slug`,
-   `name`, `code`).
-3. `GET /api/animations/[slug]` generates a self-contained HTML page that
-   wraps the code in a `<canvas>` + `<script>` block.
+1. A publisher writes a JavaScript function body in the editor at
+   `/:publisher/objects/new` (type: animation) or edits an existing one at
+   `/:publisher/objects/[objSlug]/edit`.
+2. The code string is saved to the `objects` table (`type = 'animation'`,
+   `content.code` holds the JS string). Slugs are unique within a publisher.
+3. `GET /api/publishers/[publisher]/animations/[slug]` generates a
+   self-contained HTML page that wraps the code in a `<canvas>` + `<script>`
+   block.
 4. `<DynamicAnimation slug="your-slug" />` (a client component) reads the
    current page's CSS custom properties, encodes them into the `?theme=` query
    parameter, and renders an `<iframe>` pointing at the API route.
@@ -134,8 +137,8 @@ from the live page (`getComputedStyle(document.documentElement)`) and encodes
 them as the `?theme=` parameter before the iframe loads, so the animation
 always matches the site's current color scheme.
 
-A "View animation →" link to the standalone `/animations/[slug]` page is
-rendered below the iframe automatically.
+A "View animation →" link to the standalone object page is rendered below the
+iframe automatically.
 
 ---
 
@@ -151,8 +154,9 @@ the preview iframe always reflects the latest code.
 ## Theme fallback in the iframe
 
 If the `?theme=` parameter is absent or cannot be parsed (e.g. when the
-animation is viewed directly in a browser tab at `/api/animations/[slug]`),
-the built-in default tokens from `lib/theme.ts` are used instead. The iframe
-still respects `prefers-color-scheme` in this case because the script keeps
-both a `_light` and a `_dark` object and switches between them via a
-`MediaQueryList` change listener.
+animation is viewed directly in a browser tab at
+`/api/publishers/[publisher]/animations/[slug]`), the built-in default tokens
+from `lib/theme.ts` are used instead. The iframe still respects
+`prefers-color-scheme` in this case because the script keeps both a `_light`
+and a `_dark` object and switches between them via a `MediaQueryList` change
+listener.
