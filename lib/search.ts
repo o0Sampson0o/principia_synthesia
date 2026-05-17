@@ -85,6 +85,9 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
           ilike(articles.title, q),
           session?.isRootAdmin
             ? undefined
+            : sql`${articles.metadata}->>'status' = 'published'`,
+          session?.isRootAdmin
+            ? undefined
             : or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
         )
       )
