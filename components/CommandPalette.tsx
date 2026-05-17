@@ -17,28 +17,34 @@ export default function CommandPalette() {
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openRef = useRef(false);
   const router = useRouter();
+
+  const openPalette = useCallback(() => {
+    setQuery("");
+    setResults({ articles: [], books: [], objects: [] });
+    setOpen(true);
+    openRef.current = true;
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }, []);
+
+  const closePalette = useCallback(() => {
+    setOpen(false);
+    openRef.current = false;
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "P") {
         e.preventDefault();
         e.stopPropagation();
-        setOpen((prev) => !prev);
+        if (openRef.current) closePalette(); else openPalette();
       }
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closePalette();
     }
     window.addEventListener("keydown", handleKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, []);
-
-  useEffect(() => {
-    if (open) {
-      setQuery("");
-      setResults({ articles: [], books: [], objects: [] });
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }, [open]);
+  }, [openPalette, closePalette]);
 
   const handleInput = useCallback((value: string) => {
     setQuery(value);
@@ -56,7 +62,7 @@ export default function CommandPalette() {
   }, []);
 
   function navigate(href: string) {
-    setOpen(false);
+    closePalette();
     router.push(href);
   }
 
@@ -67,7 +73,7 @@ export default function CommandPalette() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
-      onClick={() => setOpen(false)}
+      onClick={closePalette}
       aria-modal="true"
       role="dialog"
       aria-label="Command palette"

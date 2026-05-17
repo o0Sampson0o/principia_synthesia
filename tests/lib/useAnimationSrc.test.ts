@@ -7,7 +7,7 @@ function mockGetComputedStyle(tokenValues: Record<string, string> = {}) {
   const defaultValue = "#aabbcc";
   return vi.spyOn(window, "getComputedStyle").mockReturnValue({
     getPropertyValue: (prop: string) => tokenValues[prop] ?? defaultValue,
-  } as any);
+  } as unknown as CSSStyleDeclaration);
 }
 
 const TEST_PUBLISHER = "alice";

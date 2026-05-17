@@ -21,7 +21,6 @@ interface ArticleMetadataDisplayProps {
 export default function ArticleMetadataDisplay({
   metadata,
   categories = [],
-  publisherSlug,
 }: ArticleMetadataDisplayProps) {
   const showDescription = metadata.description.trim().length > 0;
   const showTags = metadata.tags.length > 0;

@@ -22,7 +22,7 @@ export default class MdxErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(_error: Error, _errorInfo: any) {
+  componentDidCatch() {
     // Silently handled — fallback UI is shown instead
   }
 

@@ -34,11 +34,17 @@ let _mjHtml: any = null;
 
 function getMjHtml() {
   if (_mjHtml) return _mjHtml;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { liteAdaptor } = require("mathjax-full/js/adaptors/liteAdaptor.js");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { mathjax } = require("mathjax-full/js/mathjax.js");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { TeX } = require("mathjax-full/js/input/tex.js");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { SVG } = require("mathjax-full/js/output/svg.js");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { RegisterHTMLHandler } = require("mathjax-full/js/handlers/html.js");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { AllPackages } = require("mathjax-full/js/input/tex/AllPackages.js");
   _mjAdaptor = liteAdaptor();
   RegisterHTMLHandler(_mjAdaptor);

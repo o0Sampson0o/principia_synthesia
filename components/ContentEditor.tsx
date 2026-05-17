@@ -71,10 +71,10 @@ export default forwardRef<ContentEditorRef, {
     previewRef.current?.updateSource(contentValue.current);
   }, []);
 
-  // Initialize hidden input on mount so form submits correctly even without editing
   useEffect(() => {
     const field = document.getElementById("content-field") as HTMLInputElement | null;
     if (field) field.value = initial;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleInsertText = useCallback((text: string) => {

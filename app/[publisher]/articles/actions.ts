@@ -6,7 +6,6 @@ import {
   revisions,
   categories,
   articleCategories,
-  publishers,
 } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -195,12 +194,6 @@ export async function deleteArticle(publisherSlug: string, formData: FormData) {
     id: formData.get("id"),
     slug: formData.get("slug"),
   });
-
-  const [article] = await db
-    .select({ isInternal: articles.isInternal, parentBookId: articles.parentBookId })
-    .from(articles)
-    .where(eq(articles.id, validated.id))
-    .limit(1);
 
   await db.delete(articles).where(eq(articles.id, validated.id));
 

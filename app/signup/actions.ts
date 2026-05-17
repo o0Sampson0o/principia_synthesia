@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { users, publishers, organizations } from "@/db/schema";
-import { eq, or } from "drizzle-orm";
+import { users, publishers } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { hashPassword, setSessionCookie } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { signupSchema } from "@/lib/validations";

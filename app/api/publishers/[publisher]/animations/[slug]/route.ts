@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { objects, publishers, users, organizations } from "@/db/schema";
+import { objects, publishers } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { defaultLight, defaultDark } from "@/lib/theme";

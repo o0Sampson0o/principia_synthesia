@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { books, resourceVisibility, accessGrants, users, organizations } from "@/db/schema";
+import { resourceVisibility, accessGrants } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth";

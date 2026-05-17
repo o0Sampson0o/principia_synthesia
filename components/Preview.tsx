@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { serialize } from "next-mdx-remote/serialize";
 import { MDXRemote } from "next-mdx-remote";
 import remarkMath from "remark-math";
@@ -34,7 +34,7 @@ function needsFullSerialization(content: string): boolean {
 
 // Fast markdown renderer for basic content (no MDX, no math, no wiki links)
 function renderFastMarkdown(source: string): string {
-  let html = source
+  const html = source
     // Escape HTML
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -140,10 +140,9 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
     };
   };
 
-  // Initialize with initial source
-  useEffect(() => {
-    processSource(initialSource);
-  }, []);
+  // Intentionally runs once on mount — initialSource is the seed value only.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { processSource(initialSource); }, []);
 
   // Expose updateSource to parent via ref
   useImperativeHandle(ref, () => ({
@@ -182,7 +181,9 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
   // Full MDX mode
   if (!compiledSource) return <p className="text-zinc-400 text-sm">Rendering...</p>;
 
-  const knownComponents: Record<string, any> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const knownComponents: Record<string, React.ComponentType<any>> = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     DynamicAnimation: (props: any) => <DynamicAnimation {...props} />,
     p: MdxParagraph,
   };
@@ -191,10 +192,9 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
     get(target, prop: string | symbol) {
       if (typeof prop !== "string") return undefined;
       if (prop in target) return target[prop];
-      // Return a placeholder for any unknown component instead of throwing
-      return (props: any) => (
+      return () => (
         <span className="text-xs text-amber-500 dark:text-amber-400 font-mono">
-          &lt;{prop} /&gt;
+          &lt;{String(prop)} /&gt;
         </span>
       );
     },

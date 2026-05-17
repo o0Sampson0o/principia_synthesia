@@ -1,10 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
-import { canManageOrg, getOrgRole, isSuperAdminProtected } from "@/lib/roles";
+import { getOrgRole, isSuperAdminProtected } from "@/lib/roles";
 import { db } from "@/db";
 import { organizations, orgMemberships, users } from "@/db/schema";
-import { and, eq, notInArray } from "drizzle-orm";
+import { eq, notInArray } from "drizzle-orm";
 import Link from "next/link";
 import { addOrgMember, removeOrgMember, leaveOrg, updateOrgMemberRole } from "@/app/organizations/actions";
 

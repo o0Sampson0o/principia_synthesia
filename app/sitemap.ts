@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next"
 import { db } from "@/db"
-import { articles, categories, books, objects, publishers, users, organizations, resourceVisibility } from "@/db/schema"
+import { articles, categories, books, publishers, resourceVisibility } from "@/db/schema"
 import { eq, and, sql, isNull, or } from "drizzle-orm"
 
 const BASE_URL = "https://principia-synthesia.vercel.app"

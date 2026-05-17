@@ -64,7 +64,7 @@ export async function createBook(publisherSlug: string, formData: FormData) {
 }
 
 export async function deleteBook(publisherSlug: string, formData: FormData) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+  await assertEditRights(publisherSlug);
 
   const validated = deleteBookSchema.parse({ bookId: formData.get("bookId") });
 
@@ -76,7 +76,7 @@ export async function deleteBook(publisherSlug: string, formData: FormData) {
 }
 
 export async function updateBook(publisherSlug: string, formData: FormData) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+  await assertEditRights(publisherSlug);
 
   const validated = updateBookSchema.parse({
     id: formData.get("id"),

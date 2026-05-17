@@ -24,12 +24,12 @@ describe("middleware CSP", () => {
   });
 
   afterEach(() => {
-    // @ts-ignore
+    // @ts-expect-error — assigning to read-only NODE_ENV in tests
     process.env.NODE_ENV = originalEnv;
   });
 
   it("includes 'unsafe-eval' in script-src when NODE_ENV is development", async () => {
-    // @ts-ignore
+    // @ts-expect-error — assigning to read-only NODE_ENV in tests
     process.env.NODE_ENV = "development";
     const req = makeRequest("/");
     const res = await middleware(req);
@@ -38,7 +38,7 @@ describe("middleware CSP", () => {
   });
 
   it("does NOT include 'unsafe-eval' in script-src when NODE_ENV is production", async () => {
-    // @ts-ignore
+    // @ts-expect-error — assigning to read-only NODE_ENV in tests
     process.env.NODE_ENV = "production";
     const req = makeRequest("/");
     const res = await middleware(req);
@@ -47,7 +47,7 @@ describe("middleware CSP", () => {
   });
 
   it("does NOT include 'unsafe-eval' in script-src when NODE_ENV is test", async () => {
-    // @ts-ignore
+    // @ts-expect-error — assigning to read-only NODE_ENV in tests
     process.env.NODE_ENV = "test";
     const req = makeRequest("/");
     const res = await middleware(req);

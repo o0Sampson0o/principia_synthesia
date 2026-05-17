@@ -2,11 +2,8 @@ import { db } from "@/db";
 import { categories, articleCategories } from "@/db/schema";
 import { eq, count } from "drizzle-orm";
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
 
 export default async function CategoriesIndexPage() {
-  const session = await getSession();
-
   const results = await db
     .select({
       id: categories.id,

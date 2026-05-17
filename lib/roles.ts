@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { orgMemberships, organizations } from "@/db/schema";
+import { orgMemberships } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { SessionPayload } from "@/lib/auth";
 

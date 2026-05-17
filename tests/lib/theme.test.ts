@@ -3,23 +3,6 @@ import { describe, it, expect } from "vitest";
 import { buildThemeStyle, defaultThemeStyle, defaultLight, defaultDark } from "@/lib/theme";
 import type { ThemeTokens } from "@/db/schema";
 
-const ALL_TOKEN_KEYS: (keyof ThemeTokens)[] = [
-  "background",
-  "foreground",
-  "muted",
-  "mutedForeground",
-  "border",
-  "link",
-  "linkHover",
-  "codeBackground",
-  "surface",
-  "surfaceHover",
-  "primaryBtn",
-  "primaryBtnText",
-  "inputBorder",
-  "inputFocusBorder",
-  "secondaryText",
-];
 
 const EXPECTED_CSS_VARS: string[] = [
   "--background",

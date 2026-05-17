@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
-import remarkStringify from "remark-stringify";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import type { Root, Link, Text, Paragraph } from "mdast";
 
@@ -11,15 +10,6 @@ function process(markdown: string): Root {
   const tree = processor.parse(markdown) as Root;
   processor.runSync(tree);
   return tree;
-}
-
-function processToString(markdown: string): string {
-  return unified()
-    .use(remarkParse)
-    .use(remarkWikilinks)
-    .use(remarkStringify)
-    .processSync(markdown)
-    .toString();
 }
 
 function getFirstParagraphChildren(markdown: string) {

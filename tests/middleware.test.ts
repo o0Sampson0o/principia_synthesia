@@ -1,8 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
-import { SignJWT } from "jose";
-
 // Mock jose's jwtVerify so we can control its behaviour per-test.
 const mockJwtVerify = vi.hoisted(() => vi.fn());
 
@@ -23,7 +21,6 @@ vi.mock("@/lib/rate-limit", () => ({
 
 import { middleware } from "@/middleware";
 
-const TEST_SECRET = "dev-secret-change-in-production";
 
 function makeRequest(path: string, sessionCookie?: string): NextRequest {
   const url = `http://localhost${path}`;
@@ -34,17 +31,6 @@ function makeRequest(path: string, sessionCookie?: string): NextRequest {
   return new NextRequest(url);
 }
 
-async function makeToken(
-  payload: Record<string, unknown>,
-  secret = TEST_SECRET
-): Promise<string> {
-  const enc = new TextEncoder().encode(secret);
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(enc);
-}
 
 describe("middleware", () => {
   beforeEach(() => {

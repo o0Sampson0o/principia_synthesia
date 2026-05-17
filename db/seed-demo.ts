@@ -42,7 +42,7 @@ import {
 import type { ArticleMetadataShape } from "./schema";
 import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { defaultLight, defaultDark, PRESETS } from "../lib/theme";
+import { PRESETS } from "../lib/theme";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

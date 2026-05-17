@@ -155,7 +155,7 @@ export default function ThemeEditor({ initialLight, initialDark }: Props) {
           </p>
           <h2 className="text-xl font-bold">General Relativity</h2>
           <p className="text-sm" style={{ color: tokens.mutedForeground }}>
-            Einstein's geometric theory of gravitation, describing gravity as curvature of spacetime.
+            Einstein&apos;s geometric theory of gravitation, describing gravity as curvature of spacetime.
           </p>
           <p className="text-sm">
             See also{" "}

@@ -51,7 +51,7 @@ function makeRef(overrides: Partial<ContentRef> = {}): ContentRef {
  *                 db.select().from().where().limit(1)  for hasGrant (user grant)
  *                 db.select().from().where().limit(1)  for hasGrant (org grant)
  */
-function setupQueryQueue(queue: Array<{ result: any[]; withLimit?: boolean }>) {
+function setupQueryQueue(queue: Array<{ result: unknown[]; withLimit?: boolean }>) {
   let idx = 0;
   mockSelect.mockImplementation(() => {
     const item = queue[idx++] ?? { result: [], withLimit: true };
