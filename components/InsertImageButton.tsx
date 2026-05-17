@@ -177,22 +177,40 @@ export default function InsertImageButton({
 
             {/* Upload */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium themed-secondary">
-                Upload image
-              </label>
+              <p className="text-sm font-medium themed-secondary">Upload image</p>
+              {/* Hidden file input — triggered by the button below, never clicked directly */}
               <input
                 ref={fileRef}
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp"
                 onChange={handleFilePick}
                 disabled={uploading}
-                className="themed-input text-sm"
+                className="hidden"
               />
-              {pendingFile && (
-                <>
+              {!pendingFile ? (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="themed-btn-ghost text-sm px-3 py-1"
+                >
+                  Choose file…
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm themed-muted">
+                    <span className="truncate max-w-xs">{pendingFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setPendingFile(null); setCustomName(""); if (fileRef.current) fileRef.current.value = ""; }}
+                      className="text-xs themed-btn-ghost px-2 py-0.5 shrink-0"
+                    >
+                      Change
+                    </button>
+                  </div>
                   <div>
                     <label className="block text-xs themed-muted mb-1">
-                      Filename (without extension)
+                      Save as (without extension)
                     </label>
                     <input
                       type="text"
@@ -213,10 +231,7 @@ export default function InsertImageButton({
                   >
                     {uploading ? "Uploading…" : "Upload"}
                   </button>
-                </>
-              )}
-              {!pendingFile && uploading && (
-                <p className="text-xs themed-muted">Uploading…</p>
+                </div>
               )}
               {uploadError && (
                 <p className="text-xs text-red-500">{uploadError}</p>
