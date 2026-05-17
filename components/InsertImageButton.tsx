@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import type { RefObject } from "react";
 import type { ContentEditorRef } from "./ContentEditor";
+import ImageUploader, { type UploadedImage } from "./ImageUploader";
 
 type ImageItem = {
   url: string;
@@ -30,7 +31,6 @@ function insertAtCursor(textarea: HTMLTextAreaElement, text: string) {
   const end = textarea.selectionEnd;
   const value = textarea.value;
   textarea.value = value.slice(0, start) + text + value.slice(end);
-  // Fire an input event so any React controlled-value handler picks it up
   textarea.dispatchEvent(new Event("input", { bubbles: true }));
   textarea.selectionStart = textarea.selectionEnd = start + text.length;
   textarea.focus();
@@ -44,32 +44,20 @@ export default function InsertImageButton({
   const [open, setOpen] = useState(false);
   const [images, setImages] = useState<ImageItem[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [altText, setAltText] = useState("");
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [customName, setCustomName] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
 
   async function openModal() {
     setOpen(true);
     setSelectedUrl(null);
     setAltText("");
-    setUploadError(null);
-    setPendingFile(null);
-    setCustomName("");
-    if (images === null) {
-      await fetchImages();
-    }
+    if (images === null) await fetchImages();
   }
 
   async function fetchImages() {
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/images/list?publisher=${encodeURIComponent(publisherSlug)}`
-      );
+      const res = await fetch(`/api/images/list?publisher=${encodeURIComponent(publisherSlug)}`);
       if (res.ok) {
         const data = (await res.json()) as { images: ImageItem[] };
         setImages(data.images);
@@ -83,47 +71,9 @@ export default function InsertImageButton({
     }
   }
 
-  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadError(null);
-    setPendingFile(file);
-    // Pre-fill name from original filename, strip extension
-    const baseName = file.name.replace(/\.[^.]+$/, "");
-    setCustomName(baseName);
-  }
-
-  async function handleUpload() {
-    if (!pendingFile) return;
-    setUploadError(null);
-    setUploading(true);
-
-    const fd = new FormData();
-    fd.append("publisher", publisherSlug);
-    fd.append("file", pendingFile);
-    if (customName.trim()) fd.append("name", customName.trim());
-
-    const res = await fetch("/api/images/upload", { method: "POST", body: fd });
-    setUploading(false);
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setUploadError((body as { error?: string }).error ?? "Upload failed.");
-      return;
-    }
-
-    const data = (await res.json()) as { url: string; pathname: string };
-    const newItem: ImageItem = {
-      url: data.url,
-      pathname: data.pathname,
-      size: pendingFile.size,
-      uploadedAt: new Date().toISOString(),
-    };
-    setImages((prev) => (prev ? [newItem, ...prev] : [newItem]));
-    setSelectedUrl(data.url);
-    setPendingFile(null);
-    setCustomName("");
-    if (fileRef.current) fileRef.current.value = "";
+  function handleUploaded(image: UploadedImage) {
+    setImages((prev) => (prev ? [image, ...prev] : [image]));
+    setSelectedUrl(image.url);
   }
 
   function handleInsert() {
@@ -132,9 +82,7 @@ export default function InsertImageButton({
     if (editorRef?.current) {
       editorRef.current.insertText(snippet);
     } else {
-      const textarea = document.getElementById(
-        targetTextareaId
-      ) as HTMLTextAreaElement | null;
+      const textarea = document.getElementById(targetTextareaId) as HTMLTextAreaElement | null;
       if (textarea) insertAtCursor(textarea, snippet);
     }
     setOpen(false);
@@ -159,9 +107,7 @@ export default function InsertImageButton({
           aria-modal="true"
           aria-label="Insert image"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setOpen(false);
-          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
         >
           <div className="themed-surface rounded-lg shadow-xl w-full max-w-2xl mx-4 p-6 space-y-4 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between">
@@ -176,66 +122,9 @@ export default function InsertImageButton({
             </div>
 
             {/* Upload */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium themed-secondary">Upload image</p>
-              {/* Hidden file input — triggered by the button below, never clicked directly */}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                onChange={handleFilePick}
-                disabled={uploading}
-                className="hidden"
-              />
-              {!pendingFile ? (
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
-                  className="themed-btn-ghost text-sm px-3 py-1"
-                >
-                  Choose file…
-                </button>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm themed-muted">
-                    <span className="truncate max-w-xs">{pendingFile.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => { setPendingFile(null); setCustomName(""); if (fileRef.current) fileRef.current.value = ""; }}
-                      className="text-xs themed-btn-ghost px-2 py-0.5 shrink-0"
-                    >
-                      Change
-                    </button>
-                  </div>
-                  <div>
-                    <label className="block text-xs themed-muted mb-1">
-                      Save as (without extension)
-                    </label>
-                    <input
-                      type="text"
-                      value={customName}
-                      onChange={(e) => setCustomName(e.target.value)}
-                      placeholder="my-image-name"
-                      className="themed-input text-sm w-full"
-                    />
-                    <p className="text-xs themed-muted mt-1">
-                      Special characters will be removed automatically.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleUpload}
-                    disabled={uploading}
-                    className="themed-btn-primary text-sm"
-                  >
-                    {uploading ? "Uploading…" : "Upload"}
-                  </button>
-                </div>
-              )}
-              {uploadError && (
-                <p className="text-xs text-red-500">{uploadError}</p>
-              )}
+            <div>
+              <p className="text-sm font-medium themed-secondary mb-2">Upload image</p>
+              <ImageUploader publisherSlug={publisherSlug} onUploaded={handleUploaded} />
             </div>
 
             {/* Gallery */}
@@ -243,9 +132,7 @@ export default function InsertImageButton({
               {loading ? (
                 <p className="text-sm themed-muted">Loading images…</p>
               ) : images && images.length === 0 ? (
-                <p className="text-sm themed-muted">
-                  No images yet. Upload one above.
-                </p>
+                <p className="text-sm themed-muted">No images yet. Upload one above.</p>
               ) : (
                 <div className="grid grid-cols-3 gap-3">
                   {(images ?? []).map((img) => (
@@ -280,14 +167,9 @@ export default function InsertImageButton({
               <div className="space-y-2 border-t themed-border pt-4">
                 <p className="text-sm themed-muted">
                   Selected:{" "}
-                  <span className="font-mono text-xs">
-                    {filename(selectedUrl.split("?")[0])}
-                  </span>
+                  <span className="font-mono text-xs">{filename(selectedUrl.split("?")[0])}</span>
                 </p>
-                <label
-                  htmlFor="insert-alt"
-                  className="block text-sm font-medium themed-secondary"
-                >
+                <label htmlFor="insert-alt" className="block text-sm font-medium themed-secondary">
                   Alt text
                 </label>
                 <input
@@ -298,11 +180,7 @@ export default function InsertImageButton({
                   placeholder="Describe the image"
                   className="themed-input w-full text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={handleInsert}
-                  className="themed-btn-primary text-sm"
-                >
+                <button type="button" onClick={handleInsert} className="themed-btn-primary text-sm">
                   Insert
                 </button>
               </div>
