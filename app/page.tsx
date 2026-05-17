@@ -31,8 +31,8 @@ export default async function HomePage() {
     .leftJoin(
       publishers,
       or(
-        and(eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
-        and(eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
+        and(eq(articles.ownerType, "user"), eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
+        and(eq(articles.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
       )
     )
     .where(
@@ -100,7 +100,7 @@ export default async function HomePage() {
 
       {/* Top articles this month */}
       {topArticles.length > 0 && (
-        <section className="max-w-3xl mx-auto px-6 pb-20">
+        <section className="max-w-4xl mx-auto px-6 pb-20">
           <h2 className="text-2xl font-semibold themed-heading mb-6">Top articles this month</h2>
           <ul className="space-y-4">
             {topArticles.map((a) => {

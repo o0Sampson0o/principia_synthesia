@@ -79,8 +79,8 @@ export default async function SearchPage({
         .leftJoin(
           publishers,
           or(
-            and(eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
-            and(eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
+            and(eq(articles.ownerType, "user"), eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
+            and(eq(articles.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
           )
         )
         .where(and(...conditions))
@@ -89,7 +89,7 @@ export default async function SearchPage({
   const hasActiveFilter = !!query || tagList.length > 0;
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10">
+    <main className="max-w-4xl mx-auto px-6 py-10">
       <h1 className="text-4xl font-bold themed-heading mb-6">Search</h1>
       <form method="GET" action="/search" className="mb-8 space-y-2">
         <input

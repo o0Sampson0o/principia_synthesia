@@ -63,8 +63,8 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
       .leftJoin(
         publishers,
         or(
-          and(eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
-          and(eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
+          and(eq(articles.ownerType, "user"), eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
+          and(eq(articles.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
         )
       )
       .where(
@@ -101,8 +101,8 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
       .leftJoin(
         publishers,
         or(
-          and(eq(publishers.kind, "user"), eq(publishers.userId, books.ownerId)),
-          and(eq(publishers.kind, "org"), eq(publishers.orgId, books.ownerId))
+          and(eq(books.ownerType, "user"), eq(publishers.kind, "user"), eq(publishers.userId, books.ownerId)),
+          and(eq(books.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, books.ownerId))
         )
       )
       .where(
@@ -127,8 +127,8 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
       .leftJoin(
         publishers,
         or(
-          and(eq(publishers.kind, "user"), eq(publishers.userId, objects.ownerId)),
-          and(eq(publishers.kind, "org"), eq(publishers.orgId, objects.ownerId))
+          and(eq(objects.ownerType, "user"), eq(publishers.kind, "user"), eq(publishers.userId, objects.ownerId)),
+          and(eq(objects.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, objects.ownerId))
         )
       )
       .where(ilike(objects.name, q))

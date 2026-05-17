@@ -64,14 +64,14 @@ export default async function CategoryPage({
     .leftJoin(
       publishers,
       or(
-        and(eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
-        and(eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
+        and(eq(articles.ownerType, "user"), eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
+        and(eq(articles.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
       )
     )
     .where(and(...conditions));
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10">
+    <main className="max-w-4xl mx-auto px-6 py-10">
       <Link href="/category" className="text-sm themed-link mb-6 inline-block">
         &larr; All categories
       </Link>
