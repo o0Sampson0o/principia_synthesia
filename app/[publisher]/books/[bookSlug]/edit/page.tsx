@@ -278,8 +278,11 @@ export default async function EditBookPage({
                 type="text"
                 required
                 placeholder="article-my-chapter"
+                pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
+                title="Must start with 'article-' followed by lowercase letters, numbers, and hyphens"
                 className="themed-input text-sm"
               />
+              <p className="text-xs themed-muted">Must start with &ldquo;article-&rdquo; (e.g. article-intro).</p>
               <input
                 name="partTitle"
                 type="text"
