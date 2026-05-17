@@ -38,9 +38,9 @@ function buildCsp(nonce: string, allowEval: boolean = false): string {
  *    header on every response. The nonce is forwarded via `x-csp-nonce` so
  *    Server Components can stamp it onto inline `<script>` tags.
  *
- * The old `/admin/**` guard is removed — there are no admin routes any more.
- * `allowEval` is true for settings pages and publisher content editor pages
- * (article/object create and edit), which need MDX previewing.
+ * Images (/images/*) are intentionally left open: they are stored in public
+ * Vercel Blob storage and may be embedded in publicly readable articles.
+ * Access control applies to article/book discovery and text, not binary assets.
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -64,23 +64,6 @@ export async function middleware(request: NextRequest) {
       await jwtVerify(token, JWT_SECRET);
     } catch {
       return NextResponse.redirect(new URL("/login", request.url));
-    }
-  }
-
-  // Image access gate: /images/<publisher>/<filename> is served via a CDN
-  // rewrite, but we require a valid session so unauthenticated users cannot
-  // fetch publisher images directly. Note: direct Vercel Blob CDN URLs
-  // (https://*.public.blob.vercel-storage.com/…) bypass this — full
-  // protection requires private blob storage.
-  if (pathname.startsWith("/images/")) {
-    const token = request.cookies.get("session")?.value;
-    if (!token) {
-      return new NextResponse("Unauthorised", { status: 401 });
-    }
-    try {
-      await jwtVerify(token, JWT_SECRET);
-    } catch {
-      return new NextResponse("Unauthorised", { status: 401 });
     }
   }
 
