@@ -204,6 +204,11 @@ export const removeOrgMemberSchema = z.object({
   membershipId: z.coerce.number().int().positive("Invalid membership ID"),
 });
 
+export const updateOrgMemberRoleSchema = z.object({
+  membershipId: z.coerce.number().int().positive("Invalid membership ID"),
+  role: z.enum(["super_admin", "admin", "member"]),
+});
+
 export const createUserSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),

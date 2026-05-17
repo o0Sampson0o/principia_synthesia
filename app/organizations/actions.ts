@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { organizations, publishers, orgMemberships, users, accessGrants } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
@@ -12,6 +13,7 @@ import {
   deleteOrganizationSchema,
   addOrgMemberSchema,
   removeOrgMemberSchema,
+  updateOrgMemberRoleSchema,
 } from "@/lib/validations";
 
 export async function createOrganization(formData: FormData) {
@@ -170,6 +172,90 @@ export async function removeOrgMember(formData: FormData) {
   await db.delete(orgMemberships).where(eq(orgMemberships.id, validated.membershipId));
 
   if (org) revalidatePath(`/${org.publisherSlug}`);
+}
+
+export async function leaveOrg(formData: FormData) {
+  const session = await requireSession();
+  const orgId = z.coerce.number().int().positive().parse(formData.get("orgId"));
+
+  const [membership] = await db
+    .select({ id: orgMemberships.id, userId: orgMemberships.userId })
+    .from(orgMemberships)
+    .where(and(eq(orgMemberships.orgId, orgId), eq(orgMemberships.userId, session.userId)))
+    .limit(1);
+
+  if (!membership) throw new Error("Not a member");
+
+  const [org] = await db
+    .select({ creatorId: organizations.creatorId, publisherSlug: organizations.publisherSlug })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+
+  const [rootAdmin] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.isRootAdmin, true))
+    .limit(1);
+
+  if (isSuperAdminProtected(session.userId, org?.creatorId ?? null, rootAdmin?.id ?? -1)) {
+    throw new Error("Protected super_admin cannot leave");
+  }
+
+  await db.delete(orgMemberships).where(eq(orgMemberships.id, membership.id));
+
+  if (org) revalidatePath(`/${org.publisherSlug}`);
+  redirect("/organizations");
+}
+
+export async function updateOrgMemberRole(formData: FormData) {
+  const session = await requireSession();
+
+  const validated = updateOrgMemberRoleSchema.parse({
+    membershipId: formData.get("membershipId"),
+    role: formData.get("role"),
+  });
+
+  const [membership] = await db
+    .select({ orgId: orgMemberships.orgId, userId: orgMemberships.userId })
+    .from(orgMemberships)
+    .where(eq(orgMemberships.id, validated.membershipId))
+    .limit(1);
+
+  if (!membership) throw new Error("Membership not found");
+
+  if (!(await canManageOrg(session, membership.orgId))) throw new Error("Forbidden");
+
+  // Admins cannot assign super_admin
+  const { getOrgRole } = await import("@/lib/roles");
+  const sessionRole = await getOrgRole(session.userId, membership.orgId);
+  if (sessionRole === "admin" && validated.role === "super_admin") {
+    throw new Error("Admins cannot assign super_admin role");
+  }
+
+  // Cannot change protected members
+  const [org] = await db
+    .select({ creatorId: organizations.creatorId, publisherSlug: organizations.publisherSlug })
+    .from(organizations)
+    .where(eq(organizations.id, membership.orgId))
+    .limit(1);
+
+  const [rootAdmin] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.isRootAdmin, true))
+    .limit(1);
+
+  if (isSuperAdminProtected(membership.userId, org?.creatorId ?? null, rootAdmin?.id ?? -1)) {
+    throw new Error("Cannot change role of protected super_admin");
+  }
+
+  await db
+    .update(orgMemberships)
+    .set({ role: validated.role })
+    .where(eq(orgMemberships.id, validated.membershipId));
+
+  if (org) revalidatePath(`/${org.publisherSlug}/members`);
 }
 
 export async function createUser(formData: FormData) {
