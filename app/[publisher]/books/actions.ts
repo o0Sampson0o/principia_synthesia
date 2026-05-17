@@ -193,6 +193,14 @@ export async function reorderCurriculumEntries(
   if (book) revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
 }
 
+export async function reorderChapters(publisherSlug: string, formData: FormData) {
+  await assertEditRights(publisherSlug);
+  const bookId = Number(formData.get("bookId"));
+  const raw = formData.get("orderedIds") as string;
+  const orderedIds = JSON.parse(raw) as number[];
+  await reorderCurriculumEntries(publisherSlug, bookId, orderedIds);
+}
+
 // ---------------------------------------------------------------------------
 // Internal articles
 // ---------------------------------------------------------------------------
