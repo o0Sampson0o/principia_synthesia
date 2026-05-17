@@ -67,6 +67,23 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Image access gate: /images/<publisher>/<filename> is served via a CDN
+  // rewrite, but we require a valid session so unauthenticated users cannot
+  // fetch publisher images directly. Note: direct Vercel Blob CDN URLs
+  // (https://*.public.blob.vercel-storage.com/…) bypass this — full
+  // protection requires private blob storage.
+  if (pathname.startsWith("/images/")) {
+    const token = request.cookies.get("session")?.value;
+    if (!token) {
+      return new NextResponse("Unauthorised", { status: 401 });
+    }
+    try {
+      await jwtVerify(token, JWT_SECRET);
+    } catch {
+      return new NextResponse("Unauthorised", { status: 401 });
+    }
+  }
+
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
 
   // Allow unsafe-eval on settings pages and publisher content editor routes.
