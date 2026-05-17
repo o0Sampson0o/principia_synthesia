@@ -4,6 +4,8 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { defaultLight, defaultDark } from "@/lib/theme";
 import type { ThemeTokens } from "@/db/schema";
+import { getSession } from "@/lib/auth";
+import { canView } from "@/lib/access";
 
 /**
  * GET /api/publishers/[publisher]/animations/[slug]
@@ -55,6 +57,13 @@ export async function GET(
     .limit(1);
 
   if (!row) return new NextResponse("Not found", { status: 404 });
+
+  const session = await getSession();
+  const ok = await canView(
+    { type: "object", ownerType, ownerId, slug },
+    session
+  );
+  if (!ok) return new NextResponse("Not found", { status: 404 });
 
   const content = row.content as { code?: string };
   const code = content.code ?? "";
