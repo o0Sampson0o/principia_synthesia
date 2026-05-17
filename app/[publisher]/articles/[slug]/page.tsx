@@ -128,7 +128,7 @@ export default async function ArticlePage({
         />
       </header>
 
-      <div className="prose prose-zinc dark:prose-invert max-w-none">
+      <article className="markdown-content">
         <MDXRemote
           source={renderedBody}
           options={{
@@ -139,7 +139,7 @@ export default async function ArticlePage({
           }}
           components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph }}
         />
-      </div>
+      </article>
     </main>
   );
 }
