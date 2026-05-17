@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DOMPurify from "dompurify";
 
 interface Props {
   source: string;
@@ -22,8 +23,11 @@ export default function GraphvizDiagram({ source }: Props) {
         el.removeAttribute("width");
         el.removeAttribute("height");
         el.setAttribute("style", "width:100%;height:auto;");
+        const cleaned = DOMPurify.sanitize(el.outerHTML, {
+          USE_PROFILES: { svg: true, svgFilters: true },
+        });
         if (!cancelled) {
-          setSvg(el.outerHTML);
+          setSvg(cleaned);
           setError(null);
         }
       } catch (e) {
