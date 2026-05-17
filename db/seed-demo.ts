@@ -3,20 +3,30 @@
  *
  * Creates:
  *   - 4 users (1 root admin + 3 demo users) with publisher slugs
- *   - 2 organizations with memberships covering all three roles
- *   - 4–6 categories
- *   - 12 articles (published, draft, archived; public, org-visible, private)
- *   - 2 books with 3–5 chapters each (one owned by a user, one by an org)
- *   - 3 KAO objects (1 animation, 1 dataset, 1 diagram)
- *   - Revisions, article views, resource visibility, access grants
- *   - User themes for admin user
- *   - Book snapshots
+ *   - 2 organizations with memberships covering all three roles (super_admin, admin, member)
+ *   - 6 categories
+ *   - 14 articles (published, draft, review, archived; public, org-visible, private)
+ *     including 2 internal articles (isInternal=true, parentBookId set)
+ *   - 3 books (1 admin-owned public, 1 admin-owned org-visible, 1 admin-owned private)
+ *     with 4–5 chapters each plus internal chapters
+ *   - 5 KAO objects (3 animations, 1 dataset, 1 diagram)
+ *   - Revisions (3 revisions on one article)
+ *   - Article views (shaping top-articles ranking)
+ *   - Resource visibility (private article + org-visible book + private book)
+ *   - Access grants (user grant on private article, org grant on private book)
+ *   - User themes for admin and feynman
+ *   - Book snapshot (1 snapshot with 3 entries for classical-physics book)
  *
- * Idempotent: every insert uses onConflictDoNothing() so re-running is safe.
+ * Idempotent: every insert uses onConflictDoNothing() where a unique constraint
+ * exists; tables without unique constraints are guarded by existence checks.
  *
  * Credentials:
- *   Admin:   SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD env vars
- *   Viewers: hardcoded demo passwords (non-sensitive demo accounts)
+ *   Admin:  SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD env vars (skipped silently if unset)
+ *   Viewer: SEED_VIEWER_EMAIL / SEED_VIEWER_PASSWORD env vars (skipped silently if unset)
+ *   Demo users 3–4: non-sensitive fixed demo passwords (only for local/staging use)
+ *
+ * Wikilink format: [[publisher:articles:slug]], [[publisher:books:slug]],
+ *                  [[publisher:objects:slug]] (three-segment, publisher-scoped)
  */
 
 import { db } from "./index";
@@ -63,30 +73,40 @@ async function seed() {
   // ── 1. Users ─────────────────────────────────────────────────────────────────
   console.log("[seed] Seeding users...");
 
-  const adminEmail    = process.env.SEED_ADMIN_EMAIL    ?? "admin@example.com";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123456";
-  const viewerEmail   = process.env.SEED_VIEWER_EMAIL   ?? "viewer@example.com";
-  const viewerPassword = process.env.SEED_VIEWER_PASSWORD ?? "viewer123456";
+  const adminEmail     = process.env.SEED_ADMIN_EMAIL;
+  const adminPassword  = process.env.SEED_ADMIN_PASSWORD;
+  const viewerEmail    = process.env.SEED_VIEWER_EMAIL;
+  const viewerPassword = process.env.SEED_VIEWER_PASSWORD;
 
-  // Root admin — credentials from env
-  await db.insert(users).values({
-    email:         adminEmail,
-    passwordHash:  await hash(adminPassword),
-    isRootAdmin:   true,
-    displayName:   "Principia Admin",
-    publisherSlug: "principia-official",
-  }).onConflictDoNothing();
+  // Root admin — credentials from env (skip silently if not set)
+  if (adminEmail && adminPassword) {
+    await db.insert(users).values({
+      email:         adminEmail,
+      passwordHash:  await hash(adminPassword),
+      isRootAdmin:   true,
+      displayName:   "Principia Admin",
+      publisherSlug: "principia-official",
+    }).onConflictDoNothing();
+    console.log(`  admin: ${adminEmail} (principia-official)`);
+  } else {
+    console.log("  SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD not set — skipping admin user");
+  }
 
-  // Demo viewer 1 — credentials optionally from env
-  await db.insert(users).values({
-    email:         viewerEmail,
-    passwordHash:  await hash(viewerPassword),
-    isRootAdmin:   false,
-    displayName:   "Dr. Feynman",
-    publisherSlug: "dr-feynman",
-  }).onConflictDoNothing();
+  // Demo viewer — credentials from env (skip silently if not set)
+  if (viewerEmail && viewerPassword) {
+    await db.insert(users).values({
+      email:         viewerEmail,
+      passwordHash:  await hash(viewerPassword),
+      isRootAdmin:   false,
+      displayName:   "Dr. Feynman",
+      publisherSlug: "dr-feynman",
+    }).onConflictDoNothing();
+    console.log(`  viewer: ${viewerEmail} (dr-feynman)`);
+  } else {
+    console.log("  SEED_VIEWER_EMAIL / SEED_VIEWER_PASSWORD not set — skipping viewer user");
+  }
 
-  // Demo viewer 2 — fixed demo password (not sensitive)
+  // Demo user 3 — fixed non-sensitive demo password
   await db.insert(users).values({
     email:         "mit@example.com",
     passwordHash:  await hash("MitOcw-demo-2026!"),
@@ -95,7 +115,7 @@ async function seed() {
     publisherSlug: "mit-ocw",
   }).onConflictDoNothing();
 
-  // Demo viewer 3 — fixed demo password
+  // Demo user 4 — fixed non-sensitive demo password
   await db.insert(users).values({
     email:         "quantum@example.com",
     passwordHash:  await hash("QuantumLab-demo-2026!"),
@@ -104,16 +124,23 @@ async function seed() {
     publisherSlug: "quantum-lab",
   }).onConflictDoNothing();
 
-  const [admin]    = await db.select().from(users).where(eq(users.email, adminEmail));
-  const [feynman]  = await db.select().from(users).where(eq(users.email, viewerEmail));
-  const [mitUser]  = await db.select().from(users).where(eq(users.email, "mit@example.com"));
-  const [qLabUser] = await db.select().from(users).where(eq(users.email, "quantum@example.com"));
+  const adminRow    = adminEmail
+    ? (await db.select().from(users).where(eq(users.email, adminEmail)))[0]
+    : null;
+  const feynmanRow  = viewerEmail
+    ? (await db.select().from(users).where(eq(users.email, viewerEmail)))[0]
+    : null;
+  const [mitRow]    = await db.select().from(users).where(eq(users.email, "mit@example.com"));
+  const [qLabRow]   = await db.select().from(users).where(eq(users.email, "quantum@example.com"));
 
-  if (!admin) throw new Error("[seed] Admin user not found after insert — aborting.");
-  console.log(`  admin:      ${admin.email}  (id=${admin.id}, publisher=principia-official)`);
-  if (feynman)  console.log(`  feynman:    ${feynman.email}  (id=${feynman.id})`);
-  if (mitUser)  console.log(`  mit-ocw:    ${mitUser.email}  (id=${mitUser.id})`);
-  if (qLabUser) console.log(`  quantum:    ${qLabUser.email}  (id=${qLabUser.id})`);
+  if (!adminRow) {
+    console.log("[seed] No admin user available — most seeding will be skipped.");
+    console.log("[seed] Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD and re-run.");
+    process.exit(0);
+  }
+
+  if (mitRow)  console.log(`  mit-ocw:    mit@example.com  (id=${mitRow.id})`);
+  if (qLabRow) console.log(`  quantum-lab: quantum@example.com  (id=${qLabRow.id})`);
 
   // ── 2. Publishers ─────────────────────────────────────────────────────────────
   console.log("[seed] Seeding publishers...");
@@ -121,56 +148,56 @@ async function seed() {
   await db.insert(publishers).values({
     slug:   "principia-official",
     kind:   "user",
-    userId: admin.id,
+    userId: adminRow.id,
     orgId:  null,
   }).onConflictDoNothing();
 
-  if (feynman) {
+  if (feynmanRow) {
     await db.insert(publishers).values({
       slug:   "dr-feynman",
       kind:   "user",
-      userId: feynman.id,
+      userId: feynmanRow.id,
       orgId:  null,
     }).onConflictDoNothing();
   }
 
-  if (mitUser) {
+  if (mitRow) {
     await db.insert(publishers).values({
       slug:   "mit-ocw",
       kind:   "user",
-      userId: mitUser.id,
+      userId: mitRow.id,
       orgId:  null,
     }).onConflictDoNothing();
   }
 
-  if (qLabUser) {
+  if (qLabRow) {
     await db.insert(publishers).values({
       slug:   "quantum-lab",
       kind:   "user",
-      userId: qLabUser.id,
+      userId: qLabRow.id,
       orgId:  null,
     }).onConflictDoNothing();
   }
 
-  console.log("  4 user publishers registered");
+  console.log("  user publishers registered");
 
   // ── 3. Organizations ──────────────────────────────────────────────────────────
   console.log("[seed] Seeding organizations...");
 
-  // Org 1: Faculty consortium — covers super_admin + admin + member roles
+  // Org 1: Faculty Consortium — exercises super_admin + admin + member roles
   await db.insert(organizations).values({
     slug:          "faculty",
     name:          "Faculty Consortium",
     publisherSlug: "faculty",
-    creatorId:     admin.id,
+    creatorId:     adminRow.id,
   }).onConflictDoNothing();
 
-  // Org 2: Quantum Lab group — separate org for org-visibility testing
+  // Org 2: Quantum Institute — separate org; owns a private book
   await db.insert(organizations).values({
     slug:          "quantum-institute",
     name:          "Quantum Institute",
     publisherSlug: "quantum-institute",
-    creatorId:     admin.id,
+    creatorId:     adminRow.id,
   }).onConflictDoNothing();
 
   const [facultyOrg]  = await db.select().from(organizations).where(eq(organizations.slug, "faculty"));
@@ -184,25 +211,25 @@ async function seed() {
       orgId: facultyOrg.id,
     }).onConflictDoNothing();
 
-    // super_admin: admin, admin role: feynman, member role: mitUser
+    // Three distinct roles: super_admin (admin), admin (feynman), member (mitUser)
     await db.insert(orgMemberships).values({
       orgId:  facultyOrg.id,
-      userId: admin.id,
+      userId: adminRow.id,
       role:   "super_admin",
     }).onConflictDoNothing();
 
-    if (feynman) {
+    if (feynmanRow) {
       await db.insert(orgMemberships).values({
         orgId:  facultyOrg.id,
-        userId: feynman.id,
+        userId: feynmanRow.id,
         role:   "admin",
       }).onConflictDoNothing();
     }
 
-    if (mitUser) {
+    if (mitRow) {
       await db.insert(orgMemberships).values({
         orgId:  facultyOrg.id,
-        userId: mitUser.id,
+        userId: mitRow.id,
         role:   "member",
       }).onConflictDoNothing();
     }
@@ -217,19 +244,19 @@ async function seed() {
       orgId: quantumOrg.id,
     }).onConflictDoNothing();
 
-    // super_admin: qLabUser, member: feynman
-    if (qLabUser) {
+    // super_admin: qLabRow, member: feynmanRow
+    if (qLabRow) {
       await db.insert(orgMemberships).values({
         orgId:  quantumOrg.id,
-        userId: qLabUser.id,
+        userId: qLabRow.id,
         role:   "super_admin",
       }).onConflictDoNothing();
     }
 
-    if (feynman) {
+    if (feynmanRow) {
       await db.insert(orgMemberships).values({
         orgId:  quantumOrg.id,
-        userId: feynman.id,
+        userId: feynmanRow.id,
         role:   "member",
       }).onConflictDoNothing();
     }
@@ -241,528 +268,25 @@ async function seed() {
   console.log("[seed] Seeding categories...");
 
   await db.insert(categories).values([
-    { slug: "physics",           name: "Physics" },
-    { slug: "mechanics",         name: "Classical Mechanics" },
-    { slug: "electromagnetism",  name: "Electromagnetism" },
-    { slug: "relativity",        name: "Relativity" },
-    { slug: "quantum",           name: "Quantum Mechanics" },
-    { slug: "thermodynamics",    name: "Thermodynamics" },
+    { slug: "physics",          name: "Physics" },
+    { slug: "mechanics",        name: "Classical Mechanics" },
+    { slug: "electromagnetism", name: "Electromagnetism" },
+    { slug: "relativity",       name: "Relativity" },
+    { slug: "quantum",          name: "Quantum Mechanics" },
+    { slug: "thermodynamics",   name: "Thermodynamics" },
   ]).onConflictDoNothing();
 
-  const allCats = await db.select().from(categories);
-  const catBySlug = Object.fromEntries(allCats.map((c) => [c.slug, c]));
+  const allCats    = await db.select().from(categories);
+  const catBySlug  = Object.fromEntries(allCats.map((c) => [c.slug, c]));
   console.log(`  ${allCats.length} categories`);
 
-  // ── 5. Articles (owned by principia-official / admin) ─────────────────────────
-  console.log("[seed] Seeding articles (principia-official)...");
-
-  const adminOwner = { ownerType: "user" as const, ownerId: admin.id };
-
-  const articleDefs = [
-    // ── published, public ──────────────────────────────────────────────────────
-    {
-      slug:    "article-newtons-laws",
-      title:   "Newton's Laws of Motion",
-      summary: "The three fundamental laws governing classical mechanics.",
-      metadata: {
-        status: "published", tags: ["mechanics", "classical-physics"],
-        description: "Newton's three laws that describe the relationship between a body and the forces acting upon it.",
-        canvas: null,
-      } satisfies ArticleMetadataShape,
-      content: `---
-status: published
-tags: ["mechanics","classical-physics"]
-description: "Newton's three laws that describe the relationship between a body and the forces acting upon it."
-canvas: null
----
-
-# Newton's Laws of Motion
-
-## First Law — Law of Inertia
-
-An object at rest remains at rest, and an object in motion continues in motion at constant velocity, unless acted upon by a net external force.
-
-$$\\vec{p} = m\\vec{v} = \\text{const} \\quad \\text{when} \\quad \\vec{F}_{\\text{net}} = 0$$
-
-## Second Law
-
-The net force on an object equals the rate of change of its momentum:
-
-$$\\vec{F} = m\\vec{a}$$
-
-For variable mass systems (e.g. rockets), the full form is $\\vec{F} = \\frac{d(m\\vec{v})}{dt}$.
-
-## Third Law
-
-For every action there is an equal and opposite reaction:
-
-$$\\vec{F}_{AB} = -\\vec{F}_{BA}$$
-
-See also: [[principia-official:article:article-general-relativity]] for the relativistic extension.`,
-    },
-    {
-      slug:    "article-general-relativity",
-      title:   "General Relativity",
-      summary: "Einstein's geometric theory of gravitation.",
-      metadata: {
-        status: "published", tags: ["relativity", "gravity", "einstein"],
-        description: "Einstein's field equations and the curvature of spacetime.",
-        canvas: null,
-      } satisfies ArticleMetadataShape,
-      content: `---
-status: published
-tags: ["relativity","gravity","einstein"]
-description: "Einstein's field equations and the curvature of spacetime."
-canvas: null
----
-
-# General Relativity
-
-## Einstein Field Equations
-
-The curvature of spacetime is related to the energy and momentum of matter:
-
-$$G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\frac{8\\pi G}{c^4} T_{\\mu\\nu}$$
-
-where $G_{\\mu\\nu}$ is the Einstein tensor, $\\Lambda$ the cosmological constant, and $T_{\\mu\\nu}$ the stress-energy tensor.
-
-## Geodesics
-
-Free-falling particles follow geodesics — paths of extremal proper time:
-
-$$\\frac{d^2 x^\\mu}{d\\tau^2} + \\Gamma^\\mu_{\\alpha\\beta} \\frac{dx^\\alpha}{d\\tau}\\frac{dx^\\beta}{d\\tau} = 0$$
-
-## Schwarzschild Metric
-
-For a spherically symmetric, non-rotating mass $M$:
-
-$$ds^2 = -\\left(1 - \\frac{r_s}{r}\\right)c^2\\,dt^2 + \\left(1 - \\frac{r_s}{r}\\right)^{-1}dr^2 + r^2 d\\Omega^2$$
-
-where $r_s = 2GM/c^2$ is the Schwarzschild radius.`,
-    },
-    {
-      slug:    "article-maxwells-equations",
-      title:   "Maxwell's Equations",
-      summary: "The four fundamental equations of classical electromagnetism.",
-      metadata: {
-        status: "published", tags: ["electromagnetism", "waves"],
-        description: "Gauss, Faraday, Ampère — the complete classical field theory of electromagnetism.",
-        canvas: null,
-      } satisfies ArticleMetadataShape,
-      content: `---
-status: published
-tags: ["electromagnetism","waves"]
-description: "Gauss, Faraday, Ampère — the complete classical field theory of electromagnetism."
-canvas: null
----
-
-# Maxwell's Equations
-
-## Differential Form
-
-| Equation | Expression |
-|----------|------------|
-| Gauss (electric) | $\\nabla \\cdot \\mathbf{E} = \\rho/\\varepsilon_0$ |
-| Gauss (magnetic) | $\\nabla \\cdot \\mathbf{B} = 0$ |
-| Faraday | $\\nabla \\times \\mathbf{E} = -\\partial\\mathbf{B}/\\partial t$ |
-| Ampère–Maxwell | $\\nabla \\times \\mathbf{B} = \\mu_0\\mathbf{J} + \\mu_0\\varepsilon_0\\,\\partial\\mathbf{E}/\\partial t$ |
-
-## Electromagnetic Waves
-
-In vacuum ($\\rho=0$, $\\mathbf{J}=0$) the equations reduce to the wave equation:
-
-$$\\nabla^2\\mathbf{E} - \\mu_0\\varepsilon_0 \\frac{\\partial^2 \\mathbf{E}}{\\partial t^2} = 0$$
-
-with wave speed $c = 1/\\sqrt{\\mu_0\\varepsilon_0} \\approx 3\\times 10^8\\,\\text{m/s}$.`,
-    },
-    {
-      slug:    "article-thermodynamics-laws",
-      title:   "Laws of Thermodynamics",
-      summary: "The zeroth through third laws governing heat, energy, and entropy.",
-      metadata: {
-        status: "published", tags: ["thermodynamics", "entropy", "heat"],
-        description: "A concise treatment of all four thermodynamic laws with key equations.",
-        canvas: null,
-      } satisfies ArticleMetadataShape,
-      content: `---
-status: published
-tags: ["thermodynamics","entropy","heat"]
-description: "A concise treatment of all four thermodynamic laws with key equations."
-canvas: null
----
-
-# Laws of Thermodynamics
-
-## Zeroth Law
-
-If two systems are each in thermal equilibrium with a third, they are in thermal equilibrium with each other. This defines **temperature**.
-
-## First Law — Energy Conservation
-
-$$\\Delta U = Q - W$$
-
-The change in internal energy equals heat added minus work done by the system.
-
-## Second Law — Entropy
-
-In any spontaneous process the total entropy of an isolated system does not decrease:
-
-$$\\Delta S_{\\text{universe}} \\geq 0$$
-
-The Clausius inequality: $dS \\geq \\delta Q / T$.
-
-## Third Law
-
-As temperature approaches absolute zero, the entropy of a perfect crystal approaches zero:
-
-$$\\lim_{T \\to 0} S = 0$$`,
-    },
-    {
-      slug:    "article-special-relativity",
-      title:   "Special Relativity",
-      summary: "Time dilation, length contraction, and mass-energy equivalence.",
-      metadata: {
-        status: "published", tags: ["relativity", "einstein", "spacetime"],
-        description: "Einstein's 1905 postulates and their consequences: $E=mc^2$, Lorentz transformations, twin paradox.",
-        canvas: "anim-pendulum",
-      } satisfies ArticleMetadataShape,
-      content: `---
-status: published
-tags: ["relativity","einstein","spacetime"]
-description: "Einstein's 1905 postulates and their consequences."
-canvas: "anim-pendulum"
----
-
-# Special Relativity
-
-## The Two Postulates
-
-1. The laws of physics are the same in all inertial reference frames.
-2. The speed of light in vacuum is $c \\approx 3\\times 10^8\\,\\text{m/s}$ for all observers.
-
-## Lorentz Factor
-
-$$\\gamma = \\frac{1}{\\sqrt{1 - v^2/c^2}}$$
-
-## Time Dilation and Length Contraction
-
-$$\\Delta t' = \\gamma\\,\\Delta t \\qquad L' = L/\\gamma$$
-
-## Mass–Energy Equivalence
-
-$$E = mc^2 \\qquad E^2 = (pc)^2 + (mc^2)^2$$
-
-See also [[principia-official:article:article-general-relativity]] for the curved-spacetime extension.`,
-    },
-    // ── draft ─────────────────────────────────────────────────────────────────
-    {
-      slug:    "article-quantum-mechanics-draft",
-      title:   "Quantum Mechanics (Draft)",
-      summary: "Work-in-progress on wave mechanics and the Schrödinger equation.",
-      metadata: {
-        status: "draft", tags: ["quantum", "wip"],
-        description: "Incomplete draft covering wave functions, operators, and measurement.",
-        canvas: null,
-      } satisfies ArticleMetadataShape,
-      content: `---
-status: draft
-tags: ["quantum","wip"]
-description: "Incomplete draft covering wave functions, operators, and measurement."
-canvas: null
----
-
-# Quantum Mechanics (Draft)
-
-## Wave Function
-
-The quantum state of a particle is described by a wave function $\\Psi(x,t)$. The probability of finding the particle between $x$ and $x+dx$ is $|\\Psi|^2\\,dx$.
-
-## Schrödinger Equation
-
-$$i\\hbar \\frac{\\partial\\Psi}{\\partial t} = \\hat{H}\\Psi$$
-
-**TODO:** expand on eigenvalues, measurement postulate, and commutator relations.`,
-    },
-    // ── review ────────────────────────────────────────────────────────────────
-    {
-      slug:    "article-statistical-mechanics",
-      title:   "Statistical Mechanics",
-      summary: "Bridge between microscopic dynamics and macroscopic thermodynamics.",
-      metadata: {
-        status: "review", tags: ["thermodynamics", "statistical"],
-        description: "Boltzmann distribution, partition functions, and entropy from a statistical viewpoint.",
-        canvas: null,
-      } satisfies ArticleMetadataShape,
-      content: `---
-status: review
-tags: ["thermodynamics","statistical"]
-description: "Boltzmann distribution, partition functions, and entropy from a statistical viewpoint."
-canvas: null
----
-
-# Statistical Mechanics
-
-## Boltzmann Distribution
-
-The probability of a microstate with energy $E_i$ at temperature $T$:
-
-$$P_i = \\frac{e^{-E_i/k_BT}}{Z}, \\quad Z = \\sum_i e^{-E_i/k_BT}$$
-
-## Entropy
-
-Boltzmann's famous relation:
-
-$$S = k_B \\ln \\Omega$$
-
-where $\\Omega$ is the number of accessible microstates.`,
-    },
-    // ── archived ──────────────────────────────────────────────────────────────
-    {
-      slug:    "article-aether-theory",
-      title:   "Luminiferous Aether (Archived)",
-      summary: "The now-disproved hypothesis of a medium for light propagation.",
-      metadata: {
-        status: "archived", tags: ["history", "disproved"],
-        description: "Historical account of the aether hypothesis and its refutation by Michelson–Morley.",
-        canvas: null,
-      } satisfies ArticleMetadataShape,
-      content: `---
-status: archived
-tags: ["history","disproved"]
-description: "Historical account of the aether hypothesis and its refutation by Michelson–Morley."
-canvas: null
----
-
-# Luminiferous Aether (Archived)
-
-This article has been archived. The aether theory was conclusively disproved by the Michelson–Morley experiment (1887) and superseded by special relativity.
-
-## Historical Significance
-
-The null result of the Michelson–Morley experiment was instrumental in motivating Einstein's 1905 postulates.`,
-    },
-    // ── private article (with explicit grant) ─────────────────────────────────
-    {
-      slug:    "article-secret-formula",
-      title:   "Secret Formula",
-      summary: "Restricted content — private article visible only to granted users.",
-      metadata: {
-        status: "published", tags: ["restricted"],
-        description: "Private content for authorized users only.",
-        canvas: null,
-      } satisfies ArticleMetadataShape,
-      content: `---
-status: published
-tags: ["restricted"]
-description: "Private content for authorized users only."
-canvas: null
----
-
-# Secret Formula
-
-This article is **private** and only visible to explicitly granted users.
-
-$$\\Phi = \\oint_S \\mathbf{B} \\cdot d\\mathbf{A} = \\mu_0 I_{\\text{enc}}$$`,
-    },
-  ];
-
-  await db.insert(articles).values(
-    articleDefs.map((a) => ({ ...a, ...adminOwner }))
-  ).onConflictDoNothing();
-
-  const adminArticles = await db
-    .select()
-    .from(articles)
-    .where(and(eq(articles.ownerType, "user"), eq(articles.ownerId, admin.id)));
-  const artBySlug = Object.fromEntries(adminArticles.map((a) => [a.slug, a]));
-  console.log(`  ${adminArticles.length} articles (principia-official)`);
-
-  // ── Articles owned by dr-feynman ──────────────────────────────────────────
-  if (feynman) {
-    const feynmanDefs = [
-      {
-        slug:    "article-feynman-path-integral",
-        title:   "Feynman Path Integrals",
-        summary: "The sum-over-histories formulation of quantum mechanics.",
-        metadata: {
-          status: "published", tags: ["quantum", "path-integral"],
-          description: "Feynman's sum-over-paths approach: every path contributes with amplitude $e^{iS/\\hbar}$.",
-          canvas: null,
-        } satisfies ArticleMetadataShape,
-        content: `---
-status: published
-tags: ["quantum","path-integral"]
-description: "Feynman's sum-over-paths approach."
-canvas: null
----
-
-# Feynman Path Integrals
-
-## The Propagator
-
-$$K(x_f, t_f; x_i, t_i) = \\int \\mathcal{D}[x(t)]\\, e^{iS[x]/\\hbar}$$
-
-Every path from $(x_i, t_i)$ to $(x_f, t_f)$ contributes. Classical paths dominate because nearby paths interfere constructively when $\\delta S = 0$.
-
-## Connection to the Schrödinger Equation
-
-The path-integral and operator formulations are equivalent — both reproduce $i\\hbar\\,\\partial_t\\Psi = \\hat{H}\\Psi$.`,
-        ownerType: "user" as const,
-        ownerId: feynman.id,
-      },
-      {
-        slug:    "article-qed-overview",
-        title:   "Quantum Electrodynamics",
-        summary: "The quantum field theory of light and matter.",
-        metadata: {
-          status: "published", tags: ["quantum", "qed", "field-theory"],
-          description: "QED: Feynman diagrams, renormalization, and the anomalous magnetic moment.",
-          canvas: null,
-        } satisfies ArticleMetadataShape,
-        content: `---
-status: published
-tags: ["quantum","qed","field-theory"]
-description: "QED: Feynman diagrams, renormalization, and the anomalous magnetic moment."
-canvas: null
----
-
-# Quantum Electrodynamics
-
-## Lagrangian
-
-$$\\mathcal{L} = \\bar{\\psi}(i\\gamma^\\mu D_\\mu - m)\\psi - \\frac{1}{4}F_{\\mu\\nu}F^{\\mu\\nu}$$
-
-## Fine Structure Constant
-
-$$\\alpha = \\frac{e^2}{4\\pi\\varepsilon_0 \\hbar c} \\approx \\frac{1}{137}$$
-
-The anomalous magnetic moment $g-2$ is the most precisely tested prediction in physics.`,
-        ownerType: "user" as const,
-        ownerId: feynman.id,
-      },
-    ];
-
-    await db.insert(articles).values(feynmanDefs).onConflictDoNothing();
-    console.log("  2 articles (dr-feynman)");
-  }
-
-  // ── Articles owned by faculty org ─────────────────────────────────────────
-  if (facultyOrg) {
-    const facultyDefs = [
-      {
-        slug:    "article-wave-optics",
-        title:   "Wave Optics",
-        summary: "Diffraction, interference, and the wave nature of light.",
-        metadata: {
-          status: "published", tags: ["optics", "waves", "electromagnetism"],
-          description: "Young's double-slit, single-slit diffraction, and the diffraction limit.",
-          canvas: null,
-        } satisfies ArticleMetadataShape,
-        content: `---
-status: published
-tags: ["optics","waves","electromagnetism"]
-description: "Young's double-slit, single-slit diffraction, and the diffraction limit."
-canvas: null
----
-
-# Wave Optics
-
-## Double-Slit Interference
-
-$$I(\\theta) = I_0 \\cos^2\\left(\\frac{\\pi d \\sin\\theta}{\\lambda}\\right)$$
-
-Bright fringes at $d\\sin\\theta = m\\lambda$, $m \\in \\mathbb{Z}$.
-
-## Single-Slit Diffraction
-
-$$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta = \\frac{\\pi a \\sin\\theta}{\\lambda}$$`,
-        ownerType: "org" as const,
-        ownerId: facultyOrg.id,
-      },
-    ];
-
-    await db.insert(articles).values(facultyDefs).onConflictDoNothing();
-    console.log("  1 article (faculty org)");
-  }
-
-  // ── Refresh artBySlug after all articles are inserted ─────────────────────
-  const allArticles = await db.select().from(articles);
-  const allArtBySlug = Object.fromEntries(allArticles.map((a) => [a.slug, a]));
-
-  // ── 6. Article categories ─────────────────────────────────────────────────────
-  console.log("[seed] Seeding article categories...");
-
-  const categoryLinks: Array<[string, string]> = [
-    ["article-newtons-laws",       "mechanics"],
-    ["article-newtons-laws",       "physics"],
-    ["article-general-relativity", "physics"],
-    ["article-general-relativity", "relativity"],
-    ["article-maxwells-equations", "electromagnetism"],
-    ["article-maxwells-equations", "physics"],
-    ["article-thermodynamics-laws","thermodynamics"],
-    ["article-thermodynamics-laws","physics"],
-    ["article-special-relativity", "relativity"],
-    ["article-special-relativity", "physics"],
-    ["article-statistical-mechanics", "thermodynamics"],
-    ["article-quantum-mechanics-draft", "quantum"],
-    ["article-feynman-path-integral",   "quantum"],
-    ["article-qed-overview",            "quantum"],
-  ];
-
-  for (const [artSlug, catSlug] of categoryLinks) {
-    const art = allArtBySlug[artSlug];
-    const cat = catBySlug[catSlug];
-    if (art && cat) {
-      await db.insert(articleCategories).values({
-        articleId:  art.id,
-        categoryId: cat.id,
-      }).onConflictDoNothing();
-    }
-  }
-  console.log(`  ${categoryLinks.length} category links`);
-
-  // ── 7. Revisions (for article-newtons-laws) ────────────────────────────────
-  console.log("[seed] Seeding revisions...");
-
-  const newtonsArt = artBySlug["article-newtons-laws"];
-  if (newtonsArt) {
-    const existingRevs = await db
-      .select()
-      .from(revisions)
-      .where(eq(revisions.articleId, newtonsArt.id));
-
-    if (existingRevs.length === 0) {
-      await db.insert(revisions).values([
-        {
-          articleId: newtonsArt.id,
-          content: "# Newton's Laws\n\nFirst draft — placeholder.",
-          editNote: "Initial draft",
-          editedAt: daysAgo(14),
-        },
-        {
-          articleId: newtonsArt.id,
-          content: "# Newton's Laws of Motion\n\n## First Law\n\nAn object at rest stays at rest.\n\n$$F = ma$$",
-          editNote: "Added math and sections",
-          editedAt: daysAgo(7),
-        },
-        {
-          articleId: newtonsArt.id,
-          content: "# Newton's Laws of Motion\n\n## First Law (Law of Inertia)\n\nAn object at rest remains at rest.\n\n## Second Law\n\n$$\\vec{F} = m\\vec{a}$$\n\n## Third Law\n\nAction = -Reaction.",
-          editNote: "Third law added",
-          editedAt: daysAgo(2),
-        },
-      ]);
-      console.log("  3 revisions created for article-newtons-laws");
-    } else {
-      console.log("  revisions already exist — skipped");
-    }
-  }
-
-  // ── 8. KAO Objects ────────────────────────────────────────────────────────────
+  // ── 5. KAO Objects (must exist before articles that reference anim-pendulum) ─
   console.log("[seed] Seeding KAO objects...");
 
+  const adminOwner = { ownerType: "user" as const, ownerId: adminRow.id };
+
   await db.insert(objects).values([
-    // Animation: simple pendulum (user-owned by admin)
+    // ── Animation 1: simple pendulum (admin-owned, referenced via `canvas` frontmatter)
     {
       slug:        "anim-pendulum",
       name:        "Simple Pendulum",
@@ -770,7 +294,7 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
       ...adminOwner,
       description: "A frictionless simple pendulum driven by gravity.",
       content: {
-        code: `function SimplePendulum() {
+        code: `(function SimplePendulum() {
   var canvas = document.getElementById('canvas');
   var ctx = canvas.getContext('2d');
   canvas.width = canvas.offsetWidth || 640;
@@ -818,10 +342,10 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
     requestAnimationFrame(step);
   }
   step();
-}`,
+})();`,
       },
     },
-    // Animation: Lissajous figures (user-owned by admin, second animation)
+    // ── Animation 2: Lissajous figures (admin-owned, second animation for variety)
     {
       slug:        "anim-lissajous",
       name:        "Lissajous Figures",
@@ -829,7 +353,7 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
       ...adminOwner,
       description: "Parametric curves traced by two orthogonal sinusoidal motions.",
       content: {
-        code: `function Lissajous() {
+        code: `(function Lissajous() {
   var canvas = document.getElementById('canvas');
   var ctx = canvas.getContext('2d');
   canvas.width = canvas.offsetWidth || 640;
@@ -864,10 +388,10 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
     requestAnimationFrame(step);
   }
   step();
-}`,
+})();`,
       },
     },
-    // Dataset: periodic table subset (user-owned by admin)
+    // ── Dataset: periodic table subset (admin-owned)
     {
       slug:        "object-periodic-table",
       name:        "Periodic Table Sample",
@@ -888,7 +412,7 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
         ],
       },
     },
-    // Diagram: Newtonian force causal chain (user-owned by admin)
+    // ── Diagram: Newtonian force causal chain (admin-owned)
     {
       slug:        "object-newtonian-flow",
       name:        "Newtonian Mechanics Causal Chain",
@@ -898,24 +422,28 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
       content: {
         format: "mermaid",
         source: `graph TD
-  F["Applied Force\\n\\\\(\\\\vec{F}\\\\)"] --> A["Acceleration\\n\\\\(a = F/m\\\\)"]
-  M["Mass\\n\\\\(m\\\\)"] --> A
-  A --> V["Velocity\\n\\\\(v = \\\\int a\\\\,dt\\\\)"]
-  V0["Initial Velocity\\n\\\\(v_0\\\\)"] --> V
-  V --> X["Position\\n\\\\(x = \\\\int v\\\\,dt\\\\)"]
-  X0["Initial Position\\n\\\\(x_0\\\\)"] --> X`,
+  F["Applied Force"] --> A["Acceleration (a=F/m)"]
+  M["Mass (m)"] --> A
+  A --> V["Velocity"]
+  V0["Initial Velocity"] --> V
+  V --> X["Position"]
+  X0["Initial Position"] --> X`,
       },
     },
-    // Animation owned by faculty org (demonstrates org ownership of objects)
-    ...(facultyOrg ? [{
+  ]).onConflictDoNothing();
+
+  // ── Animation 3: wave superposition (org-owned by faculty — demonstrates org ownership)
+  let orgAnimSeeded = false;
+  if (facultyOrg) {
+    await db.insert(objects).values({
       slug:        "anim-wave-superposition",
       name:        "Wave Superposition",
-      type:        "animation" as const,
+      type:        "animation",
       ownerType:   "org" as const,
       ownerId:     facultyOrg.id,
       description: "Two sinusoidal waves superposing to demonstrate interference.",
       content: {
-        code: `function WaveSuperposition() {
+        code: `(function WaveSuperposition() {
   var canvas = document.getElementById('canvas');
   var ctx = canvas.getContext('2d');
   canvas.width = canvas.offsetWidth || 640;
@@ -947,10 +475,9 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
     drawWave(k1, w1, col1, H / 4);
     drawWave(k2, w2, col2, H / 2);
 
-    // Superposition
     ctx.beginPath();
     for (var x = 0; x < W; x++) {
-      var y = (H * 3/4) + 30 * Math.sin(k1 * x - w1 * t) + 30 * Math.sin(k2 * x - w2 * t);
+      var y = (H * 3 / 4) + 30 * Math.sin(k1 * x - w1 * t) + 30 * Math.sin(k2 * x - w2 * t);
       if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
     ctx.strokeStyle = col3;
@@ -961,32 +488,582 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
     requestAnimationFrame(step);
   }
   step();
-}`,
+})();`,
       },
-    }] : []),
-  ]).onConflictDoNothing();
+    }).onConflictDoNothing();
+    orgAnimSeeded = true;
+  }
 
-  const objectCount = 4 + (facultyOrg ? 1 : 0);
-  console.log(`  ${objectCount} KAO objects (2 animations, 1 org animation, 1 dataset, 1 diagram)`);
+  const objCount = 4 + (orgAnimSeeded ? 1 : 0);
+  console.log(`  ${objCount} KAO objects (2 admin animations, 1 org animation, 1 dataset, 1 diagram)`);
+
+  // ── 6. Articles (admin-owned by principia-official) ───────────────────────────
+  console.log("[seed] Seeding articles (principia-official)...");
+
+  // Wikilink format: [[publisher:articles:slug]] [[publisher:books:slug]] [[publisher:objects:slug]]
+  const articleDefs = [
+    // ── published, public ──────────────────────────────────────────────────────
+    {
+      slug:    "article-newtons-laws",
+      title:   "Newton's Laws of Motion",
+      summary: "The three fundamental laws governing classical mechanics.",
+      metadata: {
+        status: "published",
+        tags: ["mechanics", "classical-physics"],
+        description: "Newton's three laws that describe the relationship between a body and the forces acting upon it.",
+        canvas: null,
+      } satisfies ArticleMetadataShape,
+      content: `---
+status: published
+tags: ["mechanics","classical-physics"]
+description: "Newton's three laws that describe the relationship between a body and the forces acting upon it."
+canvas: null
+---
+
+# Newton's Laws of Motion
+
+## First Law — Law of Inertia
+
+An object at rest remains at rest, and an object in motion continues in motion at constant velocity, unless acted upon by a net external force.
+
+$$\\vec{p} = m\\vec{v} = \\text{const} \\quad \\text{when} \\quad \\vec{F}_{\\text{net}} = 0$$
+
+## Second Law
+
+The net force on an object equals the rate of change of its momentum:
+
+$$\\vec{F} = m\\vec{a}$$
+
+For variable mass systems (e.g. rockets), the full form is $\\vec{F} = \\frac{d(m\\vec{v})}{dt}$.
+
+## Third Law
+
+For every action there is an equal and opposite reaction:
+
+$$\\vec{F}_{AB} = -\\vec{F}_{BA}$$
+
+See also: [[principia-official:articles:article-general-relativity]] for the relativistic extension.
+
+The Newtonian causal chain is visualised in [[principia-official:objects:object-newtonian-flow]].`,
+    },
+    {
+      slug:    "article-general-relativity",
+      title:   "General Relativity",
+      summary: "Einstein's geometric theory of gravitation.",
+      metadata: {
+        status: "published",
+        tags: ["relativity", "gravity", "einstein"],
+        description: "Einstein's field equations and the curvature of spacetime.",
+        canvas: null,
+      } satisfies ArticleMetadataShape,
+      content: `---
+status: published
+tags: ["relativity","gravity","einstein"]
+description: "Einstein's field equations and the curvature of spacetime."
+canvas: null
+---
+
+# General Relativity
+
+## Einstein Field Equations
+
+The curvature of spacetime is related to the energy and momentum of matter:
+
+$$G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\frac{8\\pi G}{c^4} T_{\\mu\\nu}$$
+
+where $G_{\\mu\\nu}$ is the Einstein tensor, $\\Lambda$ the cosmological constant, and $T_{\\mu\\nu}$ the stress-energy tensor.
+
+## Geodesics
+
+Free-falling particles follow geodesics — paths of extremal proper time:
+
+$$\\frac{d^2 x^\\mu}{d\\tau^2} + \\Gamma^\\mu_{\\alpha\\beta} \\frac{dx^\\alpha}{d\\tau}\\frac{dx^\\beta}{d\\tau} = 0$$
+
+## Schwarzschild Metric
+
+For a spherically symmetric, non-rotating mass $M$:
+
+$$ds^2 = -\\left(1 - \\frac{r_s}{r}\\right)c^2\\,dt^2 + \\left(1 - \\frac{r_s}{r}\\right)^{-1}dr^2 + r^2 d\\Omega^2$$
+
+where $r_s = 2GM/c^2$ is the Schwarzschild radius.
+
+Back to classical mechanics: [[principia-official:articles:article-newtons-laws]].`,
+    },
+    {
+      slug:    "article-maxwells-equations",
+      title:   "Maxwell's Equations",
+      summary: "The four fundamental equations of classical electromagnetism.",
+      metadata: {
+        status: "published",
+        tags: ["electromagnetism", "waves"],
+        description: "Gauss, Faraday, Ampere — the complete classical field theory of electromagnetism.",
+        canvas: null,
+      } satisfies ArticleMetadataShape,
+      content: `---
+status: published
+tags: ["electromagnetism","waves"]
+description: "Gauss, Faraday, Ampere — the complete classical field theory of electromagnetism."
+canvas: null
+---
+
+# Maxwell's Equations
+
+## Differential Form
+
+| Equation | Expression |
+|----------|------------|
+| Gauss (electric) | $\\nabla \\cdot \\mathbf{E} = \\rho/\\varepsilon_0$ |
+| Gauss (magnetic) | $\\nabla \\cdot \\mathbf{B} = 0$ |
+| Faraday | $\\nabla \\times \\mathbf{E} = -\\partial\\mathbf{B}/\\partial t$ |
+| Ampere-Maxwell | $\\nabla \\times \\mathbf{B} = \\mu_0\\mathbf{J} + \\mu_0\\varepsilon_0\\,\\partial\\mathbf{E}/\\partial t$ |
+
+## Electromagnetic Waves
+
+In vacuum ($\\rho=0$, $\\mathbf{J}=0$) the equations reduce to the wave equation:
+
+$$\\nabla^2\\mathbf{E} - \\mu_0\\varepsilon_0 \\frac{\\partial^2 \\mathbf{E}}{\\partial t^2} = 0$$
+
+with wave speed $c = 1/\\sqrt{\\mu_0\\varepsilon_0} \\approx 3\\times 10^8\\,\\text{m/s}$.
+
+Related curriculum: [[principia-official:books:book-classical-physics]].`,
+    },
+    {
+      slug:    "article-thermodynamics-laws",
+      title:   "Laws of Thermodynamics",
+      summary: "The zeroth through third laws governing heat, energy, and entropy.",
+      metadata: {
+        status: "published",
+        tags: ["thermodynamics", "entropy", "heat"],
+        description: "A concise treatment of all four thermodynamic laws with key equations.",
+        canvas: null,
+      } satisfies ArticleMetadataShape,
+      content: `---
+status: published
+tags: ["thermodynamics","entropy","heat"]
+description: "A concise treatment of all four thermodynamic laws with key equations."
+canvas: null
+---
+
+# Laws of Thermodynamics
+
+## Zeroth Law
+
+If two systems are each in thermal equilibrium with a third, they are in thermal equilibrium with each other. This defines **temperature**.
+
+## First Law — Energy Conservation
+
+$$\\Delta U = Q - W$$
+
+The change in internal energy equals heat added minus work done by the system.
+
+## Second Law — Entropy
+
+In any spontaneous process the total entropy of an isolated system does not decrease:
+
+$$\\Delta S_{\\text{universe}} \\geq 0$$
+
+The Clausius inequality: $dS \\geq \\delta Q / T$.
+
+## Third Law
+
+As temperature approaches absolute zero, the entropy of a perfect crystal approaches zero:
+
+$$\\lim_{T \\to 0} S = 0$$`,
+    },
+    // Article with `canvas` frontmatter — embeds anim-pendulum at page top
+    {
+      slug:    "article-special-relativity",
+      title:   "Special Relativity",
+      summary: "Time dilation, length contraction, and mass-energy equivalence.",
+      metadata: {
+        status: "published",
+        tags: ["relativity", "einstein", "spacetime"],
+        description: "Einstein's 1905 postulates and their consequences: time dilation, length contraction, E=mc^2.",
+        canvas: "anim-pendulum",
+      } satisfies ArticleMetadataShape,
+      content: `---
+status: published
+tags: ["relativity","einstein","spacetime"]
+description: "Einstein's 1905 postulates and their consequences: time dilation, length contraction, E=mc^2."
+canvas: "anim-pendulum"
+---
+
+# Special Relativity
+
+## The Two Postulates
+
+1. The laws of physics are the same in all inertial reference frames.
+2. The speed of light in vacuum is $c \\approx 3\\times 10^8\\,\\text{m/s}$ for all observers.
+
+## Lorentz Factor
+
+$$\\gamma = \\frac{1}{\\sqrt{1 - v^2/c^2}}$$
+
+## Time Dilation and Length Contraction
+
+$$\\Delta t' = \\gamma\\,\\Delta t \\qquad L' = L/\\gamma$$
+
+## Mass-Energy Equivalence
+
+$$E = mc^2 \\qquad E^2 = (pc)^2 + (mc^2)^2$$
+
+See also [[principia-official:articles:article-general-relativity]] for the curved-spacetime extension.
+
+The pendulum animation above demonstrates classical mechanics intuition before we break it with relativity.`,
+    },
+    // ── draft ─────────────────────────────────────────────────────────────────
+    {
+      slug:    "article-quantum-mechanics-draft",
+      title:   "Quantum Mechanics (Draft)",
+      summary: "Work-in-progress on wave mechanics and the Schrodinger equation.",
+      metadata: {
+        status: "draft",
+        tags: ["quantum", "wip"],
+        description: "Incomplete draft covering wave functions, operators, and measurement.",
+        canvas: null,
+      } satisfies ArticleMetadataShape,
+      content: `---
+status: draft
+tags: ["quantum","wip"]
+description: "Incomplete draft covering wave functions, operators, and measurement."
+canvas: null
+---
+
+# Quantum Mechanics (Draft)
+
+## Wave Function
+
+The quantum state of a particle is described by a wave function $\\Psi(x,t)$. The probability of finding the particle between $x$ and $x+dx$ is $|\\Psi|^2\\,dx$.
+
+## Schrodinger Equation
+
+$$i\\hbar \\frac{\\partial\\Psi}{\\partial t} = \\hat{H}\\Psi$$
+
+**TODO:** expand on eigenvalues, measurement postulate, and commutator relations.`,
+    },
+    // ── review ────────────────────────────────────────────────────────────────
+    {
+      slug:    "article-statistical-mechanics",
+      title:   "Statistical Mechanics",
+      summary: "Bridge between microscopic dynamics and macroscopic thermodynamics.",
+      metadata: {
+        status: "review",
+        tags: ["thermodynamics", "statistical"],
+        description: "Boltzmann distribution, partition functions, and entropy from a statistical viewpoint.",
+        canvas: null,
+      } satisfies ArticleMetadataShape,
+      content: `---
+status: review
+tags: ["thermodynamics","statistical"]
+description: "Boltzmann distribution, partition functions, and entropy from a statistical viewpoint."
+canvas: null
+---
+
+# Statistical Mechanics
+
+## Boltzmann Distribution
+
+The probability of a microstate with energy $E_i$ at temperature $T$:
+
+$$P_i = \\frac{e^{-E_i/k_BT}}{Z}, \\quad Z = \\sum_i e^{-E_i/k_BT}$$
+
+## Entropy
+
+Boltzmann's famous relation:
+
+$$S = k_B \\ln \\Omega$$
+
+where $\\Omega$ is the number of accessible microstates.`,
+    },
+    // ── archived ──────────────────────────────────────────────────────────────
+    {
+      slug:    "article-aether-theory",
+      title:   "Luminiferous Aether (Archived)",
+      summary: "The now-disproved hypothesis of a medium for light propagation.",
+      metadata: {
+        status: "archived",
+        tags: ["history", "disproved"],
+        description: "Historical account of the aether hypothesis and its refutation by Michelson-Morley.",
+        canvas: null,
+      } satisfies ArticleMetadataShape,
+      content: `---
+status: archived
+tags: ["history","disproved"]
+description: "Historical account of the aether hypothesis and its refutation by Michelson-Morley."
+canvas: null
+---
+
+# Luminiferous Aether (Archived)
+
+This article has been archived. The aether theory was conclusively disproved by the Michelson-Morley experiment (1887) and superseded by special relativity.
+
+## Historical Significance
+
+The null result of the Michelson-Morley experiment was instrumental in motivating Einstein's 1905 postulates. For the modern successor, see [[principia-official:articles:article-special-relativity]].`,
+    },
+    // ── private article (explicit user grant required) ────────────────────────
+    {
+      slug:    "article-secret-formula",
+      title:   "Secret Formula",
+      summary: "Restricted content — private article visible only to granted users.",
+      metadata: {
+        status: "published",
+        tags: ["restricted"],
+        description: "Private content for authorized users only.",
+        canvas: null,
+      } satisfies ArticleMetadataShape,
+      content: `---
+status: published
+tags: ["restricted"]
+description: "Private content for authorized users only."
+canvas: null
+---
+
+# Secret Formula
+
+This article is **private** and only visible to explicitly granted users.
+
+$$\\Phi = \\oint_S \\mathbf{B} \\cdot d\\mathbf{A} = \\mu_0 I_{\\text{enc}}$$
+
+The Lissajous animation: [[principia-official:objects:anim-lissajous]].`,
+    },
+  ];
+
+  await db.insert(articles).values(
+    articleDefs.map((a) => ({ ...a, ...adminOwner }))
+  ).onConflictDoNothing();
+
+  // Fetch admin articles for FK lookups below
+  const adminArticles = await db
+    .select()
+    .from(articles)
+    .where(and(eq(articles.ownerType, "user"), eq(articles.ownerId, adminRow.id)));
+  const artBySlug = Object.fromEntries(adminArticles.map((a) => [a.slug, a]));
+  console.log(`  ${adminArticles.length} articles seeded (principia-official)`);
+
+  // ── Articles owned by dr-feynman ──────────────────────────────────────────
+  if (feynmanRow) {
+    const feynmanDefs = [
+      {
+        slug:    "article-feynman-path-integral",
+        title:   "Feynman Path Integrals",
+        summary: "The sum-over-histories formulation of quantum mechanics.",
+        metadata: {
+          status: "published",
+          tags: ["quantum", "path-integral"],
+          description: "Feynman's sum-over-paths approach: every path contributes with amplitude e^(iS/hbar).",
+          canvas: null,
+        } satisfies ArticleMetadataShape,
+        content: `---
+status: published
+tags: ["quantum","path-integral"]
+description: "Feynman's sum-over-paths approach."
+canvas: null
+---
+
+# Feynman Path Integrals
+
+## The Propagator
+
+$$K(x_f, t_f; x_i, t_i) = \\int \\mathcal{D}[x(t)]\\, e^{iS[x]/\\hbar}$$
+
+Every path from $(x_i, t_i)$ to $(x_f, t_f)$ contributes. Classical paths dominate because nearby paths interfere constructively when $\\delta S = 0$.
+
+## Connection to the Schrodinger Equation
+
+The path-integral and operator formulations are equivalent — both reproduce $i\\hbar\\,\\partial_t\\Psi = \\hat{H}\\Psi$.
+
+See also [[dr-feynman:articles:article-qed-overview]].`,
+        ownerType: "user" as const,
+        ownerId: feynmanRow.id,
+      },
+      {
+        slug:    "article-qed-overview",
+        title:   "Quantum Electrodynamics",
+        summary: "The quantum field theory of light and matter.",
+        metadata: {
+          status: "published",
+          tags: ["quantum", "qed", "field-theory"],
+          description: "QED: Feynman diagrams, renormalization, and the anomalous magnetic moment.",
+          canvas: null,
+        } satisfies ArticleMetadataShape,
+        content: `---
+status: published
+tags: ["quantum","qed","field-theory"]
+description: "QED: Feynman diagrams, renormalization, and the anomalous magnetic moment."
+canvas: null
+---
+
+# Quantum Electrodynamics
+
+## Lagrangian
+
+$$\\mathcal{L} = \\bar{\\psi}(i\\gamma^\\mu D_\\mu - m)\\psi - \\frac{1}{4}F_{\\mu\\nu}F^{\\mu\\nu}$$
+
+## Fine Structure Constant
+
+$$\\alpha = \\frac{e^2}{4\\pi\\varepsilon_0 \\hbar c} \\approx \\frac{1}{137}$$
+
+The anomalous magnetic moment $g-2$ is the most precisely tested prediction in physics.
+
+Back to path integrals: [[dr-feynman:articles:article-feynman-path-integral]].`,
+        ownerType: "user" as const,
+        ownerId: feynmanRow.id,
+      },
+    ];
+
+    await db.insert(articles).values(feynmanDefs).onConflictDoNothing();
+    console.log("  2 articles seeded (dr-feynman)");
+  }
+
+  // ── Articles owned by faculty org ─────────────────────────────────────────
+  if (facultyOrg) {
+    const facultyDefs = [
+      {
+        slug:    "article-wave-optics",
+        title:   "Wave Optics",
+        summary: "Diffraction, interference, and the wave nature of light.",
+        metadata: {
+          status: "published",
+          tags: ["optics", "waves", "electromagnetism"],
+          description: "Young's double-slit, single-slit diffraction, and the diffraction limit.",
+          canvas: null,
+        } satisfies ArticleMetadataShape,
+        content: `---
+status: published
+tags: ["optics","waves","electromagnetism"]
+description: "Young's double-slit, single-slit diffraction, and the diffraction limit."
+canvas: null
+---
+
+# Wave Optics
+
+## Double-Slit Interference
+
+$$I(\\theta) = I_0 \\cos^2\\left(\\frac{\\pi d \\sin\\theta}{\\lambda}\\right)$$
+
+Bright fringes at $d\\sin\\theta = m\\lambda$, $m \\in \\mathbb{Z}$.
+
+## Single-Slit Diffraction
+
+$$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta = \\frac{\\pi a \\sin\\theta}{\\lambda}$$
+
+See the wave superposition animation: [[faculty:objects:anim-wave-superposition]].`,
+        ownerType: "org" as const,
+        ownerId: facultyOrg.id,
+      },
+    ];
+
+    await db.insert(articles).values(facultyDefs).onConflictDoNothing();
+    console.log("  1 article seeded (faculty org)");
+  }
+
+  // Refresh full article map after all inserts
+  const allArticles   = await db.select().from(articles);
+  const allArtBySlug  = Object.fromEntries(allArticles.map((a) => [a.slug, a]));
+
+  // ── 7. Article categories ─────────────────────────────────────────────────────
+  console.log("[seed] Seeding article categories...");
+
+  // articleCategories has no unique constraint — guard by checking existence first
+  const existingCatLinks = await db.select().from(articleCategories);
+  const catLinkSet = new Set(existingCatLinks.map((l) => `${l.articleId}:${l.categoryId}`));
+
+  const categoryLinks: Array<[string, string]> = [
+    ["article-newtons-laws",            "mechanics"],
+    ["article-newtons-laws",            "physics"],
+    ["article-general-relativity",      "physics"],
+    ["article-general-relativity",      "relativity"],
+    ["article-maxwells-equations",      "electromagnetism"],
+    ["article-maxwells-equations",      "physics"],
+    ["article-thermodynamics-laws",     "thermodynamics"],
+    ["article-thermodynamics-laws",     "physics"],
+    ["article-special-relativity",      "relativity"],
+    ["article-special-relativity",      "physics"],
+    ["article-statistical-mechanics",   "thermodynamics"],
+    ["article-quantum-mechanics-draft", "quantum"],
+    ["article-feynman-path-integral",   "quantum"],
+    ["article-qed-overview",            "quantum"],
+    ["article-wave-optics",             "electromagnetism"],
+  ];
+
+  let newLinks = 0;
+  for (const [artSlug, catSlug] of categoryLinks) {
+    const art = allArtBySlug[artSlug];
+    const cat = catBySlug[catSlug];
+    if (art && cat) {
+      const key = `${art.id}:${cat.id}`;
+      if (!catLinkSet.has(key)) {
+        await db.insert(articleCategories).values({ articleId: art.id, categoryId: cat.id });
+        catLinkSet.add(key);
+        newLinks++;
+      }
+    }
+  }
+  console.log(`  ${newLinks} new category links inserted (${categoryLinks.length} desired)`);
+
+  // ── 8. Revisions (for article-newtons-laws) ────────────────────────────────
+  console.log("[seed] Seeding revisions...");
+
+  const newtonsArt = artBySlug["article-newtons-laws"];
+  if (newtonsArt) {
+    const existingRevs = await db
+      .select()
+      .from(revisions)
+      .where(eq(revisions.articleId, newtonsArt.id));
+
+    if (existingRevs.length === 0) {
+      await db.insert(revisions).values([
+        {
+          articleId: newtonsArt.id,
+          content: "# Newton's Laws\n\nFirst draft — placeholder.",
+          editNote: "Initial draft",
+          editedAt: daysAgo(14),
+        },
+        {
+          articleId: newtonsArt.id,
+          content: "# Newton's Laws of Motion\n\n## First Law\n\nAn object at rest stays at rest.\n\n$$F = ma$$",
+          editNote: "Added math and sections",
+          editedAt: daysAgo(7),
+        },
+        {
+          articleId: newtonsArt.id,
+          content: "# Newton's Laws of Motion\n\n## First Law (Law of Inertia)\n\nAn object at rest remains at rest.\n\n## Second Law\n\n$$\\vec{F} = m\\vec{a}$$\n\n## Third Law\n\nAction = -Reaction.",
+          editNote: "Third law added",
+          editedAt: daysAgo(2),
+        },
+      ]);
+      console.log("  3 revisions created for article-newtons-laws");
+    } else {
+      console.log("  revisions already exist — skipped");
+    }
+  }
 
   // ── 9. Books ──────────────────────────────────────────────────────────────────
   console.log("[seed] Seeding books...");
 
-  // Book 1: Classical Physics (owned by admin, public)
+  // Book 1: Classical Physics (admin-owned, public)
   await db.insert(books).values({
     slug:      "book-classical-physics",
     title:     "Classical Physics",
     ...adminOwner,
   }).onConflictDoNothing();
 
-  // Book 2: Quantum Primer (owned by admin, org-visible)
+  // Book 2: Quantum Primer (admin-owned, org-visible — only faculty members see it)
   await db.insert(books).values({
     slug:      "book-quantum-primer",
     title:     "Quantum Primer",
     ...adminOwner,
   }).onConflictDoNothing();
 
-  // Book 3: Faculty Lectures (owned by faculty org, org-visible)
+  // Book 3: Advanced Topics (admin-owned, private — only via explicit grant)
+  await db.insert(books).values({
+    slug:      "book-advanced-topics",
+    title:     "Advanced Topics in Physics",
+    ...adminOwner,
+  }).onConflictDoNothing();
+
+  // Book 4: Faculty Lectures (org-owned by faculty, org-visible)
   if (facultyOrg) {
     await db.insert(books).values({
       slug:      "book-faculty-lectures",
@@ -998,24 +1075,32 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
 
   const [classicalBook] = await db
     .select().from(books)
-    .where(and(eq(books.ownerType, "user"), eq(books.ownerId, admin.id), eq(books.slug, "book-classical-physics")));
+    .where(and(eq(books.ownerType, "user"), eq(books.ownerId, adminRow.id), eq(books.slug, "book-classical-physics")));
 
   const [quantumBook] = await db
     .select().from(books)
-    .where(and(eq(books.ownerType, "user"), eq(books.ownerId, admin.id), eq(books.slug, "book-quantum-primer")));
+    .where(and(eq(books.ownerType, "user"), eq(books.ownerId, adminRow.id), eq(books.slug, "book-quantum-primer")));
+
+  const [advancedBook] = await db
+    .select().from(books)
+    .where(and(eq(books.ownerType, "user"), eq(books.ownerId, adminRow.id), eq(books.slug, "book-advanced-topics")));
 
   const facultyBook = facultyOrg
-    ? (await db.select().from(books).where(and(eq(books.ownerType, "org"), eq(books.ownerId, facultyOrg.id), eq(books.slug, "book-faculty-lectures"))))[0]
+    ? (await db.select().from(books).where(and(
+        eq(books.ownerType, "org"),
+        eq(books.ownerId, facultyOrg.id),
+        eq(books.slug, "book-faculty-lectures")
+      )))[0]
     : null;
 
-  // ── Book 1 chapters: Classical Physics (5 chapters) ───────────────────────
+  // ── Book 1 regular chapters: Classical Physics ────────────────────────────
   if (classicalBook) {
     const ch1 = [
-      { artSlug: "article-newtons-laws",       position: 0, partTitle: "Part I: Mechanics" },
-      { artSlug: "article-thermodynamics-laws", position: 1, partTitle: null },
-      { artSlug: "article-special-relativity",  position: 2, partTitle: "Part II: Relativity" },
-      { artSlug: "article-general-relativity",  position: 3, partTitle: null },
-      { artSlug: "article-maxwells-equations",  position: 4, partTitle: "Part III: Electromagnetism" },
+      { artSlug: "article-newtons-laws",        position: 0, partTitle: "Part I: Mechanics" },
+      { artSlug: "article-thermodynamics-laws",  position: 1, partTitle: null },
+      { artSlug: "article-special-relativity",   position: 2, partTitle: "Part II: Relativity" },
+      { artSlug: "article-general-relativity",   position: 3, partTitle: null },
+      { artSlug: "article-maxwells-equations",   position: 4, partTitle: "Part III: Electromagnetism" },
     ];
 
     for (const ch of ch1) {
@@ -1029,10 +1114,125 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
         }).onConflictDoNothing();
       }
     }
-    console.log("  book-classical-physics: 5 chapters");
+    console.log("  book-classical-physics: 5 regular chapters");
   }
 
-  // ── Book 2 chapters: Quantum Primer (3 chapters) ──────────────────────────
+  // ── Book 1 internal articles (isInternal=true, parentBookId=classicalBook.id)
+  //    Internal articles are created separately and do NOT appear on /:publisher/articles
+  if (classicalBook) {
+    const internalDefs = [
+      {
+        slug:         "article-classical-appendix-a",
+        title:        "Appendix A: Mathematical Preliminaries",
+        summary:      "Vector calculus and differential equations review — internal to Classical Physics.",
+        isInternal:   true,
+        parentBookId: classicalBook.id,
+        metadata: {
+          status: "published",
+          tags: ["math", "appendix"],
+          description: "Review of vector calculus and ODEs used throughout the book.",
+          canvas: null,
+        } satisfies ArticleMetadataShape,
+        content: `---
+status: published
+tags: ["math","appendix"]
+description: "Review of vector calculus and ODEs used throughout the book."
+canvas: null
+---
+
+# Appendix A: Mathematical Preliminaries
+
+This appendix is **internal** to the Classical Physics book and is not discoverable outside of it.
+
+## Gradient, Divergence, Curl
+
+$$\\nabla f = \\left(\\frac{\\partial f}{\\partial x}, \\frac{\\partial f}{\\partial y}, \\frac{\\partial f}{\\partial z}\\right)$$
+
+$$\\nabla \\cdot \\mathbf{F} = \\frac{\\partial F_x}{\\partial x} + \\frac{\\partial F_y}{\\partial y} + \\frac{\\partial F_z}{\\partial z}$$
+
+$$\\nabla \\times \\mathbf{F} = \\begin{vmatrix} \\hat{i} & \\hat{j} & \\hat{k} \\\\ \\partial_x & \\partial_y & \\partial_z \\\\ F_x & F_y & F_z \\end{vmatrix}$$
+
+## First-Order ODEs
+
+Separable form: $\\frac{dy}{dx} = f(x)g(y)$ integrates to $\\int \\frac{dy}{g(y)} = \\int f(x)\\,dx$.`,
+        ...adminOwner,
+      },
+      {
+        slug:         "article-classical-appendix-b",
+        title:        "Appendix B: Units and Dimensional Analysis",
+        summary:      "SI units, dimensional analysis, and order-of-magnitude estimation.",
+        isInternal:   true,
+        parentBookId: classicalBook.id,
+        metadata: {
+          status: "published",
+          tags: ["units", "appendix"],
+          description: "SI base units and dimensional analysis as a sanity-check tool.",
+          canvas: null,
+        } satisfies ArticleMetadataShape,
+        content: `---
+status: published
+tags: ["units","appendix"]
+description: "SI base units and dimensional analysis as a sanity-check tool."
+canvas: null
+---
+
+# Appendix B: Units and Dimensional Analysis
+
+This appendix is **internal** to the Classical Physics book.
+
+## SI Base Units
+
+| Quantity | Unit | Symbol |
+|----------|------|--------|
+| Length | metre | m |
+| Mass | kilogram | kg |
+| Time | second | s |
+| Current | ampere | A |
+| Temperature | kelvin | K |
+
+## Dimensional Analysis
+
+Every physically meaningful equation must be dimensionally consistent. For example, Newton's second law:
+
+$$[F] = [m][a] = \\text{kg}\\cdot\\text{m}\\cdot\\text{s}^{-2} = \\text{N}$$`,
+        ...adminOwner,
+      },
+    ];
+
+    // Insert internal articles (onConflictDoNothing on (ownerType, ownerId, slug))
+    await db.insert(articles).values(internalDefs).onConflictDoNothing();
+
+    // Re-fetch to get their IDs
+    const internalArticles = await db
+      .select().from(articles)
+      .where(and(
+        eq(articles.ownerType, "user"),
+        eq(articles.ownerId, adminRow.id),
+        eq(articles.isInternal, true),
+      ));
+    const intBySlug = Object.fromEntries(internalArticles.map((a) => [a.slug, a]));
+
+    // Each internal article must have a curriculumEntries row
+    const internalEntries = [
+      { artSlug: "article-classical-appendix-a", position: 5, partTitle: "Appendices" },
+      { artSlug: "article-classical-appendix-b", position: 6, partTitle: null },
+    ];
+
+    for (const entry of internalEntries) {
+      const art = intBySlug[entry.artSlug];
+      if (art) {
+        await db.insert(curriculumEntries).values({
+          bookId:    classicalBook.id,
+          articleId: art.id,
+          position:  entry.position,
+          partTitle: entry.partTitle,
+        }).onConflictDoNothing();
+      }
+    }
+    console.log("  book-classical-physics: 2 internal articles added (Appendix A, Appendix B)");
+  }
+
+  // ── Book 2 chapters: Quantum Primer ──────────────────────────────────────
   if (quantumBook) {
     const ch2 = [
       { artSlug: "article-quantum-mechanics-draft", position: 0, partTitle: "Part I: Foundations" },
@@ -1051,46 +1251,66 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
       }
     }
 
-    // Add dr-feynman's articles as extra chapters
-    const feynmanArticles = await db
-      .select().from(articles)
-      .where(and(
-        eq(articles.ownerType, "user"),
-        eq(articles.ownerId, feynman?.id ?? -1),
-      ));
-    const feynmanBySlug = Object.fromEntries(feynmanArticles.map((a) => [a.slug, a]));
-    const feynmanChapters = [
-      { artSlug: "article-feynman-path-integral", position: 2, partTitle: "Part II: Advanced Topics" },
-      { artSlug: "article-qed-overview",          position: 3, partTitle: null },
+    // Also include feynman's articles as chapters (cross-publisher curriculum)
+    if (feynmanRow) {
+      const feynmanArticles = await db
+        .select().from(articles)
+        .where(and(eq(articles.ownerType, "user"), eq(articles.ownerId, feynmanRow.id)));
+      const feynBySlug = Object.fromEntries(feynmanArticles.map((a) => [a.slug, a]));
+      const feynmanChapters = [
+        { artSlug: "article-feynman-path-integral", position: 2, partTitle: "Part II: Advanced Topics" },
+        { artSlug: "article-qed-overview",          position: 3, partTitle: null },
+      ];
+      for (const ch of feynmanChapters) {
+        const art = feynBySlug[ch.artSlug];
+        if (art) {
+          await db.insert(curriculumEntries).values({
+            bookId:    quantumBook.id,
+            articleId: art.id,
+            position:  ch.position,
+            partTitle: ch.partTitle,
+          }).onConflictDoNothing();
+        }
+      }
+    }
+    console.log("  book-quantum-primer: 4 chapters");
+  }
+
+  // ── Book 3 chapters: Advanced Topics (private book) ────────────────────────
+  if (advancedBook) {
+    const ch3 = [
+      { artSlug: "article-statistical-mechanics",   position: 0, partTitle: "Part I: Stat Mech" },
+      { artSlug: "article-general-relativity",      position: 1, partTitle: "Part II: GR" },
+      { artSlug: "article-maxwells-equations",      position: 2, partTitle: null },
     ];
-    for (const ch of feynmanChapters) {
-      const art = feynmanBySlug[ch.artSlug];
+    for (const ch of ch3) {
+      const art = artBySlug[ch.artSlug];
       if (art) {
         await db.insert(curriculumEntries).values({
-          bookId:    quantumBook.id,
+          bookId:    advancedBook.id,
           articleId: art.id,
           position:  ch.position,
           partTitle: ch.partTitle,
         }).onConflictDoNothing();
       }
     }
-    console.log("  book-quantum-primer: 4 chapters");
+    console.log("  book-advanced-topics: 3 chapters (private book)");
   }
 
-  // ── Book 3 chapters: Faculty Lectures ──────────────────────────────────────
+  // ── Book 4 chapters: Faculty Lectures ──────────────────────────────────────
   if (facultyBook && facultyOrg) {
     const facultyArticles = await db
       .select().from(articles)
       .where(and(eq(articles.ownerType, "org"), eq(articles.ownerId, facultyOrg.id)));
     const facBySlug = Object.fromEntries(facultyArticles.map((a) => [a.slug, a]));
 
-    const ch3 = [
-      { artSlug: "article-wave-optics", position: 0, partTitle: "Lecture 1" },
+    const ch4 = [
+      { artSlug: "article-wave-optics",        position: 0, partTitle: "Lecture 1: Optics" },
       { artSlug: "article-maxwells-equations", position: 1, partTitle: null },
     ];
 
-    for (const ch of ch3) {
-      // Wave optics is org-owned; maxwells is admin-owned — both can be in the book
+    for (const ch of ch4) {
+      // article-wave-optics is org-owned; article-maxwells-equations is admin-owned
       const art = facBySlug[ch.artSlug] ?? artBySlug[ch.artSlug];
       if (art) {
         await db.insert(curriculumEntries).values({
@@ -1107,7 +1327,7 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
   // ── 10. Resource Visibility ───────────────────────────────────────────────────
   console.log("[seed] Seeding resource visibility...");
 
-  // Private article: article-secret-formula (admin-owned)
+  // Private article: article-secret-formula (requires explicit user grant)
   const secretArt = artBySlug["article-secret-formula"];
   if (secretArt) {
     await db.insert(resourceVisibility).values({
@@ -1119,7 +1339,7 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
     console.log("  article-secret-formula → private");
   }
 
-  // Org-visible book: book-quantum-primer (only faculty org members can see it)
+  // Org-visible book: book-quantum-primer (faculty org members only)
   if (quantumBook) {
     await db.insert(resourceVisibility).values({
       resourceType: "book",
@@ -1130,7 +1350,18 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
     console.log("  book-quantum-primer → org");
   }
 
-  // Org-visible book: book-faculty-lectures (org-owned, org-visible)
+  // Private book: book-advanced-topics (requires explicit grant — even org not enough)
+  if (advancedBook) {
+    await db.insert(resourceVisibility).values({
+      resourceType: "book",
+      ...adminOwner,
+      resourceKey:  "book-advanced-topics",
+      visibility:   "private",
+    }).onConflictDoNothing();
+    console.log("  book-advanced-topics → private");
+  }
+
+  // Org-visible book: book-faculty-lectures (org-owned, org members only)
   if (facultyBook && facultyOrg) {
     await db.insert(resourceVisibility).values({
       resourceType: "book",
@@ -1145,68 +1376,64 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
   // ── 11. Access Grants ─────────────────────────────────────────────────────────
   console.log("[seed] Seeding access grants...");
 
-  // Grant dr-feynman explicit read access to the private article
-  if (secretArt && feynman) {
+  // User grant: dr-feynman can read the private article
+  if (secretArt && feynmanRow) {
     await db.insert(accessGrants).values({
       resourceType: "article",
       ...adminOwner,
       resourceKey:  "article-secret-formula",
       granteeType:  "user",
-      granteeId:    feynman.id,
-      grantedBy:    admin.id,
+      granteeId:    feynmanRow.id,
+      grantedBy:    adminRow.id,
     }).onConflictDoNothing();
-    console.log("  grant: dr-feynman → article-secret-formula");
+    console.log("  grant: dr-feynman (user) → article-secret-formula");
   }
 
-  // NOTE: mit-ocw and quantum-lab have NO grants to the private article
-  // This leaves the access-denied path testable for those accounts.
+  // Org grant: quantum-institute org can read the private book
+  if (advancedBook && quantumOrg) {
+    await db.insert(accessGrants).values({
+      resourceType: "book",
+      ...adminOwner,
+      resourceKey:  "book-advanced-topics",
+      granteeType:  "org",
+      granteeId:    quantumOrg.id,
+      grantedBy:    adminRow.id,
+    }).onConflictDoNothing();
+    console.log("  grant: quantum-institute (org) → book-advanced-topics");
+  }
+
+  // NOTE: mit-ocw has NO grants to any private resource — access-denied path is testable.
+  // NOTE: quantum-lab user has access to book-advanced-topics through quantum-institute org membership.
 
   // ── 12. Article Views ─────────────────────────────────────────────────────────
-  console.log("[seed] Seeding article views (50–100 events)...");
+  console.log("[seed] Seeding article views...");
 
-  // Only seed views if the table is empty (avoid exponential growth on re-runs)
+  // Guard with existence check — articleViews has no unique constraint
   const existingViews = await db.select().from(articleViews).limit(1);
   if (existingViews.length === 0) {
-    // Define view counts per article to shape the top-5 ranking
     const viewConfig: Array<[string, number]> = [
-      ["article-newtons-laws",         22],
-      ["article-general-relativity",   18],
-      ["article-maxwells-equations",   14],
-      ["article-special-relativity",   11],
-      ["article-thermodynamics-laws",   9],
-      ["article-statistical-mechanics", 6],
-      ["article-quantum-mechanics-draft",4],
-      ["article-aether-theory",          2],
+      ["article-newtons-laws",            22],
+      ["article-general-relativity",      18],
+      ["article-maxwells-equations",      14],
+      ["article-special-relativity",      11],
+      ["article-thermodynamics-laws",      9],
+      ["article-statistical-mechanics",    6],
+      ["article-quantum-mechanics-draft",  4],
+      ["article-aether-theory",            2],
+      ["article-feynman-path-integral",   16],
+      ["article-qed-overview",            12],
     ];
 
     const viewRows: Array<{ articleId: number; viewedAt: Date }> = [];
     for (const [artSlug, count] of viewConfig) {
-      const art = artBySlug[artSlug];
-      if (!art) continue;
-      for (let i = 0; i < count; i++) {
-        // Spread views randomly over the last 28 days
-        const daysBack = Math.floor(Math.random() * 28);
-        const hoursBack = Math.floor(Math.random() * 24);
-        viewRows.push({
-          articleId: art.id,
-          viewedAt: new Date(Date.now() - daysBack * 86_400_000 - hoursBack * 3_600_000),
-        });
-      }
-    }
-
-    // Also add views for feynman-authored articles (use allArtBySlug)
-    const feynmanViewConfig: Array<[string, number]> = [
-      ["article-feynman-path-integral", 16],
-      ["article-qed-overview",          12],
-    ];
-    for (const [artSlug, count] of feynmanViewConfig) {
       const art = allArtBySlug[artSlug];
       if (!art) continue;
       for (let i = 0; i < count; i++) {
-        const daysBack = Math.floor(Math.random() * 28);
+        const daysBack  = Math.floor(Math.random() * 28);
+        const hoursBack = Math.floor(Math.random() * 24);
         viewRows.push({
           articleId: art.id,
-          viewedAt: new Date(Date.now() - daysBack * 86_400_000),
+          viewedAt:  new Date(Date.now() - daysBack * 86_400_000 - hoursBack * 3_600_000),
         });
       }
     }
@@ -1222,32 +1449,31 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
   // ── 13. User Themes ───────────────────────────────────────────────────────────
   console.log("[seed] Seeding user themes...");
 
-  // Apply the Nord preset to the admin user
-  const nordPreset = PRESETS.find((p) => p.name === "Nord");
-  if (nordPreset && admin) {
+  const nordPreset     = PRESETS.find((p) => p.name === "Nord");
+  const rosePinePreset = PRESETS.find((p) => p.name === "Rosé Pine");
+
+  if (nordPreset) {
     await db.insert(userThemes).values({
-      userId:                admin.id,
+      userId:                adminRow.id,
       lightTokens:           nordPreset.light,
       darkTokens:            nordPreset.dark,
       colorSchemePreference: "system",
     }).onConflictDoNothing();
-    console.log("  admin user theme: Nord preset");
+    console.log("  admin user theme: Nord (system color scheme)");
   }
 
-  // Apply the Rosé Pine preset to feynman
-  const rosePinePreset = PRESETS.find((p) => p.name === "Rosé Pine");
-  if (rosePinePreset && feynman) {
+  if (rosePinePreset && feynmanRow) {
     await db.insert(userThemes).values({
-      userId:                feynman.id,
+      userId:                feynmanRow.id,
       lightTokens:           rosePinePreset.light,
       darkTokens:            rosePinePreset.dark,
       colorSchemePreference: "dark",
     }).onConflictDoNothing();
-    console.log("  dr-feynman user theme: Rosé Pine (dark)");
+    console.log("  dr-feynman user theme: Rose Pine (dark color scheme)");
   }
 
   // ── 14. Book Snapshot ─────────────────────────────────────────────────────────
-  console.log("[seed] Seeding book snapshots...");
+  console.log("[seed] Seeding book snapshot...");
 
   if (classicalBook) {
     const existingSnaps = await db
@@ -1263,13 +1489,13 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
       }).returning();
 
       if (snap) {
-        const ch1entries = [
-          { artSlug: "article-newtons-laws",       position: 0, partTitle: "Part I: Mechanics" },
+        const snapEntries = [
+          { artSlug: "article-newtons-laws",        position: 0, partTitle: "Part I: Mechanics" },
           { artSlug: "article-thermodynamics-laws", position: 1, partTitle: null },
           { artSlug: "article-special-relativity",  position: 2, partTitle: "Part II: Relativity" },
         ];
 
-        for (const entry of ch1entries) {
+        for (const entry of snapEntries) {
           const art = artBySlug[entry.artSlug];
           if (art) {
             await db.insert(bookSnapshotEntries).values({
@@ -1291,20 +1517,33 @@ $$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta =
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────────
-  console.log("\n[seed] ✓ Seeding complete!\n");
+  console.log("\n[seed] Seeding complete!\n");
   console.log("  Users:");
-  console.log(`    admin        ${adminEmail}         (isRootAdmin=true,  publisher=principia-official)`);
-  console.log(`    dr-feynman   ${viewerEmail}    (isRootAdmin=false, publisher=dr-feynman)`);
-  console.log(`    mit-ocw      mit@example.com          (isRootAdmin=false, publisher=mit-ocw)`);
-  console.log(`    quantum-lab  quantum@example.com       (isRootAdmin=false, publisher=quantum-lab)`);
+  console.log(`    admin         ${adminEmail ?? "(not seeded)"}  (isRootAdmin=true, publisher=principia-official)`);
+  console.log(`    dr-feynman    ${viewerEmail ?? "(not seeded)"}  (isRootAdmin=false, publisher=dr-feynman)`);
+  console.log("    mit-ocw       mit@example.com           (isRootAdmin=false, publisher=mit-ocw)");
+  console.log("    quantum-lab   quantum@example.com        (isRootAdmin=false, publisher=quantum-lab)");
   console.log("  Orgs:");
-  console.log("    faculty          (super_admin=admin, admin=dr-feynman, member=mit-ocw)");
-  console.log("    quantum-institute(super_admin=quantum-lab, member=dr-feynman)");
-  console.log("  Articles: 9 admin-owned + 2 feynman + 1 faculty-org");
-  console.log("  Books:    book-classical-physics (5ch), book-quantum-primer (4ch), book-faculty-lectures (2ch)");
-  console.log("  Objects:  2 animations (admin) + 1 animation (faculty) + 1 dataset + 1 diagram");
-  console.log("  Visibility: article-secret-formula=private, book-quantum-primer=org, book-faculty-lectures=org");
-  console.log("  Access grant: dr-feynman → article-secret-formula (mit-ocw and quantum-lab denied)");
+  console.log("    faculty           (super_admin=admin, admin=dr-feynman, member=mit-ocw)");
+  console.log("    quantum-institute (super_admin=quantum-lab, member=dr-feynman)");
+  console.log("  Articles:");
+  console.log("    9 admin-owned (5 published, 1 draft, 1 review, 1 archived, 1 private)");
+  console.log("    2 internal admin-owned (Appendix A, Appendix B — book-classical-physics only)");
+  console.log("    2 feynman-owned (published)");
+  console.log("    1 faculty-org-owned (published)");
+  console.log("  Books:");
+  console.log("    book-classical-physics  (5 regular + 2 internal chapters) — public");
+  console.log("    book-quantum-primer     (4 chapters)                       — org-visible");
+  console.log("    book-advanced-topics    (3 chapters)                       — private");
+  console.log("    book-faculty-lectures   (2 chapters)                       — org-visible");
+  console.log("  KAO Objects:");
+  console.log("    anim-pendulum (admin), anim-lissajous (admin), anim-wave-superposition (faculty)");
+  console.log("    object-periodic-table (dataset), object-newtonian-flow (diagram)");
+  console.log("  Visibility & Grants:");
+  console.log("    article-secret-formula: private — dr-feynman granted, mit-ocw/quantum-lab denied");
+  console.log("    book-quantum-primer: org — faculty org members can see it");
+  console.log("    book-advanced-topics: private — quantum-institute org granted, mit-ocw denied");
+  console.log("    book-faculty-lectures: org — faculty org members can see it");
 
   process.exit(0);
 }
