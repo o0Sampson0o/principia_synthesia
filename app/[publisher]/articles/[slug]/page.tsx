@@ -15,6 +15,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { canEditContent } from "@/lib/roles";
 import DynamicAnimation from "@/components/DynamicAnimation";
 import ArticleImage from "@/components/ArticleImage";
+import MdxParagraph from "@/components/MdxParagraph";
 import ArticleMetadataDisplay from "@/components/ArticleMetadata";
 import { parseFrontmatter } from "@/lib/frontmatter";
 
@@ -136,7 +137,7 @@ export default async function ArticlePage({
               rehypePlugins: [rehypeKatex],
             },
           }}
-          components={{ DynamicAnimation, img: ArticleImage }}
+          components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph }}
         />
       </div>
     </main>

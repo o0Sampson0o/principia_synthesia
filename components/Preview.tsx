@@ -10,6 +10,7 @@ import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import "katex/dist/katex.min.css";
 import dynamic from "next/dynamic";
 import MdxErrorBoundary from "./MdxErrorBoundary";
+import MdxParagraph from "./MdxParagraph";
 
 // DynamicAnimation loaded dynamically to avoid SSR issues
 const DynamicAnimation = dynamic(
@@ -183,6 +184,7 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
 
   const knownComponents: Record<string, any> = {
     DynamicAnimation: (props: any) => <DynamicAnimation {...props} />,
+    p: MdxParagraph,
   };
 
   const components = new Proxy(knownComponents, {
