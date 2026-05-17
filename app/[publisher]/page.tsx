@@ -89,6 +89,11 @@ export default async function PublisherProfilePage({
           <Link href={`/${publisherSlug}/images`} className="themed-btn-ghost text-sm px-4 py-2">
             Images
           </Link>
+          {pub.kind === "org" && (
+            <Link href={`/${publisherSlug}/members`} className="themed-btn-ghost text-sm px-4 py-2">
+              Members
+            </Link>
+          )}
         </div>
       )}
 
