@@ -55,7 +55,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
 });
 
 import { revalidatePath } from "next/cache";
-import { saveColorSchemePreference } from "@/app/settings/actions";
+import { saveColorSchemePreference, saveTheme } from "@/app/settings/actions";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -205,5 +205,87 @@ describe("saveColorSchemePreference", () => {
     await expect(saveColorSchemePreference(fd)).rejects.toThrow("Not authenticated");
     expect(mockSelect).not.toHaveBeenCalled();
     expect(mockCookieSet).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Valid theme tokens fixture ───────────────────────────────────────────────
+
+const VALID_TOKENS: Record<string, string> = {
+  background:       "#18181b",
+  foreground:       "#f4f4f5",
+  muted:            "#27272a",
+  mutedForeground:  "#a1a1aa",
+  border:           "#3f3f46",
+  link:             "#60a5fa",
+  linkHover:        "#93c5fd",
+  codeBackground:   "#27272a",
+  surface:          "#27272a",
+  surfaceHover:     "#3f3f46",
+  primaryBtn:       "#2563eb",
+  primaryBtnText:   "#ffffff",
+  inputBorder:      "#3f3f46",
+  inputFocusBorder: "#60a5fa",
+  secondaryText:    "#a1a1aa",
+};
+
+describe("saveTheme", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetSession.mockResolvedValue({ userId: 1, email: "admin@example.com", userSlug: "admin", isRootAdmin: true });
+    mockCookies.mockResolvedValue({ set: mockCookieSet });
+  });
+
+  it("rejects a malicious color value with 'Invalid theme tokens' and makes no DB call", async () => {
+    const fd = makeFormData({
+      mode: "light",
+      ...VALID_TOKENS,
+      // Overwrite one token with a CSS injection payload
+      background: "red; } body { background: url(javascript:alert(1)) }",
+    });
+
+    await expect(saveTheme(fd)).rejects.toThrow("Invalid theme tokens");
+    expect(mockSelect).not.toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it("accepts a valid 15-token submission and calls db.update when a row exists", async () => {
+    setupSelectLimit([{ id: 3, userId: 1 }]);
+    setupUpdate();
+
+    const fd = makeFormData({ mode: "light", ...VALID_TOKENS });
+    await saveTheme(fd);
+
+    expect(mockUpdate).toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it("accepts a valid 15-token submission and calls db.insert when no row exists", async () => {
+    setupSelectLimit([]);
+    setupInsert();
+
+    const fd = makeFormData({ mode: "dark", ...VALID_TOKENS });
+    await saveTheme(fd);
+
+    expect(mockInsert).toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid mode value with 'Invalid theme tokens'", async () => {
+    const fd = makeFormData({ mode: "rainbow", ...VALID_TOKENS });
+
+    await expect(saveTheme(fd)).rejects.toThrow("Invalid theme tokens");
+    expect(mockSelect).not.toHaveBeenCalled();
+  });
+
+  it("rejects url(...) inside a color value", async () => {
+    const fd = makeFormData({
+      mode: "light",
+      ...VALID_TOKENS,
+      foreground: "url(https://evil.example/)",
+    });
+
+    await expect(saveTheme(fd)).rejects.toThrow("Invalid theme tokens");
+    expect(mockSelect).not.toHaveBeenCalled();
   });
 });

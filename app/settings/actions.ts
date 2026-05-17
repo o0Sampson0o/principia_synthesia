@@ -7,7 +7,8 @@ import { getSession } from "@/lib/auth"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { defaultLight, defaultDark } from "@/lib/theme"
-import type { ThemeTokens } from "@/db/schema"
+import { saveThemeSchema } from "@/lib/validations"
+import { ZodError } from "zod"
 
 const VALID_SCHEMES = ["light", "dark", "system"] as const;
 type ColorScheme = typeof VALID_SCHEMES[number];
@@ -57,24 +58,42 @@ export async function saveTheme(formData: FormData) {
   const session = await getSession()
   if (!session?.userId) throw new Error("Not authenticated")
 
-  const mode = formData.get("mode") as "light" | "dark"
+  let mode: "light" | "dark";
+  let tokens: {
+    background: string; foreground: string; muted: string; mutedForeground: string;
+    border: string; link: string; linkHover: string; codeBackground: string;
+    surface: string; surfaceHover: string; primaryBtn: string; primaryBtnText: string;
+    inputBorder: string; inputFocusBorder: string; secondaryText: string;
+  };
 
-  const tokens: ThemeTokens = {
-    background:       formData.get("background") as string,
-    foreground:       formData.get("foreground") as string,
-    muted:            formData.get("muted") as string,
-    mutedForeground:  formData.get("mutedForeground") as string,
-    border:           formData.get("border") as string,
-    link:             formData.get("link") as string,
-    linkHover:        formData.get("linkHover") as string,
-    codeBackground:   formData.get("codeBackground") as string,
-    surface:          formData.get("surface") as string,
-    surfaceHover:     formData.get("surfaceHover") as string,
-    primaryBtn:       formData.get("primaryBtn") as string,
-    primaryBtnText:   formData.get("primaryBtnText") as string,
-    inputBorder:      formData.get("inputBorder") as string,
-    inputFocusBorder: formData.get("inputFocusBorder") as string,
-    secondaryText:    formData.get("secondaryText") as string,
+  try {
+    const validated = saveThemeSchema.parse({
+      mode: formData.get("mode"),
+      tokens: {
+        background:       formData.get("background"),
+        foreground:       formData.get("foreground"),
+        muted:            formData.get("muted"),
+        mutedForeground:  formData.get("mutedForeground"),
+        border:           formData.get("border"),
+        link:             formData.get("link"),
+        linkHover:        formData.get("linkHover"),
+        codeBackground:   formData.get("codeBackground"),
+        surface:          formData.get("surface"),
+        surfaceHover:     formData.get("surfaceHover"),
+        primaryBtn:       formData.get("primaryBtn"),
+        primaryBtnText:   formData.get("primaryBtnText"),
+        inputBorder:      formData.get("inputBorder"),
+        inputFocusBorder: formData.get("inputFocusBorder"),
+        secondaryText:    formData.get("secondaryText"),
+      },
+    });
+    mode = validated.mode;
+    tokens = validated.tokens;
+  } catch (err) {
+    if (err instanceof ZodError) {
+      throw new Error("Invalid theme tokens");
+    }
+    throw err;
   }
 
   const existing = await db

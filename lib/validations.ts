@@ -320,6 +320,49 @@ export const articleMetadataSchema = z.object({
 export type ArticleMetadata = z.infer<typeof articleMetadataSchema>;
 
 // ---------------------------------------------------------------------------
+// Theme token schemas
+// ---------------------------------------------------------------------------
+
+/**
+ * Single CSS color value: hex (3/4/6/8 digits), rgb/rgba, hsl/hsla, or a
+ * small allow-list of keyword values. Deliberately rejects var(...), url(...),
+ * semicolons, braces, and other CSS injection vectors.
+ */
+export const colorTokenSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(40)
+  .regex(
+    /^(?:#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\(\s*\d+(?:\.\d+)?\s*,\s*\d+(?:\.\d+)?\s*,\s*\d+(?:\.\d+)?(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)|hsla?\(\s*\d+(?:\.\d+)?(?:deg)?\s*,\s*\d+(?:\.\d+)?%\s*,\s*\d+(?:\.\d+)?%(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)|transparent|currentColor)$/,
+    "Invalid color value"
+  );
+
+/** Full theme-tokens shape; all 15 fields are required and validated. */
+export const themeTokensSchema = z.object({
+  background:       colorTokenSchema,
+  foreground:       colorTokenSchema,
+  muted:            colorTokenSchema,
+  mutedForeground:  colorTokenSchema,
+  border:           colorTokenSchema,
+  link:             colorTokenSchema,
+  linkHover:        colorTokenSchema,
+  codeBackground:   colorTokenSchema,
+  surface:          colorTokenSchema,
+  surfaceHover:     colorTokenSchema,
+  primaryBtn:       colorTokenSchema,
+  primaryBtnText:   colorTokenSchema,
+  inputBorder:      colorTokenSchema,
+  inputFocusBorder: colorTokenSchema,
+  secondaryText:    colorTokenSchema,
+});
+
+export const saveThemeSchema = z.object({
+  mode: z.enum(["light", "dark"]),
+  tokens: themeTokensSchema,
+});
+
+// ---------------------------------------------------------------------------
 // Image upload schemas
 // ---------------------------------------------------------------------------
 
