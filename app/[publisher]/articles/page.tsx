@@ -4,6 +4,9 @@ import { resolvePublisher } from "@/lib/publisher";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { getSession } from "@/lib/auth";
+import { canEditContent } from "@/lib/roles";
+import { filterVisible } from "@/lib/access";
 
 export default async function PublisherArticlesPage({
   params,
@@ -14,10 +17,13 @@ export default async function PublisherArticlesPage({
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
 
-  const ownerType = pub.kind;
+  const ownerType = pub.kind as "user" | "org";
   const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
 
-  const allArticles = await db
+  const session = await getSession();
+  const isOwner = await canEditContent(session, ownerType, ownerId);
+
+  const rawArticles = await db
     .select({ id: articles.id, slug: articles.slug, title: articles.title, updatedAt: articles.updatedAt })
     .from(articles)
     .where(
@@ -27,6 +33,14 @@ export default async function PublisherArticlesPage({
         eq(articles.isInternal, false)
       )
     );
+
+  let allArticles = rawArticles;
+  if (!isOwner) {
+    const refs = rawArticles.map((a) => ({ type: "article" as const, ownerType, ownerId, slug: a.slug }));
+    const visRefs = await filterVisible(refs, session);
+    const visSlugs = new Set(visRefs.map((r) => r.slug));
+    allArticles = rawArticles.filter((a) => visSlugs.has(a.slug));
+  }
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">

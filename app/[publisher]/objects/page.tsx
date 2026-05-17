@@ -6,6 +6,7 @@ import { objects } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
+import { filterVisible } from "@/lib/access";
 
 export default async function PublisherObjectsPage({
   params,
@@ -22,10 +23,18 @@ export default async function PublisherObjectsPage({
   const session = await getSession();
   const isEditor = await canEditContent(session, ownerType, ownerId);
 
-  const allObjects = await db
+  const rawObjects = await db
     .select({ id: objects.id, slug: objects.slug, name: objects.name, type: objects.type })
     .from(objects)
     .where(and(eq(objects.ownerType, ownerType), eq(objects.ownerId, ownerId)));
+
+  let allObjects = rawObjects;
+  if (!isEditor) {
+    const refs = rawObjects.map((o) => ({ type: "object" as const, ownerType, ownerId, slug: o.slug }));
+    const visRefs = await filterVisible(refs, session);
+    const visSlugs = new Set(visRefs.map((r) => r.slug));
+    allObjects = rawObjects.filter((o) => visSlugs.has(o.slug));
+  }
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">

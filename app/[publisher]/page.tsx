@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { articles, books, objects, orgMemberships } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { filterVisible } from "@/lib/access";
 
 export default async function PublisherProfilePage({
   params,
@@ -34,7 +35,7 @@ export default async function PublisherProfilePage({
         ).length > 0
       : false);
 
-  const ownerType = pub.kind;
+  const ownerType = pub.kind as "user" | "org";
   const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
 
   const [allBooks, allArticles, allObjects] = await Promise.all([
@@ -62,6 +63,32 @@ export default async function PublisherProfilePage({
       .from(objects)
       .where(and(eq(objects.ownerType, ownerType), eq(objects.ownerId, ownerId))),
   ]);
+
+  // Filter private resources for non-owner sessions.
+  // Owners (including org members with edit rights and root admin) see everything.
+  let visibleBooks = allBooks;
+  let visibleArticles = allArticles;
+  let visibleObjects = allObjects;
+
+  if (!isOwner) {
+    const bookRefs = allBooks.map((b) => ({ type: "book" as const, ownerType, ownerId, slug: b.slug }));
+    const articleRefs = allArticles.map((a) => ({ type: "article" as const, ownerType, ownerId, slug: a.slug }));
+    const objectRefs = allObjects.map((o) => ({ type: "object" as const, ownerType, ownerId, slug: o.slug }));
+
+    const [visBookRefs, visArticleRefs, visObjectRefs] = await Promise.all([
+      filterVisible(bookRefs, session),
+      filterVisible(articleRefs, session),
+      filterVisible(objectRefs, session),
+    ]);
+
+    const visBookSlugs = new Set(visBookRefs.map((r) => r.slug));
+    const visArticleSlugs = new Set(visArticleRefs.map((r) => r.slug));
+    const visObjectSlugs = new Set(visObjectRefs.map((r) => r.slug));
+
+    visibleBooks = allBooks.filter((b) => visBookSlugs.has(b.slug));
+    visibleArticles = allArticles.filter((a) => visArticleSlugs.has(a.slug));
+    visibleObjects = allObjects.filter((o) => visObjectSlugs.has(o.slug));
+  }
 
   return (
     <main className="max-w-5xl mx-auto px-6 py-12">
@@ -100,11 +127,11 @@ export default async function PublisherProfilePage({
       {/* Books */}
       <section className="mb-10">
         <h2 className="text-xl font-semibold themed-heading mb-4">Books</h2>
-        {allBooks.length === 0 ? (
+        {visibleBooks.length === 0 ? (
           <p className="themed-muted text-sm">No books yet.</p>
         ) : (
           <ul className="space-y-2">
-            {allBooks.map((b) => (
+            {visibleBooks.map((b) => (
               <li key={b.id}>
                 <Link
                   href={`/${publisherSlug}/books/${b.slug}`}
@@ -121,11 +148,11 @@ export default async function PublisherProfilePage({
       {/* Articles */}
       <section className="mb-10">
         <h2 className="text-xl font-semibold themed-heading mb-4">Articles</h2>
-        {allArticles.length === 0 ? (
+        {visibleArticles.length === 0 ? (
           <p className="themed-muted text-sm">No articles yet.</p>
         ) : (
           <ul className="space-y-2">
-            {allArticles.map((a) => (
+            {visibleArticles.map((a) => (
               <li key={a.id}>
                 <Link
                   href={`/${publisherSlug}/articles/${a.slug}`}
@@ -142,11 +169,11 @@ export default async function PublisherProfilePage({
       {/* Objects */}
       <section>
         <h2 className="text-xl font-semibold themed-heading mb-4">Objects</h2>
-        {allObjects.length === 0 ? (
+        {visibleObjects.length === 0 ? (
           <p className="themed-muted text-sm">No objects yet.</p>
         ) : (
           <ul className="space-y-2">
-            {allObjects.map((o) => (
+            {visibleObjects.map((o) => (
               <li key={o.id}>
                 <Link
                   href={`/${publisherSlug}/objects/${o.slug}`}
