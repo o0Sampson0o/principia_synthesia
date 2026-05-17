@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { rateLimit } from "@/lib/rate-limit";
-import { JWT_SECRET } from "@/lib/env";
+import { getJwtSecret } from "@/lib/env";
 
 function buildCsp(nonce: string, allowEval: boolean = false): string {
   const isDev = process.env.NODE_ENV === "development";
@@ -58,7 +58,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     try {
-      await jwtVerify(token, JWT_SECRET);
+      await jwtVerify(token, getJwtSecret());
     } catch {
       return NextResponse.redirect(new URL("/login", request.url));
     }
