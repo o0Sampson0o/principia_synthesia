@@ -27,7 +27,7 @@ export default async function NewArticlePage({
   const action = createArticle.bind(null, publisherSlug);
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10">
+    <main className="max-w-7xl mx-auto px-6 py-10">
       <h1 className="text-3xl font-bold themed-heading mb-6">New article</h1>
       <form action={action} className="space-y-4">
         <div>

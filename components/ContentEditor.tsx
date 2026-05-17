@@ -115,7 +115,7 @@ export default forwardRef<ContentEditorRef, {
   return (
     <>
       <input type="hidden" name="content" id="content-field" />
-      <div className="grid grid-cols-2 gap-4 h-[640px]">
+      <div className="grid grid-cols-2 gap-4 h-[760px]">
         <div className="flex flex-col">
           {toolbar && (
             <div className="flex items-center justify-between px-2 py-1 mb-1 border rounded-t bg-zinc-50 dark:bg-zinc-900 border-b-0">
@@ -125,7 +125,7 @@ export default forwardRef<ContentEditorRef, {
           )}
           <CodeMirror
             value={initial}
-            height={toolbar ? "608px" : "640px"}
+            height={toolbar ? "728px" : "760px"}
             theme={theme}
             extensions={extensions}
             onChange={handleChange}

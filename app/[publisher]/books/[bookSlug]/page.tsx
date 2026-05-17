@@ -48,7 +48,7 @@ export default async function BookPage({
     .orderBy(asc(curriculumEntries.position));
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10">
+    <main className="max-w-4xl mx-auto px-6 py-10">
       <div className="mb-8">
         <p className="text-sm themed-muted mb-1">
           <Link href={`/${publisherSlug}`} className="themed-link">

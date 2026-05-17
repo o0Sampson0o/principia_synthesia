@@ -79,7 +79,7 @@ export default async function ArticlePage({
     : body;
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10">
+    <main className="max-w-4xl mx-auto px-6 py-10">
       <header className="mb-8">
         <h1 className="text-4xl font-bold tracking-tight themed-heading mb-3">{title}</h1>
         {summary && (
