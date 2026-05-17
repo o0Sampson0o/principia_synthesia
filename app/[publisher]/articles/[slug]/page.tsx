@@ -128,7 +128,7 @@ export default async function ArticlePage({
         />
       </header>
 
-      <article className="markdown-content">
+      <div className="markdown-content">
         <MDXRemote
           source={renderedBody}
           options={{
@@ -139,7 +139,7 @@ export default async function ArticlePage({
           }}
           components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph }}
         />
-      </article>
+      </div>
     </main>
   );
 }

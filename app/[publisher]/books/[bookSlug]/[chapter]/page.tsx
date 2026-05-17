@@ -119,7 +119,7 @@ export default async function ChapterPage({
         </div>
       )}
 
-      <article className="markdown-content">
+      <div className="markdown-content">
         <MDXRemote
           source={renderedBody}
           options={{
@@ -130,7 +130,7 @@ export default async function ChapterPage({
           }}
           components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph }}
         />
-      </article>
+      </div>
 
       <nav className="flex justify-between mt-12 pt-6 border-t themed-border text-sm">
         {prevSlug ? (
