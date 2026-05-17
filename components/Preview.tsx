@@ -122,9 +122,9 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
           setCompiledSource(result.compiledSource);
           onError?.(false);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!controller.signal.aborted) {
-          setError(err);
+          setError(err instanceof Error ? err : new Error(String(err)));
           onError?.(true);
         }
       }
