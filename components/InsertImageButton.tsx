@@ -208,9 +208,9 @@ export default function InsertImageButton({
                         alt={filename(img.pathname)}
                         className="w-full h-24 object-cover"
                       />
-                      <p className="text-xs themed-muted px-1 py-1 truncate">
+                      <span className="block text-xs themed-muted px-1 py-1 truncate">
                         {filename(img.pathname)}
-                      </p>
+                      </span>
                     </button>
                   ))}
                 </div>
