@@ -6,8 +6,13 @@ import { db } from "@/db";
 import { articles, articleCategories, categories } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { updateArticle } from "../../actions";
-import ArticleEditorPanel from "@/components/ArticleEditorPanel";
+import dynamic from "next/dynamic";
 import { parseFrontmatter } from "@/lib/frontmatter";
+
+const ArticleEditorPanel = dynamic(() => import("@/components/ArticleEditorPanel"), {
+  ssr: false,
+  loading: () => <div className="h-[680px] border rounded bg-zinc-50 dark:bg-zinc-900 animate-pulse" />,
+});
 
 export default async function EditArticlePage({
   params,

@@ -3,8 +3,13 @@ import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { createArticle } from "../actions";
-import ArticleEditorPanel from "@/components/ArticleEditorPanel";
+import dynamic from "next/dynamic";
 import { DEFAULT_ARTICLE_METADATA } from "@/lib/frontmatter";
+
+const ArticleEditorPanel = dynamic(() => import("@/components/ArticleEditorPanel"), {
+  ssr: false,
+  loading: () => <div className="h-[680px] border rounded bg-zinc-50 dark:bg-zinc-900 animate-pulse" />,
+});
 
 export default async function NewArticlePage({
   params,
