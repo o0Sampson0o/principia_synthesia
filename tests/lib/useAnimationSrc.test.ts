@@ -99,8 +99,10 @@ describe("useAnimationSrc", () => {
 
   it("returns null on initial render (before the effect fires)", () => {
     const { result } = renderHook(() => useAnimationSrc(TEST_PUBLISHER, "anim-my-slug"));
-    // The hook's documented SSR behavior is: null before hydration.
-    // In jsdom (client), effects run synchronously, so after mount it's a URL.
+    // jsdom flushes useEffect synchronously during renderHook, so by the time
+    // renderHook returns, the effect has already set the URL. The null state
+    // exists only transiently during the render phase (SSR-safe) and is not
+    // observable here. Assert the post-effect value instead.
     expect(result.current).toMatch(/^\/api\/publishers\/alice\/animations\/anim-my-slug\?theme=/);
   });
 

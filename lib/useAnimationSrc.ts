@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useEffect } from "react";
 
 const TOKEN_KEYS = [
   "background", "foreground", "muted", "mutedForeground", "border",
@@ -48,8 +48,11 @@ export function useAnimationSrc(
   slug: string,
   version?: number
 ): string | null {
-  return useMemo(
-    () => typeof window !== "undefined" ? buildAnimationSrc(publisher, slug, version) : null,
-    [publisher, slug, version]
-  );
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSrc(buildAnimationSrc(publisher, slug, version));
+  }, [publisher, slug, version]);
+
+  return src;
 }
