@@ -3,10 +3,11 @@ import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
-import { articles, articleCategories, categories } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { articles, articleCategories, categories, revisions } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { updateArticle } from "../../actions";
 import ArticleEditorPanel from "@/components/ArticleEditorPanel";
+import RevisionHistory from "@/components/RevisionHistory";
 import { parseFrontmatter } from "@/lib/frontmatter";
 import Link from "next/link";
 
@@ -51,11 +52,17 @@ export default async function EditArticlePage({
     .where(eq(articleCategories.articleId, article.id));
   const currentCategories = articleCats.map((c) => c.slug).join(", ");
 
-  // Wrap to strip the error-return value so TypeScript sees void for the form action prop.
   async function action(formData: FormData): Promise<void> {
     "use server";
     await updateArticle(publisherSlug, null, formData);
   }
+
+  const articleRevisions = await db
+    .select({ id: revisions.id, editNote: revisions.editNote, editedAt: revisions.editedAt })
+    .from(revisions)
+    .where(eq(revisions.articleId, article.id))
+    .orderBy(desc(revisions.editedAt))
+    .limit(20);
 
   return (
     <main className="max-w-7xl mx-auto px-6 py-10">
@@ -135,6 +142,11 @@ export default async function EditArticlePage({
           />
         </div>
         <ArticleEditorPanel publisherSlug={publisherSlug} initial={article.content ?? ""} initialMetadata={initialMetadata} />
+        <RevisionHistory
+          publisherSlug={publisherSlug}
+          articleId={article.id}
+          revisions={articleRevisions}
+        />
         <button type="submit" className="themed-btn-primary">
           Save changes
         </button>

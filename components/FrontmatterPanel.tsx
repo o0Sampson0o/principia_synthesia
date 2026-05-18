@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, type RefObject } from "react";
+import { useState, forwardRef, useImperativeHandle, type RefObject } from "react";
 import type { ContentEditorRef } from "./ContentEditor";
 import type { ArticleMetadata } from "@/lib/validations";
+
+export interface FrontmatterPanelRef {
+  syncFromMdx: (mdx: string) => void;
+}
 
 const STATUSES = ["published", "draft", "review", "archived"] as const;
 
@@ -37,14 +41,26 @@ function serializeFrontmatterClient(metadata: ArticleMetadata, body: string): st
   return `---\nstatus: ${metadata.status}\ntags: ${tags}\ndescription: ${desc}\ncanvas: ${canvas}\n---\n\n${body.trimStart()}`;
 }
 
-export default function FrontmatterPanel({
-  editorRef,
-  initialMetadata,
-}: {
+export default forwardRef<FrontmatterPanelRef, {
   editorRef: RefObject<ContentEditorRef | null>;
   initialMetadata: ArticleMetadata;
-}) {
+}>(function FrontmatterPanel({ editorRef, initialMetadata }, ref) {
   const [meta, setMeta] = useState<ArticleMetadata>(initialMetadata);
+
+  useImperativeHandle(ref, () => ({
+    syncFromMdx(mdx: string) {
+      const { metadata: parsed } = parseFrontmatterClient(mdx);
+      setMeta(prev => {
+        if (
+          prev.status === parsed.status &&
+          prev.description === parsed.description &&
+          prev.canvas === parsed.canvas &&
+          JSON.stringify(prev.tags) === JSON.stringify(parsed.tags)
+        ) return prev;
+        return parsed;
+      });
+    },
+  }));
 
   function applyChange(next: ArticleMetadata) {
     setMeta(next);
@@ -117,4 +133,4 @@ export default function FrontmatterPanel({
       </div>
     </details>
   );
-}
+});

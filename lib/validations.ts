@@ -99,6 +99,7 @@ export const deleteArticleSchema = z.object({
 export const restoreRevisionSchema = z.object({
   revisionId: z.coerce.number().int().positive("Invalid revision ID"),
   articleId: z.coerce.number().int().positive("Invalid article ID"),
+  publisherSlug: z.string().min(1),
 });
 
 // ---------------------------------------------------------------------------

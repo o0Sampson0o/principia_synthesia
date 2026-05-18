@@ -202,13 +202,14 @@ export async function deleteArticle(publisherSlug: string, formData: FormData) {
   redirect(`/${publisherSlug}`);
 }
 
-export async function restoreRevision(publisherSlug: string, formData: FormData) {
-  await assertEditRights(publisherSlug);
-
+export async function restoreRevision(formData: FormData) {
   const validated = restoreRevisionSchema.parse({
     revisionId: formData.get("revisionId"),
     articleId: formData.get("articleId"),
+    publisherSlug: formData.get("publisherSlug"),
   });
+
+  await assertEditRights(validated.publisherSlug);
 
   const [revision] = await db
     .select()
@@ -244,13 +245,13 @@ export async function restoreRevision(publisherSlug: string, formData: FormData)
       .where(eq(books.id, article.parentBookId))
       .limit(1);
     if (bookRow) {
-      revalidatePath(`/${publisherSlug}/books/${bookRow.slug}/${article.slug}`);
-      redirect(`/${publisherSlug}/books/${bookRow.slug}/${article.slug}`);
+      revalidatePath(`/${validated.publisherSlug}/books/${bookRow.slug}/${article.slug}`);
+      redirect(`/${validated.publisherSlug}/books/${bookRow.slug}/${article.slug}`);
     }
   }
 
-  revalidatePath(`/${publisherSlug}/articles/${article.slug}`);
-  redirect(`/${publisherSlug}/articles/${article.slug}`);
+  revalidatePath(`/${validated.publisherSlug}/articles/${article.slug}`);
+  redirect(`/${validated.publisherSlug}/articles/${article.slug}`);
 }
 
 export async function updateArticleContent(
