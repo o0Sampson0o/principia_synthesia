@@ -526,13 +526,17 @@ canvas: null
 
 An object at rest remains at rest, and an object in motion continues in motion at constant velocity, unless acted upon by a net external force.
 
-$$\\vec{p} = m\\vec{v} = \\text{const} \\quad \\text{when} \\quad \\vec{F}_{\\text{net}} = 0$$
+$$
+\\vec{p} = m\\vec{v} = \\text{const} \\quad \\text{when} \\quad \\vec{F}_{\\text{net}} = 0
+$$
 
 ## Second Law
 
 The net force on an object equals the rate of change of its momentum:
 
-$$\\vec{F} = m\\vec{a}$$
+$$
+\\vec{F} = m\\vec{a}
+$$
 
 For variable mass systems (e.g. rockets), the full form is $\\vec{F} = \\frac{d(m\\vec{v})}{dt}$.
 
@@ -540,7 +544,9 @@ For variable mass systems (e.g. rockets), the full form is $\\vec{F} = \\frac{d(
 
 For every action there is an equal and opposite reaction:
 
-$$\\vec{F}_{AB} = -\\vec{F}_{BA}$$
+$$
+\\vec{F}_{AB} = -\\vec{F}_{BA}
+$$
 
 See also: [[principia-official:articles:article-general-relativity]] for the relativistic extension.
 
@@ -569,7 +575,9 @@ canvas: null
 
 The curvature of spacetime is related to the energy and momentum of matter:
 
-$$G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\frac{8\\pi G}{c^4} T_{\\mu\\nu}$$
+$$
+G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\frac{8\\pi G}{c^4} T_{\\mu\\nu}
+$$
 
 where $G_{\\mu\\nu}$ is the Einstein tensor, $\\Lambda$ the cosmological constant, and $T_{\\mu\\nu}$ the stress-energy tensor.
 
@@ -577,13 +585,17 @@ where $G_{\\mu\\nu}$ is the Einstein tensor, $\\Lambda$ the cosmological constan
 
 Free-falling particles follow geodesics — paths of extremal proper time:
 
-$$\\frac{d^2 x^\\mu}{d\\tau^2} + \\Gamma^\\mu_{\\alpha\\beta} \\frac{dx^\\alpha}{d\\tau}\\frac{dx^\\beta}{d\\tau} = 0$$
+$$
+\\frac{d^2 x^\\mu}{d\\tau^2} + \\Gamma^\\mu_{\\alpha\\beta} \\frac{dx^\\alpha}{d\\tau}\\frac{dx^\\beta}{d\\tau} = 0
+$$
 
 ## Schwarzschild Metric
 
 For a spherically symmetric, non-rotating mass $M$:
 
-$$ds^2 = -\\left(1 - \\frac{r_s}{r}\\right)c^2\\,dt^2 + \\left(1 - \\frac{r_s}{r}\\right)^{-1}dr^2 + r^2 d\\Omega^2$$
+$$
+ds^2 = -\\left(1 - \\frac{r_s}{r}\\right)c^2\\,dt^2 + \\left(1 - \\frac{r_s}{r}\\right)^{-1}dr^2 + r^2 d\\Omega^2
+$$
 
 where $r_s = 2GM/c^2$ is the Schwarzschild radius.
 
@@ -621,7 +633,9 @@ canvas: null
 
 In vacuum ($\\rho=0$, $\\mathbf{J}=0$) the equations reduce to the wave equation:
 
-$$\\nabla^2\\mathbf{E} - \\mu_0\\varepsilon_0 \\frac{\\partial^2 \\mathbf{E}}{\\partial t^2} = 0$$
+$$
+\\nabla^2\\mathbf{E} - \\mu_0\\varepsilon_0 \\frac{\\partial^2 \\mathbf{E}}{\\partial t^2} = 0
+$$
 
 with wave speed $c = 1/\\sqrt{\\mu_0\\varepsilon_0} \\approx 3\\times 10^8\\,\\text{m/s}$.
 
@@ -652,7 +666,9 @@ If two systems are each in thermal equilibrium with a third, they are in thermal
 
 ## First Law — Energy Conservation
 
-$$\\Delta U = Q - W$$
+$$
+\\Delta U = Q - W
+$$
 
 The change in internal energy equals heat added minus work done by the system.
 
@@ -660,7 +676,9 @@ The change in internal energy equals heat added minus work done by the system.
 
 In any spontaneous process the total entropy of an isolated system does not decrease:
 
-$$\\Delta S_{\\text{universe}} \\geq 0$$
+$$
+\\Delta S_{\\text{universe}} \\geq 0
+$$
 
 The Clausius inequality: $dS \\geq \\delta Q / T$.
 
@@ -668,7 +686,9 @@ The Clausius inequality: $dS \\geq \\delta Q / T$.
 
 As temperature approaches absolute zero, the entropy of a perfect crystal approaches zero:
 
-$$\\lim_{T \\to 0} S = 0$$`,
+$$
+\\lim_{T \\to 0} S = 0
+$$`,
     },
     // Article with `canvas` frontmatter — embeds anim-pendulum at page top
     {
@@ -697,15 +717,21 @@ canvas: "anim-pendulum"
 
 ## Lorentz Factor
 
-$$\\gamma = \\frac{1}{\\sqrt{1 - v^2/c^2}}$$
+$$
+\\gamma = \\frac{1}{\\sqrt{1 - v^2/c^2}}
+$$
 
 ## Time Dilation and Length Contraction
 
-$$\\Delta t' = \\gamma\\,\\Delta t \\qquad L' = L/\\gamma$$
+$$
+\\Delta t' = \\gamma\\,\\Delta t \\qquad L' = L/\\gamma
+$$
 
 ## Mass-Energy Equivalence
 
-$$E = mc^2 \\qquad E^2 = (pc)^2 + (mc^2)^2$$
+$$
+E = mc^2 \\qquad E^2 = (pc)^2 + (mc^2)^2
+$$
 
 See also [[principia-official:articles:article-general-relativity]] for the curved-spacetime extension.
 
@@ -737,7 +763,9 @@ The quantum state of a particle is described by a wave function $\\Psi(x,t)$. Th
 
 ## Schrodinger Equation
 
-$$i\\hbar \\frac{\\partial\\Psi}{\\partial t} = \\hat{H}\\Psi$$
+$$
+i\\hbar \\frac{\\partial\\Psi}{\\partial t} = \\hat{H}\\Psi
+$$
 
 **TODO:** expand on eigenvalues, measurement postulate, and commutator relations.`,
     },
@@ -765,13 +793,17 @@ canvas: null
 
 The probability of a microstate with energy $E_i$ at temperature $T$:
 
-$$P_i = \\frac{e^{-E_i/k_BT}}{Z}, \\quad Z = \\sum_i e^{-E_i/k_BT}$$
+$$
+P_i = \\frac{e^{-E_i/k_BT}}{Z}, \\quad Z = \\sum_i e^{-E_i/k_BT}
+$$
 
 ## Entropy
 
 Boltzmann's famous relation:
 
-$$S = k_B \\ln \\Omega$$
+$$
+S = k_B \\ln \\Omega
+$$
 
 where $\\Omega$ is the number of accessible microstates.`,
     },
@@ -823,7 +855,9 @@ canvas: null
 
 This article is **private** and only visible to explicitly granted users.
 
-$$\\Phi = \\oint_S \\mathbf{B} \\cdot d\\mathbf{A} = \\mu_0 I_{\\text{enc}}$$
+$$
+\\Phi = \\oint_S \\mathbf{B} \\cdot d\\mathbf{A} = \\mu_0 I_{\\text{enc}}
+$$
 
 The Lissajous animation: [[principia-official:objects:anim-lissajous]].`,
     },
@@ -865,7 +899,9 @@ canvas: null
 
 ## The Propagator
 
-$$K(x_f, t_f; x_i, t_i) = \\int \\mathcal{D}[x(t)]\\, e^{iS[x]/\\hbar}$$
+$$
+K(x_f, t_f; x_i, t_i) = \\int \\mathcal{D}[x(t)]\\, e^{iS[x]/\\hbar}
+$$
 
 Every path from $(x_i, t_i)$ to $(x_f, t_f)$ contributes. Classical paths dominate because nearby paths interfere constructively when $\\delta S = 0$.
 
@@ -898,11 +934,15 @@ canvas: null
 
 ## Lagrangian
 
-$$\\mathcal{L} = \\bar{\\psi}(i\\gamma^\\mu D_\\mu - m)\\psi - \\frac{1}{4}F_{\\mu\\nu}F^{\\mu\\nu}$$
+$$
+\\mathcal{L} = \\bar{\\psi}(i\\gamma^\\mu D_\\mu - m)\\psi - \\frac{1}{4}F_{\\mu\\nu}F^{\\mu\\nu}
+$$
 
 ## Fine Structure Constant
 
-$$\\alpha = \\frac{e^2}{4\\pi\\varepsilon_0 \\hbar c} \\approx \\frac{1}{137}$$
+$$
+\\alpha = \\frac{e^2}{4\\pi\\varepsilon_0 \\hbar c} \\approx \\frac{1}{137}
+$$
 
 The anomalous magnetic moment $g-2$ is the most precisely tested prediction in physics.
 
@@ -940,13 +980,17 @@ canvas: null
 
 ## Double-Slit Interference
 
-$$I(\\theta) = I_0 \\cos^2\\left(\\frac{\\pi d \\sin\\theta}{\\lambda}\\right)$$
+$$
+I(\\theta) = I_0 \\cos^2\\left(\\frac{\\pi d \\sin\\theta}{\\lambda}\\right)
+$$
 
 Bright fringes at $d\\sin\\theta = m\\lambda$, $m \\in \\mathbb{Z}$.
 
 ## Single-Slit Diffraction
 
-$$I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta = \\frac{\\pi a \\sin\\theta}{\\lambda}$$
+$$
+I(\\theta) = I_0 \\left(\\frac{\\sin\\beta}{\\beta}\\right)^2, \\quad \\beta = \\frac{\\pi a \\sin\\theta}{\\lambda}
+$$
 
 See the wave superposition animation: [[faculty:objects:anim-wave-superposition]].`,
         ownerType: "org" as const,
@@ -1022,13 +1066,13 @@ See the wave superposition animation: [[faculty:objects:anim-wave-superposition]
         },
         {
           articleId: newtonsArt.id,
-          content: "# Newton's Laws of Motion\n\n## First Law\n\nAn object at rest stays at rest.\n\n$$F = ma$$",
+          content: "# Newton's Laws of Motion\n\n## First Law\n\nAn object at rest stays at rest.\n\n$$\nF = ma\n$$",
           editNote: "Added math and sections",
           editedAt: daysAgo(7),
         },
         {
           articleId: newtonsArt.id,
-          content: "# Newton's Laws of Motion\n\n## First Law (Law of Inertia)\n\nAn object at rest remains at rest.\n\n## Second Law\n\n$$\\vec{F} = m\\vec{a}$$\n\n## Third Law\n\nAction = -Reaction.",
+          content: "# Newton's Laws of Motion\n\n## First Law (Law of Inertia)\n\nAn object at rest remains at rest.\n\n## Second Law\n\n$$\n\\vec{F} = m\\vec{a}\n$$\n\n## Third Law\n\nAction = -Reaction.",
           editNote: "Third law added",
           editedAt: daysAgo(2),
         },
@@ -1146,11 +1190,17 @@ This appendix is **internal** to the Classical Physics book and is not discovera
 
 ## Gradient, Divergence, Curl
 
-$$\\nabla f = \\left(\\frac{\\partial f}{\\partial x}, \\frac{\\partial f}{\\partial y}, \\frac{\\partial f}{\\partial z}\\right)$$
+$$
+\\nabla f = \\left(\\frac{\\partial f}{\\partial x}, \\frac{\\partial f}{\\partial y}, \\frac{\\partial f}{\\partial z}\\right)
+$$
 
-$$\\nabla \\cdot \\mathbf{F} = \\frac{\\partial F_x}{\\partial x} + \\frac{\\partial F_y}{\\partial y} + \\frac{\\partial F_z}{\\partial z}$$
+$$
+\\nabla \\cdot \\mathbf{F} = \\frac{\\partial F_x}{\\partial x} + \\frac{\\partial F_y}{\\partial y} + \\frac{\\partial F_z}{\\partial z}
+$$
 
-$$\\nabla \\times \\mathbf{F} = \\begin{vmatrix} \\hat{i} & \\hat{j} & \\hat{k} \\\\ \\partial_x & \\partial_y & \\partial_z \\\\ F_x & F_y & F_z \\end{vmatrix}$$
+$$
+\\nabla \\times \\mathbf{F} = \\begin{vmatrix} \\hat{i} & \\hat{j} & \\hat{k} \\\\ \\partial_x & \\partial_y & \\partial_z \\\\ F_x & F_y & F_z \\end{vmatrix}
+$$
 
 ## First-Order ODEs
 
@@ -1194,7 +1244,9 @@ This appendix is **internal** to the Classical Physics book.
 
 Every physically meaningful equation must be dimensionally consistent. For example, Newton's second law:
 
-$$[F] = [m][a] = \\text{kg}\\cdot\\text{m}\\cdot\\text{s}^{-2} = \\text{N}$$`,
+$$
+[F] = [m][a] = \\text{kg}\\cdot\\text{m}\\cdot\\text{s}^{-2} = \\text{N}
+$$`,
         ...adminOwner,
       },
     ];
