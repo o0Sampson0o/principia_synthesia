@@ -7,7 +7,6 @@ import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
-import "katex/dist/katex.min.css";
 import dynamic from "next/dynamic";
 import MdxErrorBoundary from "./MdxErrorBoundary";
 import MdxParagraph from "./MdxParagraph";

@@ -7,7 +7,6 @@ import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
-import "katex/dist/katex.min.css";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";

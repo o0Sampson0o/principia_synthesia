@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 body {
   background: var(--background);
@@ -158,3 +159,15 @@ body {
 .markdown-content table { width: 100%; border-collapse: collapse; margin: 1em 0; }
 .markdown-content th, .markdown-content td { border: 1px solid var(--border); padding: 0.5em 0.75em; text-align: left; }
 .markdown-content th { font-weight: 600; background: var(--muted); }
+
+/* KaTeX display (block) math */
+.markdown-content .katex-display {
+  display: block;
+  text-align: center;
+  margin: 1.5em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.markdown-content .katex {
+  font-size: 1.1em;
+}

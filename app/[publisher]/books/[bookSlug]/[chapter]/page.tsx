@@ -12,7 +12,6 @@ import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
-import "katex/dist/katex.min.css";
 import DynamicAnimation from "@/components/DynamicAnimation";
 import ArticleImage from "@/components/ArticleImage";
 import MdxParagraph from "@/components/MdxParagraph";
@@ -41,36 +40,20 @@ export default async function ChapterPage({
   const session = await getSession();
   if (!(await canView({ type: "book", ownerType, ownerId, slug: bookSlug }, session))) notFound();
 
-  // Find the article. It must either be internal (parentBookId === bookRow.id) or
-  // a regular article with a curriculum entry in this book.
-  const [article] = await db
-    .select()
-    .from(articles)
-    .where(
-      and(
-        eq(articles.slug, chapterSlug),
-        eq(articles.ownerType, ownerType),
-        eq(articles.ownerId, ownerId)
-      )
-    )
+  // Find the article via its curriculum entry — this handles articles owned by
+  // a different publisher than the book (cross-publisher curriculum entries).
+  const [entryRow] = await db
+    .select({ article: articles })
+    .from(curriculumEntries)
+    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .where(and(eq(curriculumEntries.bookId, bookRow.id), eq(articles.slug, chapterSlug)))
     .limit(1);
 
+  const article = entryRow?.article;
   if (!article) notFound();
 
-  // Internal article: verify parentBookId matches
+  // Internal article: must belong to this book
   if (article.isInternal && article.parentBookId !== bookRow.id) notFound();
-
-  // Non-internal article: verify it has a curriculum entry in this book
-  if (!article.isInternal) {
-    const [entry] = await db
-      .select({ id: curriculumEntries.id })
-      .from(curriculumEntries)
-      .where(
-        and(eq(curriculumEntries.bookId, bookRow.id), eq(curriculumEntries.articleId, article.id))
-      )
-      .limit(1);
-    if (!entry) notFound();
-  }
 
   // Record view
   db.insert(articleViews).values({ articleId: article.id }).catch(() => {});
