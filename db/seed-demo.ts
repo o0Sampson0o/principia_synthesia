@@ -48,6 +48,8 @@ import {
   articleViews,
   bookSnapshots,
   bookSnapshotEntries,
+  events,
+  eventArticles,
 } from "./schema";
 import type { ArticleMetadataShape } from "./schema";
 import { eq, and } from "drizzle-orm";
@@ -1568,6 +1570,151 @@ $$`,
     }
   }
 
+  // ── 15. Events ───────────────────────────────────────────────────────────────
+  console.log("[seed] Seeding events...");
+
+  // Events owned by principia-official (admin user)
+  await db.insert(events).values([
+    // Historical physics milestone — linked to article-newtons-laws
+    {
+      slug:        "event-principia-mathematica-1687",
+      title:       "Publication of Principia Mathematica",
+      description: "Isaac Newton's Philosophiæ Naturalis Principia Mathematica is published, laying the foundations of classical mechanics, gravitation, and the calculus of fluxions.",
+      eventDate:   new Date("1687-07-05"),
+      category:    "Physics History",
+      ...adminOwner,
+    },
+    // Historical physics milestone — linked to article-maxwells-equations
+    {
+      slug:        "event-maxwells-treatise-1873",
+      title:       "Maxwell's Treatise on Electricity and Magnetism",
+      description: "James Clerk Maxwell publishes his two-volume Treatise on Electricity and Magnetism, unifying electric and magnetic phenomena into four equations and predicting electromagnetic waves.",
+      eventDate:   new Date("1873-01-01"),
+      category:    "Physics History",
+      ...adminOwner,
+    },
+    // Historical physics milestone — linked to article-special-relativity + article-general-relativity
+    {
+      slug:        "event-special-relativity-1905",
+      title:       "Einstein's Annus Mirabilis",
+      description: "Albert Einstein publishes four landmark papers in 1905: the photoelectric effect, Brownian motion, special relativity, and mass-energy equivalence (E=mc²).",
+      eventDate:   new Date("1905-06-30"),
+      category:    "Physics History",
+      ...adminOwner,
+    },
+    // No description — exercises the nullable description path
+    {
+      slug:        "event-feynman-lectures-1964",
+      title:       "Feynman Lectures on Physics Released",
+      description: null,
+      eventDate:   new Date("1964-01-01"),
+      category:    "Mathematics",
+      ...adminOwner,
+    },
+    // Recent product event — private (no access grant — tests access-denied path)
+    {
+      slug:        "event-principia-synthesia-launch-2025",
+      title:       "Principia Synthesia Platform Launch",
+      description: "Internal release announcement for the Principia Synthesia publishing platform. Restricted to authorized users.",
+      eventDate:   new Date("2025-01-15"),
+      category:    "Product Update",
+      ...adminOwner,
+    },
+  ]).onConflictDoNothing();
+
+  // Events owned by dr-feynman (if seeded)
+  if (feynmanRow) {
+    await db.insert(events).values([
+      {
+        slug:        "event-nobel-prize-1965",
+        title:       "Nobel Prize in Physics 1965",
+        // No description — exercises nullable path on a different publisher
+        description: null,
+        eventDate:   new Date("1965-10-21"),
+        category:    "Personal",
+        ownerType:   "user" as const,
+        ownerId:     feynmanRow.id,
+      },
+      {
+        slug:        "event-qed-published-1985",
+        title:       "QED: The Strange Theory of Light and Matter",
+        description: "Richard Feynman's popular-science book QED is published, distilling quantum electrodynamics into an accessible account of how light and matter interact.",
+        eventDate:   new Date("1985-03-01"),
+        category:    "Personal",
+        ownerType:   "user" as const,
+        ownerId:     feynmanRow.id,
+      },
+    ]).onConflictDoNothing();
+    console.log("  2 events seeded (dr-feynman)");
+  }
+
+  // Events owned by faculty org (if seeded)
+  if (facultyOrg) {
+    await db.insert(events).values([
+      {
+        slug:        "event-faculty-symposium-2024",
+        title:       "Annual Faculty Physics Symposium 2024",
+        description: "The Faculty Consortium's annual physics symposium featuring talks on wave optics, classical mechanics, and emerging topics in quantum field theory.",
+        eventDate:   new Date("2024-09-15"),
+        category:    "Conference",
+        ownerType:   "org" as const,
+        ownerId:     facultyOrg.id,
+      },
+    ]).onConflictDoNothing();
+    console.log("  1 event seeded (faculty org)");
+  }
+
+  // Fetch seeded event IDs for FK lookups
+  const adminEvents = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.ownerType, "user"), eq(events.ownerId, adminRow.id)));
+  const evtBySlug = Object.fromEntries(adminEvents.map((e) => [e.slug, e]));
+
+  console.log(`  ${adminEvents.length} admin events seeded (principia-official)`);
+
+  // ── 16. Event-Article links ────────────────────────────────────────────────
+  console.log("[seed] Seeding event-article links...");
+
+  // eventArticles has a unique constraint on (eventId, articleId) — safe to use onConflictDoNothing
+  const evtArticleLinks: Array<[string, string]> = [
+    ["event-principia-mathematica-1687", "article-newtons-laws"],
+    ["event-maxwells-treatise-1873",     "article-maxwells-equations"],
+    ["event-special-relativity-1905",    "article-special-relativity"],
+    ["event-special-relativity-1905",    "article-general-relativity"],
+  ];
+
+  let newEvtLinks = 0;
+  for (const [evtSlug, artSlug] of evtArticleLinks) {
+    const evt = evtBySlug[evtSlug];
+    const art = allArtBySlug[artSlug];
+    if (evt && art) {
+      await db.insert(eventArticles).values({
+        eventId:   evt.id,
+        articleId: art.id,
+      }).onConflictDoNothing();
+      newEvtLinks++;
+    } else {
+      console.log(`  WARN: could not link ${evtSlug} → ${artSlug} (evt=${!!evt}, art=${!!art})`);
+    }
+  }
+  console.log(`  ${newEvtLinks} event-article links inserted`);
+
+  // ── 17. Event Visibility ───────────────────────────────────────────────────
+  console.log("[seed] Seeding event visibility...");
+
+  // Private event: event-principia-synthesia-launch-2025 (no grant — tests denial path)
+  const launchEvt = evtBySlug["event-principia-synthesia-launch-2025"];
+  if (launchEvt) {
+    await db.insert(resourceVisibility).values({
+      resourceType: "event",
+      ...adminOwner,
+      resourceKey:  "event-principia-synthesia-launch-2025",
+      visibility:   "private",
+    }).onConflictDoNothing();
+    console.log("  event-principia-synthesia-launch-2025 → private (no grant — access denied path)");
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────────
   console.log("\n[seed] Seeding complete!\n");
   console.log("  Users:");
@@ -1596,6 +1743,18 @@ $$`,
   console.log("    book-quantum-primer: org — faculty org members can see it");
   console.log("    book-advanced-topics: private — quantum-institute org granted, mit-ocw denied");
   console.log("    book-faculty-lectures: org — faculty org members can see it");
+  console.log("  Events:");
+  console.log("    principia-official: event-principia-mathematica-1687 (1687, Physics History)");
+  console.log("    principia-official: event-maxwells-treatise-1873 (1873, Physics History)");
+  console.log("    principia-official: event-special-relativity-1905 (1905, Physics History)");
+  console.log("    principia-official: event-feynman-lectures-1964 (1964, Mathematics, no description)");
+  console.log("    principia-official: event-principia-synthesia-launch-2025 (2025, Product Update, PRIVATE)");
+  console.log("    dr-feynman: event-nobel-prize-1965, event-qed-published-1985");
+  console.log("    faculty org: event-faculty-symposium-2024");
+  console.log("  Event-Article links:");
+  console.log("    event-principia-mathematica-1687 → article-newtons-laws");
+  console.log("    event-maxwells-treatise-1873     → article-maxwells-equations");
+  console.log("    event-special-relativity-1905    → article-special-relativity, article-general-relativity");
 
   process.exit(0);
 }
