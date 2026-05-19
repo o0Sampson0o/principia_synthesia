@@ -5,7 +5,6 @@ import { getSession } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import Pagination from "@/components/Pagination";
-import TimelineViewToggle from "@/components/TimelineViewToggle";
 import TimelineClientShell from "@/components/TimelineClientShell";
 
 const PER_PAGE = 20;
@@ -51,6 +50,7 @@ async function queryTimeline(filters: TimelineFilters, currentPage: number) {
       id: events.id,
       slug: events.slug,
       title: events.title,
+      description: events.description,
       eventDate: events.eventDate,
       category: events.category,
       isEraStart: events.isEraStart,
@@ -88,6 +88,7 @@ async function queryTimeline(filters: TimelineFilters, currentPage: number) {
       events.id,
       events.slug,
       events.title,
+      events.description,
       events.eventDate,
       events.category,
       events.isEraStart,
@@ -270,48 +271,6 @@ export default async function TimelinePage({
 
       {uniqueRows.length === 0 ? (
         <p className="themed-muted">No events found.</p>
-      ) : activeView === "list" ? (
-        <>
-          <TimelineViewToggle
-            activeView={activeView}
-            category={category}
-            pubFilter={pubFilter}
-            from={from}
-            to={to}
-          />
-          <ul className="space-y-4">
-            {uniqueRows.map((e) => (
-              <li key={e.id} className="border-b themed-border pb-4">
-                <Link
-                  href={`/${e.publisherSlug}/events/${e.slug}`}
-                  className="text-xl font-medium themed-link"
-                >
-                  {e.title}
-                </Link>
-                <div className="flex items-center gap-3 mt-1 flex-wrap">
-                  <span className="text-xs themed-muted">
-                    {new Date(e.eventDate).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
-                  {e.category && (
-                    <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
-                      {e.category}
-                    </span>
-                  )}
-                  <Link
-                    href={`/${e.publisherSlug}`}
-                    className="text-xs themed-muted hover:underline"
-                  >
-                    @{e.publisherSlug}
-                  </Link>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </>
       ) : (
         <TimelineClientShell
           rows={uniqueRows}

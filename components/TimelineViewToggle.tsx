@@ -8,8 +8,6 @@ type Props = {
   pubFilter: string | undefined
   from: string | undefined
   to: string | undefined
-  proportional?: boolean
-  onToggleProportional?: () => void
 }
 
 function viewHref(
@@ -29,7 +27,7 @@ function viewHref(
   return qs ? `/timeline?${qs}` : "/timeline"
 }
 
-export default function TimelineViewToggle({ activeView, category, pubFilter, from, to, proportional, onToggleProportional }: Props) {
+export default function TimelineViewToggle({ activeView, category, pubFilter, from, to }: Props) {
   return (
     <div className="flex items-center gap-1 mb-6">
       <Link
@@ -52,19 +50,6 @@ export default function TimelineViewToggle({ activeView, category, pubFilter, fr
       >
         List
       </Link>
-      {activeView === "visual" && onToggleProportional && (
-        <button
-          type="button"
-          onClick={onToggleProportional}
-          className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
-            proportional
-              ? "themed-surface border themed-border themed-heading"
-              : "themed-btn-ghost"
-          }`}
-        >
-          Proportional
-        </button>
-      )}
     </div>
   )
 }
