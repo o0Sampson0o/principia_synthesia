@@ -140,7 +140,7 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="overflow-y-auto overscroll-contain rounded-md border themed-border"
+        className="overflow-y-auto overscroll-contain rounded-md border themed-border scrollbar-none"
         style={{ height: CONTAINER_HEIGHT_PX }}
       >
         {/* Canvas — height is data-driven; extra 80px bottom padding so last card isn't clipped */}
