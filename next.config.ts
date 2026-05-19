@@ -10,10 +10,15 @@ const withPWA = withPWAInit({
     disableDevLogs: true,
     runtimeCaching: [
       {
-        urlPattern: /^https?:\/\/.*\/((?!admin|api|_next).+)$/,
-        handler: "StaleWhileRevalidate",
+        // NetworkFirst: always fetch fresh content when online so editors
+        // never see a stale version after saving. Falls back to cache only
+        // when the network is unavailable (offline reading).
+        // Excludes editor/settings routes that must never be served stale.
+        urlPattern: /^https?:\/\/.*\/((?!admin|api|_next|settings).+)$/,
+        handler: "NetworkFirst",
         options: {
           cacheName: "article-pages",
+          networkTimeoutSeconds: 5,
           expiration: { maxEntries: 100, maxAgeSeconds: 7 * 24 * 60 * 60 },
         },
       },

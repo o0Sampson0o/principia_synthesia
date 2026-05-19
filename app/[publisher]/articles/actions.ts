@@ -216,6 +216,7 @@ export async function updateArticle(
   }
 
   revalidatePath(`/${publisherSlug}/articles/${validated.slug}`);
+  revalidatePath(`/${publisherSlug}/articles/${validated.slug}/edit`);
   redirect(`/${publisherSlug}/articles/${validated.slug}`);
 }
 
@@ -283,6 +284,7 @@ export async function restoreRevision(formData: FormData) {
   }
 
   revalidatePath(`/${validated.publisherSlug}/articles/${article.slug}`);
+  revalidatePath(`/${validated.publisherSlug}/articles/${article.slug}/edit`);
   redirect(`/${validated.publisherSlug}/articles/${article.slug}`);
 }
 
