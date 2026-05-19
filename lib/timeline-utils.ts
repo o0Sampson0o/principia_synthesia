@@ -2,6 +2,7 @@ export type EventRow = {
   id: number;
   slug: string;
   title: string;
+  description: string | null;
   eventDate: Date;
   category: string | null;
   publisherSlug: string | null;
@@ -16,25 +17,13 @@ export type DerivedEra = {
   endYear: number | null;
 };
 
-export const DOT_COLORS = [
-  "#6366f1",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#06b6d4",
-  "#f97316",
-  "#84cc16",
-] as const;
-
-export function categoryColor(cat: string | null): string {
-  if (!cat) return "var(--muted-foreground)";
-  let hash = 5381;
-  for (let i = 0; i < cat.length; i++) {
-    hash = ((hash << 5) + hash) ^ cat.charCodeAt(i);
-  }
-  return DOT_COLORS[Math.abs(hash) % DOT_COLORS.length];
+export function toFractionalYear(date: Date): number {
+  const y = date.getFullYear()
+  const startOfYear = new Date(y, 0, 1).getTime()
+  const msInYear = new Date(y + 1, 0, 1).getTime() - startOfYear
+  return y + (date.getTime() - startOfYear) / msInYear
 }
+
 
 export function yearMarkerInterval(pxPerYear: number): number {
   if (pxPerYear >= 200) return 1;

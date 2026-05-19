@@ -160,6 +160,107 @@ body {
 .markdown-content th, .markdown-content td { border: 1px solid var(--border); padding: 0.5em 0.75em; text-align: left; }
 .markdown-content th { font-weight: 600; background: var(--muted); }
 
+/* ─── Native <dialog> — full ownership of all visual properties ──── */
+
+dialog {
+  /* Reset UA defaults then set our own values */
+  padding: 1.5rem;
+  border: none;
+
+  /* Centering — reinforces UA top-layer margin: auto */
+  margin: auto;
+
+  /* Cap height so the dialog never overflows a short viewport.
+     svh = Small Viewport Height, stable even when mobile toolbars collapse.
+     Fallback vh for browsers that don't support svh yet. */
+  max-height: 90vh;
+  max-height: 90svh;
+
+  /* overflow: hidden so border-radius clips the scrollable inner content */
+  overflow: hidden;
+
+  /* Correct scrollbar and form-control theming in dark mode */
+  color-scheme: light dark;
+
+  /* Entry/exit animation */
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    display 0.18s ease allow-discrete,
+    overlay 0.18s ease allow-discrete;
+}
+
+/* Entry: what the dialog looks like before it is visible */
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Exit: animate while [open] is being removed */
+dialog:not([open]) {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* Cancel the .themed-card:hover border escalation on dialogs.
+   The cursor is always inside an open modal so the hover state is permanent
+   — pin the border to the resting token to prevent a constant visual shift. */
+dialog.themed-card:hover {
+  border-color: var(--border);
+}
+
+/* Backdrop */
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  opacity: 1;
+  transition:
+    opacity 0.18s ease,
+    display 0.18s ease allow-discrete,
+    overlay 0.18s ease allow-discrete;
+}
+
+@starting-style {
+  dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* Close button: 44×44px minimum touch target (WCAG 2.5.5) */
+.dialog-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  flex-shrink: 0;
+  color: var(--secondary-text);
+  font-size: 1.125rem;
+  line-height: 1;
+  background: none;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+  margin-right: -0.375rem;
+  margin-top: -0.25rem;
+}
+.dialog-close-btn:hover {
+  color: var(--foreground);
+  background-color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog,
+  dialog::backdrop {
+    transition: none;
+  }
+}
+
 /* Scrollbar hiding — completes Tailwind's scrollbar-none (which only sets scrollbar-width: none for Firefox) */
 .scrollbar-none::-webkit-scrollbar {
   display: none;

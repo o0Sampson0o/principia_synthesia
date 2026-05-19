@@ -2,8 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   deriveEras,
   yearMarkerInterval,
-  categoryColor,
-  DOT_COLORS,
 } from "@/lib/timeline-utils";
 import type { EventRow } from "@/lib/timeline-utils";
 
@@ -14,6 +12,7 @@ function makeRow(overrides: Partial<Omit<EventRow, "eventDate">> & { eventDate: 
     id: 1,
     slug: "event-foo",
     title: "Foo",
+    description: null,
     category: null,
     publisherSlug: "publisher-a",
     isEraStart: false,
@@ -37,29 +36,6 @@ describe("yearMarkerInterval", () => {
   it("returns 100 at 1px/yr", () => expect(yearMarkerInterval(1)).toBe(100));
 });
 
-// ─── categoryColor ────────────────────────────────────────────────────────────
-
-describe("categoryColor", () => {
-  it("returns the muted foreground variable for null", () => {
-    expect(categoryColor(null)).toBe("var(--muted-foreground)");
-  });
-
-  it("returns a value from DOT_COLORS for a non-null category", () => {
-    const color = categoryColor("Science");
-    expect(DOT_COLORS).toContain(color as typeof DOT_COLORS[number]);
-  });
-
-  it("is deterministic — same category always returns the same color", () => {
-    expect(categoryColor("History")).toBe(categoryColor("History"));
-    expect(categoryColor("Math")).toBe(categoryColor("Math"));
-  });
-
-  it("returns different colors for different categories (djb2 distribution)", () => {
-    const colors = new Set(["Science", "History", "Math", "Art", "Music", "Physics", "Biology", "Chemistry"].map(categoryColor));
-    // With 8 distinct inputs and 8 buckets we expect at least 3 distinct values
-    expect(colors.size).toBeGreaterThan(2);
-  });
-});
 
 // ─── deriveEras ───────────────────────────────────────────────────────────────
 
