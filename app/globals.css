@@ -160,6 +160,11 @@ body {
 .markdown-content th, .markdown-content td { border: 1px solid var(--border); padding: 0.5em 0.75em; text-align: left; }
 .markdown-content th { font-weight: 600; background: var(--muted); }
 
+/* Scrollbar hiding — completes Tailwind's scrollbar-none (which only sets scrollbar-width: none for Firefox) */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* KaTeX display (block) math */
 .markdown-content .katex-display {
   display: block;

@@ -10,7 +10,7 @@ export default function VisualTimeline({ rows }: { rows: EventRow[] }) {
   const renderedEraStarts = new Set<string>()
 
   return (
-    <div className="relative">
+    <div className="relative w-full px-4 py-6">
       <div className="absolute left-[7px] top-0 bottom-0 w-0.5 bg-[var(--border)]" />
       <div className="space-y-6">
         {sorted.map((e) => {

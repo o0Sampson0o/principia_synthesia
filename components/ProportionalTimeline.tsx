@@ -108,7 +108,7 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
   )
 
   return (
-    <div>
+    <div className="w-full">
       {/* Zoom controls live outside the scroll area so they stay reachable at all times */}
       <div className="flex items-center gap-2 mb-3 text-sm">
         <span className="themed-muted text-xs">Zoom</span>
@@ -140,7 +140,7 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="overflow-y-auto overscroll-contain rounded-md border themed-border scrollbar-none"
+        className="overflow-y-auto overscroll-contain rounded-md border themed-border scrollbar-none p-4"
         style={{ height: CONTAINER_HEIGHT_PX }}
       >
         {/* Canvas — height is data-driven; extra 80px bottom padding so last card isn't clipped */}
