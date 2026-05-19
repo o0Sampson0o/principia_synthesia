@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
-import { books, articles, curriculumEntries, articleViews } from "@/db/schema";
+import { books, articles, curriculumEntries, articleViews, publishers } from "@/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
@@ -58,7 +58,22 @@ export default async function ChapterPage({
   // Record view
   db.insert(articleViews).values({ articleId: article.id }).catch(() => {});
 
-  const isEditor = await canEditContent(session, ownerType, ownerId);
+  // Resolve the article's own publisher slug — it may differ from the book's
+  // publisher when a cross-publisher article is added to the curriculum.
+  const articleOwnerType = article.ownerType as "user" | "org";
+  const articleOwnerId = article.ownerId;
+  const [articlePublisherRow] = await db
+    .select({ slug: publishers.slug })
+    .from(publishers)
+    .where(
+      articleOwnerType === "user"
+        ? eq(publishers.userId, articleOwnerId)
+        : eq(publishers.orgId, articleOwnerId)
+    )
+    .limit(1);
+  const articlePublisherSlug = articlePublisherRow?.slug ?? publisherSlug;
+
+  const isEditor = await canEditContent(session, articleOwnerType, articleOwnerId);
 
   // Get all entries for prev/next navigation
   const allEntries = await db
@@ -94,7 +109,7 @@ export default async function ChapterPage({
       {isEditor && (
         <div className="mb-6">
           <Link
-            href={`/${publisherSlug}/articles/${chapterSlug}/edit`}
+            href={`/${articlePublisherSlug}/articles/${chapterSlug}/edit`}
             className="text-sm themed-link"
           >
             Edit chapter
