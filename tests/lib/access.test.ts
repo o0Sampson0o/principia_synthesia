@@ -165,6 +165,25 @@ describe("canView", () => {
   });
 });
 
+  it("canView with type 'event' and no visibility row returns true (public default)", async () => {
+    setupQueryQueue([{ result: [], withLimit: true }]);
+    const result = await canView(makeRef({ type: "event", slug: "event-foo" }), null);
+    expect(result).toBe(true);
+  });
+
+  it("canView with type 'event' and private visibility respects grants", async () => {
+    setupQueryQueue([
+      { result: [{ visibility: "private" }], withLimit: true },
+      { result: [], withLimit: false },
+      { result: [{ id: 9 }], withLimit: true },
+    ]);
+    const result = await canView(
+      makeRef({ type: "event", slug: "event-foo" }),
+      makeUserSession()
+    );
+    expect(result).toBe(true);
+  });
+
 // ─── filterVisible ────────────────────────────────────────────────────────────
 
 describe("filterVisible", () => {
