@@ -8,7 +8,8 @@
  *   - 14 articles (published, draft, review, archived; public, org-visible, private)
  *     including 2 internal articles (isInternal=true, parentBookId set)
  *   - 3 books (1 admin-owned public, 1 admin-owned org-visible, 1 admin-owned private)
- *     with 4–5 chapters each plus internal chapters
+ *     with 4–5 chapters each plus internal chapters and cross-publisher chapters
+ *     book-classical-physics has 2 cross-publisher chapters from dr-feynman (addExternalArticle feature)
  *   - 5 KAO objects (3 animations, 1 dataset, 1 diagram)
  *   - Revisions (3 revisions on one article)
  *   - Article views (shaping top-articles ranking)
@@ -1286,6 +1287,50 @@ $$`,
     console.log("  book-classical-physics: 2 internal articles added (Appendix A, Appendix B)");
   }
 
+  // ── Book 1 cross-publisher chapters (dr-feynman → book-classical-physics) ─
+  //    These exercise the addExternalArticle feature:
+  //      - article is owned by dr-feynman, not principia-official
+  //      - article is public and non-internal (both requirements enforced by action)
+  //      - no slug conflict with existing chapters
+  //    Positions 7–8 follow monotonically after the internal appendices at 5–6.
+  if (classicalBook && feynmanRow) {
+    const feynmanArticles = await db
+      .select()
+      .from(articles)
+      .where(and(eq(articles.ownerType, "user"), eq(articles.ownerId, feynmanRow.id)));
+    const feynBySlug = Object.fromEntries(feynmanArticles.map((a) => [a.slug, a]));
+
+    const crossPublisherChapters = [
+      {
+        artSlug:   "article-feynman-path-integral",
+        position:  7,
+        partTitle: "Part IV: Quantum Extensions",
+      },
+      {
+        artSlug:   "article-qed-overview",
+        position:  8,
+        partTitle: null,
+      },
+    ];
+
+    let crossCount = 0;
+    for (const ch of crossPublisherChapters) {
+      const art = feynBySlug[ch.artSlug];
+      if (art) {
+        await db.insert(curriculumEntries).values({
+          bookId:    classicalBook.id,
+          articleId: art.id,
+          position:  ch.position,
+          partTitle: ch.partTitle,
+        }).onConflictDoNothing();
+        crossCount++;
+      }
+    }
+    console.log(
+      `  book-classical-physics: ${crossCount} cross-publisher chapters added (dr-feynman → principia-official book)`
+    );
+  }
+
   // ── Book 2 chapters: Quantum Primer ──────────────────────────────────────
   if (quantumBook) {
     const ch2 = [
@@ -1737,10 +1782,12 @@ $$`,
   console.log("    2 feynman-owned (published)");
   console.log("    1 faculty-org-owned (published)");
   console.log("  Books:");
-  console.log("    book-classical-physics  (5 regular + 2 internal chapters) — public");
-  console.log("    book-quantum-primer     (4 chapters)                       — org-visible");
-  console.log("    book-advanced-topics    (3 chapters)                       — private");
-  console.log("    book-faculty-lectures   (2 chapters)                       — org-visible");
+  console.log("    book-classical-physics  (5 regular + 2 internal + 2 cross-publisher chapters) — public");
+  console.log("      cross-publisher: article-feynman-path-integral (dr-feynman, pos 7)");
+  console.log("      cross-publisher: article-qed-overview          (dr-feynman, pos 8)");
+  console.log("    book-quantum-primer     (4 chapters)                                — org-visible");
+  console.log("    book-advanced-topics    (3 chapters)                                — private");
+  console.log("    book-faculty-lectures   (2 chapters)                                — org-visible");
   console.log("  KAO Objects:");
   console.log("    anim-pendulum (admin), anim-lissajous (admin), anim-wave-superposition (faculty)");
   console.log("    object-periodic-table (dataset), object-newtonian-flow (diagram)");
