@@ -50,7 +50,7 @@ export default async function HomePage() {
   return (
     <main>
       {/* Hero */}
-      <section className="max-w-5xl mx-auto px-6 py-20 text-center">
+      <section className="max-w-6xl mx-auto px-6 py-20 text-center">
         <h1 className="text-5xl font-bold tracking-tight themed-heading mb-6">
           Principia Synthesia
         </h1>
@@ -100,7 +100,7 @@ export default async function HomePage() {
 
       {/* Top articles this month */}
       {topArticles.length > 0 && (
-        <section className="max-w-4xl mx-auto px-6 pb-20">
+        <section className="max-w-5xl mx-auto px-6 pb-20">
           <h2 className="text-2xl font-semibold themed-heading mb-6">Top articles this month</h2>
           <ul className="space-y-4">
             {topArticles.map((a) => {

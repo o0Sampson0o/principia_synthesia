@@ -56,7 +56,7 @@ export default async function ImagesPage({
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10">
+    <main className="max-w-6xl mx-auto px-6 py-10">
       <div className="mb-8">
         <h1 className="text-3xl font-bold themed-heading">Images</h1>
         <p className="text-sm themed-muted mt-1">

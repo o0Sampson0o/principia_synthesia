@@ -49,7 +49,7 @@ export default async function EventPage({
   const isEditor = await canEditContent(session, ownerType, ownerId);
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10">
+    <main className="max-w-5xl mx-auto px-6 py-10">
       <nav className="text-sm themed-muted mb-6">
         <Link href={`/${publisherSlug}/events`} className="themed-link">
           Events

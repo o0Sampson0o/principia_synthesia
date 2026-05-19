@@ -82,7 +82,7 @@ export default async function ChapterPage({
     : body;
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10">
+    <main className="max-w-5xl mx-auto px-6 py-10">
       <div className="text-sm themed-muted mb-6 flex gap-2">
         <Link href={`/${publisherSlug}`} className="themed-link">@{publisherSlug}</Link>
         <span>/</span>

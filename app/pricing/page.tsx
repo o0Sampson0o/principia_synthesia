@@ -40,7 +40,7 @@ const tiers = [
 
 export default function PricingPage() {
   return (
-    <main className="max-w-5xl mx-auto px-4 py-16">
+    <main className="max-w-6xl mx-auto px-4 py-16">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-3 text-zinc-900 dark:text-zinc-100">Pricing</h1>
         <p className="text-zinc-500 dark:text-zinc-400">Simple, transparent pricing.</p>

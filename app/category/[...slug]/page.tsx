@@ -71,7 +71,7 @@ export default async function CategoryPage({
     .where(and(...conditions));
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10">
+    <main className="max-w-5xl mx-auto px-6 py-10">
       <Link href="/category" className="text-sm themed-link mb-6 inline-block">
         &larr; All categories
       </Link>

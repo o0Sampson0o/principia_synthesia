@@ -6,7 +6,7 @@ export default async function Nav() {
 
   return (
     <nav className="themed-nav">
-      <div className="max-w-5xl mx-auto px-6 h-12 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
         <Link
           href="/"
           className="font-semibold tracking-tight themed-heading hover:opacity-70 transition-opacity"

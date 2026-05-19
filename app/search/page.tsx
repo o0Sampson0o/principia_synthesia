@@ -89,7 +89,7 @@ export default async function SearchPage({
   const hasActiveFilter = !!query || tagList.length > 0;
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10">
+    <main className="max-w-5xl mx-auto px-6 py-10">
       <h1 className="text-4xl font-bold themed-heading mb-6">Search</h1>
       <form method="GET" action="/search" className="mb-8 space-y-2">
         <input

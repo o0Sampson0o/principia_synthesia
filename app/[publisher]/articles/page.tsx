@@ -43,7 +43,7 @@ export default async function PublisherArticlesPage({
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10">
+    <main className="max-w-5xl mx-auto px-6 py-10">
       <h1 className="text-3xl font-bold themed-heading mb-2">
         {pub.displayName}&rsquo;s articles
       </h1>

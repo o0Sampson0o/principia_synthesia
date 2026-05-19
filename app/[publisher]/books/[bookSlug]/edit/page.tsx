@@ -102,7 +102,7 @@ export default async function EditBookPage({
   }
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10">
+    <main className="max-w-4xl mx-auto px-6 py-10">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold themed-heading">Edit book</h1>
         <Link

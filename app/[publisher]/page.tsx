@@ -102,7 +102,7 @@ export default async function PublisherProfilePage({
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-12">
+    <main className="max-w-6xl mx-auto px-6 py-12">
       {/* Header */}
       <div className="mb-10">
         <h1 className="text-3xl font-bold themed-heading">{pub.displayName}</h1>

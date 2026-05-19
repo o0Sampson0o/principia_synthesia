@@ -5,9 +5,9 @@
 | Width | Used for |
 |---|---|
 | `max-w-xl` / `max-w-2xl` | Narrow forms: new book, access control, members, object editor |
-| `max-w-3xl` | Medium edit forms: book edit page |
-| `max-w-4xl` | Reading & listing pages: article read, chapter, book TOC, articles list, objects list, search, category |
-| `max-w-5xl` | Hub/dashboard pages: publisher profile, images, nav bar, footer |
+| `max-w-4xl` | Medium edit forms: book edit page, organizations list |
+| `max-w-5xl` | Reading & listing pages: article read, chapter, book TOC, articles list, objects list, search, category, events |
+| `max-w-6xl` | Hub/dashboard pages: publisher profile, images, nav bar, footer, timeline |
 | `max-w-7xl` | Split-editor pages: new/edit article (CodeMirror + preview) |
 
 `components/ContentEditor.tsx` renders a two-column split at `h-[760px]`. CodeMirror inner height: `728px` with toolbar, `760px` without.

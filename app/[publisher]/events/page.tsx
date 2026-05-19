@@ -70,7 +70,7 @@ export default async function PublisherEventsPage({
   const totalPages = Math.ceil(total / PER_PAGE);
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10">
+    <main className="max-w-5xl mx-auto px-6 py-10">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold themed-heading mb-1">
