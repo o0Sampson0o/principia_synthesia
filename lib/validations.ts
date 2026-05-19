@@ -159,6 +159,20 @@ export const createInternalArticleSchema = z.object({
   partTitle: z.string().max(200, "Part title too long").optional().nullable(),
 });
 
+/**
+ * Validates form data for adding an article authored by ANOTHER publisher
+ * to one of the current publisher's books. The article's own visibility
+ * (resolved against the current session) is checked in the server action,
+ * not here.
+ */
+export const addExternalArticleSchema = z.object({
+  bookId: z.coerce.number().int().positive("Invalid book ID"),
+  targetPublisher: publisherSlugSchema,
+  articleSlug: articleSlugSchema,
+  position: z.coerce.number().int().min(0, "Position must be non-negative"),
+  partTitle: z.string().max(200, "Part title too long").optional().nullable(),
+});
+
 // ---------------------------------------------------------------------------
 // Visibility + access grant schemas
 // ---------------------------------------------------------------------------

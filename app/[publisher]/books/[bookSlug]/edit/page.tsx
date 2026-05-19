@@ -3,8 +3,8 @@ import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
-import { books, curriculumEntries, articles } from "@/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { books, curriculumEntries, articles, publishers } from "@/db/schema";
+import { eq, and, asc, or, sql } from "drizzle-orm";
 import Link from "next/link";
 import {
   updateBook,
@@ -13,6 +13,7 @@ import {
   removeCurriculumEntry,
   createInternalArticle,
   reorderChapters,
+  addExternalArticle,
 } from "../../actions";
 
 export default async function EditBookPage({
@@ -57,9 +58,25 @@ export default async function EditBookPage({
       articleSlug: articles.slug,
       articleTitle: articles.title,
       isInternal: articles.isInternal,
+      articleOwnerType: articles.ownerType,
+      articleOwnerId: articles.ownerId,
+      articlePublisherSlug: publishers.slug,
     })
     .from(curriculumEntries)
     .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .leftJoin(
+      publishers,
+      or(
+        and(
+          eq(articles.ownerType, sql`'user'`),
+          eq(publishers.userId, articles.ownerId)
+        ),
+        and(
+          eq(articles.ownerType, sql`'org'`),
+          eq(publishers.orgId, articles.ownerId)
+        )
+      )
+    )
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 
@@ -99,6 +116,11 @@ export default async function EditBookPage({
   async function reorder(formData: FormData): Promise<void> {
     "use server";
     await reorderChapters(publisherSlug, formData);
+  }
+
+  async function addExternal(formData: FormData): Promise<void> {
+    "use server";
+    await addExternalArticle(publisherSlug, formData);
   }
 
   return (
@@ -174,10 +196,16 @@ export default async function EditBookPage({
                     ]
                   : entryIds;
 
+              const isExternal =
+                ch.articlePublisherSlug !== null &&
+                ch.articlePublisherSlug !== publisherSlug;
+
               return (
                 <li
                   key={ch.entryId}
-                  className="flex items-center gap-2 p-3 border rounded themed-surface"
+                  className={`flex items-center gap-2 p-3 border rounded themed-surface ${
+                    isExternal ? "border-l-4 border-l-blue-500" : ""
+                  }`}
                 >
                   <span className="text-sm themed-muted w-6 shrink-0">{idx + 1}.</span>
                   <div className="flex-1 min-w-0">
@@ -191,6 +219,20 @@ export default async function EditBookPage({
                     {ch.isInternal && (
                       <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 themed-muted">
                         internal
+                      </span>
+                    )}
+                    {isExternal && (
+                      <span
+                        className="ml-2 text-xs px-1.5 py-0.5 rounded themed-tag"
+                        title={`Borrowed from @${ch.articlePublisherSlug}`}
+                      >
+                        external &middot; By{" "}
+                        <Link
+                          href={`/${ch.articlePublisherSlug}`}
+                          className="themed-link"
+                        >
+                          @{ch.articlePublisherSlug}
+                        </Link>
                       </span>
                     )}
                   </div>
@@ -303,6 +345,46 @@ export default async function EditBookPage({
               </button>
             </form>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <h3 className="text-sm font-semibold themed-secondary mb-3">
+            Add external article
+          </h3>
+          <p className="text-xs themed-muted mb-3">
+            Borrow an article authored by another publisher. The article must be
+            visible to your account (public, or you must have an access grant).
+            Original authorship is preserved.
+          </p>
+          <form action={addExternal} className="space-y-2">
+            <input type="hidden" name="bookId" value={bookRow.id} />
+            <input type="hidden" name="position" value={chapters.length} />
+            <input
+              name="targetPublisher"
+              type="text"
+              required
+              placeholder="publisher-slug"
+              className="themed-input text-sm"
+            />
+            <input
+              name="articleSlug"
+              type="text"
+              required
+              placeholder="article-my-chapter"
+              pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
+              title="Article slug, e.g. article-intro"
+              className="themed-input text-sm"
+            />
+            <input
+              name="partTitle"
+              type="text"
+              placeholder="Part title (optional)"
+              className="themed-input text-sm"
+            />
+            <button type="submit" className="themed-btn-primary text-sm">
+              Add external chapter
+            </button>
+          </form>
         </div>
       </section>
 

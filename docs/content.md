@@ -53,6 +53,14 @@ The article edit/new pages embed a `FrontmatterPanel` (`"use client"`, `forwardR
 
 **Public display:** `components/ArticleMetadata.tsx` (server component) renders at the top of article/chapter pages: updated-at date, status badge (hidden for `"published"`), tags as `/search?tags=<tag>` links, description.
 
+## MDX preview (editor)
+
+`components/Preview.tsx` (`"use client"`, `forwardRef`) renders the right-hand pane of the split editor. It does **not** run MDX compilation in the browser. Instead it calls the `previewMdx` server action (`app/[publisher]/articles/actions.ts`), which runs the full `unified` remark/rehype pipeline (including `remark-math`, `rehype-katex`, `remark-gfm`, and `remarkWikilinks`) on the server and returns serialised HTML. The client renders the result with `dangerouslySetInnerHTML`.
+
+This design is intentional: running `next-mdx-remote`'s client-side `serialize()` in the browser calls `new Function()`, which violates the CSP `unsafe-eval` restriction when navigating client-side to the edit page (the nonce-based CSP header from the previous navigation is no longer in scope). Compiling on the server means the browser never evaluates dynamic code, so editor routes do not need `unsafe-eval`.
+
+Preview has two modes: a fast synchronous path using `marked` for local markdown (no KaTeX, no wikilinks) that renders during typing, and the full server-side path that fires after a debounce. The `ref` exposed by `Preview` lets the parent (`ArticleEditorPanel`) call `preview.current.refresh()` to trigger an immediate full render (e.g. on initial load).
+
 ## Article section reordering
 
 `lib/article-sections.ts`:

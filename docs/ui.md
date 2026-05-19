@@ -18,7 +18,7 @@
 
 - `frame-src 'self'` — animation iframes are same-origin.
 - `style-src 'unsafe-inline'` — required because KaTeX emits inline `<style>` tags.
-- `unsafe-eval` additionally allowed on `/settings/**` and publisher content editor routes (`/:publisher/articles/new`, `/:publisher/articles/[slug]/edit`, `/:publisher/objects/new`, `/:publisher/objects/[slug]/edit`) because CodeMirror requires it.
+- `unsafe-eval` additionally allowed on `/settings/**` only. Editor routes (`/:publisher/articles/new`, `/:publisher/articles/[slug]/edit`, `/:publisher/objects/new`, `/:publisher/objects/[slug]/edit`) no longer need it: MDX preview compilation was moved to a server action (`previewMdx` in `app/[publisher]/articles/actions.ts`), so `new Function()` never runs in the browser. `/settings` still requires it because `ThemeEditor` uses CodeMirror.
 
 ## Sentry
 
@@ -44,6 +44,16 @@ Three runtime caching strategies:
 Book edit page uses `@dnd-kit/core` (`DndContext`) and `@dnd-kit/sortable` (`SortableContext`, `verticalListSortingStrategy`). Both `PointerSensor` and `KeyboardSensor` (with `sortableKeyboardCoordinates`) are registered.
 
 On drag end: `arrayMove` computes new order → local state updates immediately → `reorderChapters(publisherSlug, bookSlug, orderedIds)` called in `startTransition`. `reorderChapters` updates each entry's `position` column in a loop.
+
+## Nav
+
+`components/Nav.tsx` is a thin async Server Component that reads the session and passes it down to `components/NavClient.tsx` (a `"use client"` component). This split keeps auth server-side while allowing the client interactivity the mobile nav requires.
+
+`NavClient.tsx` renders a hamburger button (`aria-expanded`) on small viewports. The mobile menu panel closes automatically when the route changes — it calls `usePathname()` and resets the open state in a `useEffect` whenever `pathname` changes. This handles both link clicks and browser back/forward navigation.
+
+## Dialog CSS ownership
+
+All visual properties of native `<dialog>` elements (backdrop, border-radius, background, padding, shadow) are owned by `app/globals.css`, not Tailwind utilities. Tailwind classes on a `<dialog>` element are overridden by the browser's unlayered UA stylesheet, which outranks Tailwind's layered `@layer base` rules. The `.dialog-close-btn` class is also defined in `globals.css` for the same reason. Any new dialog styles must be added in `globals.css`.
 
 ## Footer & Pricing page
 

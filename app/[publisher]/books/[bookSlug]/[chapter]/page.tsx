@@ -104,7 +104,16 @@ export default async function ChapterPage({
         <Link href={`/${publisherSlug}/books/${bookSlug}`} className="themed-link">{bookRow.title}</Link>
       </div>
 
-      <h1 className="text-4xl font-bold themed-heading mb-6">{article.title}</h1>
+      <h1 className="text-4xl font-bold themed-heading mb-2">{article.title}</h1>
+      {articlePublisherSlug !== publisherSlug && (
+        <p className="text-sm themed-muted mb-6">
+          Originally by{" "}
+          <Link href={`/${articlePublisherSlug}`} className="themed-link">
+            @{articlePublisherSlug}
+          </Link>
+        </p>
+      )}
+      {articlePublisherSlug === publisherSlug && <div className="mb-6" />}
 
       {isEditor && (
         <div className="mb-6">

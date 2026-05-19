@@ -7,6 +7,7 @@ import {
   curriculumEntries,
   bookSnapshots,
   bookSnapshotEntries,
+  publishers,
 } from "@/db/schema";
 import { eq, asc, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -15,6 +16,7 @@ import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { resolvePublisher } from "@/lib/publisher";
 import { parseFrontmatter } from "@/lib/frontmatter";
+import { canView } from "@/lib/access";
 import {
   createBookSchema,
   deleteBookSchema,
@@ -22,6 +24,7 @@ import {
   upsertCurriculumEntrySchema,
   removeCurriculumEntrySchema,
   createInternalArticleSchema,
+  addExternalArticleSchema,
 } from "@/lib/validations";
 
 // ---------------------------------------------------------------------------
@@ -105,7 +108,7 @@ export async function updateBook(publisherSlug: string, formData: FormData) {
 // ---------------------------------------------------------------------------
 
 export async function upsertCurriculumEntry(publisherSlug: string, formData: FormData) {
-  await assertEditRights(publisherSlug);
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = upsertCurriculumEntrySchema.parse({
     bookId: formData.get("bookId"),
@@ -113,6 +116,21 @@ export async function upsertCurriculumEntry(publisherSlug: string, formData: For
     position: formData.get("position"),
     partTitle: formData.get("partTitle") || null,
   });
+
+  // Security: this entry point is for same-publisher articles only.
+  // Cross-publisher articles must go through addExternalArticle, which
+  // performs a visibility check rather than an ownership check.
+  const [art] = await db
+    .select({ ownerType: articles.ownerType, ownerId: articles.ownerId })
+    .from(articles)
+    .where(eq(articles.id, validated.articleId))
+    .limit(1);
+  if (!art) throw new Error("Article not found");
+  if (art.ownerType !== ownerType || art.ownerId !== ownerId) {
+    throw new Error(
+      "This article is not owned by the current publisher. Use addExternalArticle."
+    );
+  }
 
   const existing = await db
     .select({ id: curriculumEntries.id })
@@ -137,6 +155,103 @@ export async function upsertCurriculumEntry(publisherSlug: string, formData: For
   // Find book slug for revalidation
   const [book] = await db.select({ slug: books.slug }).from(books).where(eq(books.id, validated.bookId)).limit(1);
   if (book) revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+}
+
+export async function addExternalArticle(
+  publisherSlug: string,
+  formData: FormData
+) {
+  // 1. Caller must own the book.
+  const { session } = await assertEditRights(publisherSlug);
+
+  // 2. Validate input shape.
+  const validated = addExternalArticleSchema.parse({
+    bookId: formData.get("bookId"),
+    targetPublisher: formData.get("targetPublisher"),
+    articleSlug: formData.get("articleSlug"),
+    position: formData.get("position"),
+    partTitle: formData.get("partTitle") || null,
+  });
+
+  // 3. Disallow targeting the same publisher (must use upsertCurriculumEntry).
+  if (validated.targetPublisher === publisherSlug) {
+    throw new Error(
+      "Use the same-publisher chapter picker for your own articles."
+    );
+  }
+
+  // 4. Resolve target publisher → ownerType / ownerId.
+  const targetPub = await resolvePublisher(validated.targetPublisher);
+  if (!targetPub) throw new Error("Target publisher not found");
+  const articleOwnerType: "user" | "org" =
+    targetPub.kind === "user" ? "user" : "org";
+  const articleOwnerId =
+    (targetPub.kind === "user" ? targetPub.userId : targetPub.orgId)!;
+
+  // 5. Find the article (non-internal only).
+  const [article] = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .where(
+      and(
+        eq(articles.ownerType, articleOwnerType),
+        eq(articles.ownerId, articleOwnerId),
+        eq(articles.slug, validated.articleSlug),
+        eq(articles.isInternal, false)
+      )
+    )
+    .limit(1);
+  if (!article) throw new Error("Article not found");
+
+  // 6. Visibility gate: the caller's session must currently be able to see
+  //    the source article. canView() handles public / org / private + grants.
+  const canSee = await canView(
+    {
+      type: "article",
+      ownerType: articleOwnerType,
+      ownerId: articleOwnerId,
+      slug: validated.articleSlug,
+    },
+    session
+  );
+  if (!canSee) throw new Error("You do not have access to that article");
+
+  // 7. Slug conflict: no other article in the same book may share this slug.
+  const [conflict] = await db
+    .select({ id: curriculumEntries.id })
+    .from(curriculumEntries)
+    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .where(
+      and(
+        eq(curriculumEntries.bookId, validated.bookId),
+        eq(articles.slug, validated.articleSlug)
+      )
+    )
+    .limit(1);
+  if (conflict) {
+    throw new Error(
+      `A chapter with slug "${validated.articleSlug}" already exists in this book`
+    );
+  }
+
+  // 8. Insert curriculum entry.
+  await db.insert(curriculumEntries).values({
+    bookId: validated.bookId,
+    articleId: article.id,
+    position: validated.position,
+    partTitle: validated.partTitle,
+  });
+
+  // 9. Revalidate book pages.
+  const [book] = await db
+    .select({ slug: books.slug })
+    .from(books)
+    .where(eq(books.id, validated.bookId))
+    .limit(1);
+  if (book) {
+    revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+    revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+  }
 }
 
 export async function removeCurriculumEntry(publisherSlug: string, formData: FormData) {

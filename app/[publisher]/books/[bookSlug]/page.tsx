@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
-import { books, articles, curriculumEntries } from "@/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { books, articles, curriculumEntries, publishers } from "@/db/schema";
+import { eq, and, asc, or, sql } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
@@ -41,9 +41,23 @@ export default async function BookPage({
       articleId: articles.id,
       articleSlug: articles.slug,
       articleTitle: articles.title,
+      articlePublisherSlug: publishers.slug,
     })
     .from(curriculumEntries)
     .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .leftJoin(
+      publishers,
+      or(
+        and(
+          eq(articles.ownerType, sql`'user'`),
+          eq(publishers.userId, articles.ownerId)
+        ),
+        and(
+          eq(articles.ownerType, sql`'org'`),
+          eq(publishers.orgId, articles.ownerId)
+        )
+      )
+    )
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 
@@ -90,22 +104,40 @@ export default async function BookPage({
         <p className="themed-muted">No chapters yet.</p>
       ) : (
         <ol className="space-y-2">
-          {entries.map((e, idx) => (
-            <li key={e.id}>
-              {e.partTitle && (
-                <p className="text-xs themed-muted uppercase tracking-wider mt-4 mb-1">
-                  {e.partTitle}
-                </p>
-              )}
-              <Link
-                href={`/${publisherSlug}/books/${bookSlug}/${e.articleSlug}`}
-                className="themed-link"
-              >
-                <span className="text-sm themed-muted mr-2">{idx + 1}.</span>
-                {e.articleTitle}
-              </Link>
-            </li>
-          ))}
+          {entries.map((e, idx) => {
+            const isExternal =
+              e.articlePublisherSlug !== null &&
+              e.articlePublisherSlug !== publisherSlug;
+            return (
+              <li key={e.id}>
+                {e.partTitle && (
+                  <p className="text-xs themed-muted uppercase tracking-wider mt-4 mb-1">
+                    {e.partTitle}
+                  </p>
+                )}
+                <span className="block">
+                  <Link
+                    href={`/${publisherSlug}/books/${bookSlug}/${e.articleSlug}`}
+                    className="themed-link"
+                  >
+                    <span className="text-sm themed-muted mr-2">{idx + 1}.</span>
+                    {e.articleTitle}
+                  </Link>
+                  {isExternal && (
+                    <span className="ml-2 text-xs themed-muted">
+                      by{" "}
+                      <Link
+                        href={`/${e.articlePublisherSlug}`}
+                        className="themed-link"
+                      >
+                        @{e.articlePublisherSlug}
+                      </Link>
+                    </span>
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
     </main>
