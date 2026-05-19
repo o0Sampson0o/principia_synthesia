@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/db";
 import { articles, articleViews, publishers, resourceVisibility } from "@/db/schema";
-import { desc, eq, count, sql, and, isNull, or } from "drizzle-orm";
+import { desc, eq, count, min, sql, and, isNull, or } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
 export default async function HomePage() {
@@ -15,7 +15,7 @@ export default async function HomePage() {
       title: articles.title,
       summary: articles.summary,
       viewCount: count(articleViews.id).as("view_count"),
-      publisherSlug: publishers.slug,
+      publisherSlug: min(publishers.slug),
     })
     .from(articles)
     .innerJoin(articleViews, eq(articleViews.articleId, articles.id))
@@ -43,7 +43,7 @@ export default async function HomePage() {
         or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
       )
     )
-    .groupBy(articles.id, publishers.slug)
+    .groupBy(articles.id, articles.slug, articles.title, articles.summary)
     .orderBy(desc(count(articleViews.id)))
     .limit(5);
 

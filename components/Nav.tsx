@@ -20,6 +20,9 @@ export default async function Nav() {
           <Link href="/category" className="themed-nav-link">
             Categories
           </Link>
+          <Link href="/timeline" className="themed-nav-link">
+            Timeline
+          </Link>
           <Link href="/organizations" className="themed-nav-link">
             Organizations
           </Link>

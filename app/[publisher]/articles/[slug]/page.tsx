@@ -17,6 +17,7 @@ import ArticleImage from "@/components/ArticleImage";
 import MdxParagraph from "@/components/MdxParagraph";
 import ArticleMetadataDisplay from "@/components/ArticleMetadata";
 import { parseFrontmatter } from "@/lib/frontmatter";
+import RelatedEvents from "@/components/RelatedEvents";
 
 export default async function ArticlePage({
   params,
@@ -139,6 +140,8 @@ export default async function ArticlePage({
           components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph }}
         />
       </div>
+
+      <RelatedEvents articleId={article.id} publisherSlug={publisherSlug} />
     </main>
   );
 }
