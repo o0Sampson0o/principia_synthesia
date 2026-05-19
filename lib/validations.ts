@@ -13,6 +13,8 @@ const RESERVED_SLUGS = [
   "category",
   "pricing",
   "api",
+  "events",
+  "timeline",
 ];
 
 /** Publisher slug: 3–40 chars, lowercase, hyphens allowed, not a reserved word. */
@@ -162,7 +164,7 @@ export const createInternalArticleSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const setVisibilitySchema = z.object({
-  resourceType: z.enum(["book", "article", "object"]),
+  resourceType: z.enum(["book", "article", "object", "event"]),
   ownerType: z.enum(["user", "org"]),
   ownerId: z.coerce.number().int().positive("Invalid owner ID"),
   resourceKey: z.string().min(1, "Resource key is required"),
@@ -170,7 +172,7 @@ export const setVisibilitySchema = z.object({
 });
 
 export const addAccessGrantSchema = z.object({
-  resourceType: z.enum(["book", "article", "object"]),
+  resourceType: z.enum(["book", "article", "object", "event"]),
   ownerType: z.enum(["user", "org"]),
   ownerId: z.coerce.number().int().positive("Invalid owner ID"),
   resourceKey: z.string().min(1, "Resource key is required"),
@@ -263,6 +265,56 @@ export const updateKaoSchema = createKaoSchema.extend({
 
 export const deleteKaoSchema = z.object({
   id: z.coerce.number().int().positive(),
+  slug: z.string().min(1),
+});
+
+// ---------------------------------------------------------------------------
+// Event schemas
+// ---------------------------------------------------------------------------
+
+/** Event slug: must start with `event-` */
+export const eventSlugSchema = z
+  .string()
+  .regex(/^event-[a-z0-9]+(?:-[a-z0-9]+)*$/, "Event slug must start with 'event-'");
+
+/** Validates form data for creating a new event. */
+export const createEventSchema = z
+  .object({
+    title: z.string().min(1, "Title is required").max(200, "Title too long"),
+    slug: eventSlugSchema,
+    description: z.string().max(5000, "Description too long").optional(),
+    eventDate: z.string().refine((s) => !Number.isNaN(Date.parse(s)), "Invalid date"),
+    category: z.string().max(100, "Category too long").optional(),
+    relatedArticleSlugs: z.string().optional(),
+    isEraStart: z.string().optional().transform((v) => v === "on"),
+    isEraEnd: z.string().optional().transform((v) => v === "on"),
+    eraName: z.string().max(100, "Era name too long").optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.isEraStart && !data.eraName?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Era name is required when marking as era start",
+        path: ["eraName"],
+      });
+    }
+    if (data.isEraEnd && !data.eraName?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Era name is required when marking as era end",
+        path: ["eraName"],
+      });
+    }
+  });
+
+/** Validates form data for updating an existing event. */
+export const updateEventSchema = createEventSchema.extend({
+  id: z.coerce.number().int().positive("Invalid event ID"),
+});
+
+/** Validates form data for deleting an event. */
+export const deleteEventSchema = z.object({
+  id: z.coerce.number().int().positive("Invalid event ID"),
   slug: z.string().min(1),
 });
 

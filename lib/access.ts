@@ -7,7 +7,7 @@ import type { SessionPayload } from "@/lib/auth";
 // Types
 // ---------------------------------------------------------------------------
 
-export type ContentType = "article" | "book" | "object";
+export type ContentType = "article" | "book" | "object" | "event";
 
 export interface ContentRef {
   type: ContentType;
