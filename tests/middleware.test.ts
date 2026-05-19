@@ -107,22 +107,22 @@ describe("middleware", () => {
       expect(csp).toContain("unsafe-eval");
     });
 
-    it("allows unsafe-eval for publisher article new page", async () => {
+    it("does NOT allow unsafe-eval for publisher article new page", async () => {
       const res = await middleware(makeRequest("/alice/articles/new"));
       const csp = res.headers.get("content-security-policy") ?? "";
-      expect(csp).toContain("unsafe-eval");
+      expect(csp).not.toContain("unsafe-eval");
     });
 
-    it("allows unsafe-eval for publisher article edit page", async () => {
+    it("does NOT allow unsafe-eval for publisher article edit page", async () => {
       const res = await middleware(makeRequest("/alice/articles/article-hello/edit"));
       const csp = res.headers.get("content-security-policy") ?? "";
-      expect(csp).toContain("unsafe-eval");
+      expect(csp).not.toContain("unsafe-eval");
     });
 
-    it("allows unsafe-eval for publisher object edit page", async () => {
+    it("does NOT allow unsafe-eval for publisher object edit page", async () => {
       const res = await middleware(makeRequest("/alice/objects/anim-wave/edit"));
       const csp = res.headers.get("content-security-policy") ?? "";
-      expect(csp).toContain("unsafe-eval");
+      expect(csp).not.toContain("unsafe-eval");
     });
 
     it("does NOT allow unsafe-eval on a regular publisher profile page", async () => {

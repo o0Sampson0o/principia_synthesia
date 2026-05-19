@@ -20,6 +20,38 @@ import {
   deleteArticleSchema,
   restoreRevisionSchema,
 } from "@/lib/validations";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
+import remarkRehype from "remark-rehype";
+import rehypeKatex from "rehype-katex";
+import rehypeStringify from "rehype-stringify";
+import { remarkWikilinks } from "@/lib/remark-wikilinks";
+
+// ---------------------------------------------------------------------------
+// Preview compilation (server-side — eliminates unsafe-eval in the browser)
+// ---------------------------------------------------------------------------
+
+export async function previewMdx(
+  source: string
+): Promise<{ html: string } | { error: string }> {
+  await requireSession();
+  try {
+    const file = await unified()
+      .use(remarkParse)
+      .use(remarkMath)
+      .use(remarkGfm)
+      .use(remarkWikilinks)
+      .use(remarkRehype, { allowDangerousHtml: true })
+      .use(rehypeKatex)
+      .use(rehypeStringify, { allowDangerousHtml: true })
+      .process(source);
+    return { html: String(file) };
+  } catch (err: unknown) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -66,12 +66,10 @@ export async function middleware(request: NextRequest) {
 
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
 
-  // Allow unsafe-eval on settings pages and publisher content editor routes.
-  // Pattern matches: /<publisher>/articles/new, /<publisher>/articles/<slug>/edit,
-  //                  /<publisher>/objects/new, /<publisher>/objects/<slug>/edit
-  const allowEval =
-    pathname.startsWith("/settings") ||
-    /^\/[^/]+\/(?:articles|objects)\/(?:new|[^/]+\/edit)$/.test(pathname);
+  // Allow unsafe-eval on settings pages (ThemeEditor uses CodeMirror).
+  // Article/object editor routes no longer need it — preview compilation
+  // was moved server-side, eliminating new Function() from the browser.
+  const allowEval = pathname.startsWith("/settings");
 
   const csp = buildCsp(nonce, allowEval);
 

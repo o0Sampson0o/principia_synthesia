@@ -1,30 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
-import { serialize } from "next-mdx-remote/serialize";
-import { MDXRemote } from "next-mdx-remote";
-import remarkMath from "remark-math";
-import remarkGfm from "remark-gfm";
-import rehypeKatex from "rehype-katex";
-import { remarkWikilinks } from "@/lib/remark-wikilinks";
-import dynamic from "next/dynamic";
-import MdxErrorBoundary from "./MdxErrorBoundary";
-import MdxParagraph from "./MdxParagraph";
+import { previewMdx } from "@/app/[publisher]/articles/actions";
 
-// DynamicAnimation loaded dynamically to avoid SSR issues
-const DynamicAnimation = dynamic(
-  () => import("./DynamicAnimation"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="my-6 flex justify-center text-sm text-zinc-400">
-        Loading animation...
-      </div>
-    ),
-  }
-);
-
-// Dangerous patterns that require full MDX serialization
+// Dangerous patterns that require full server-side MDX compilation
 const DANGEROUS_PATTERN = /[<>{}$\\\[\]`]|```/;
 
 function needsFullSerialization(content: string): boolean {
@@ -73,7 +52,7 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
   { initialSource, onError },
   ref
 ) {
-  const [compiledSource, setCompiledSource] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [fastHtml, setFastHtml] = useState<string | null>(null);
   const [useFastMode, setUseFastMode] = useState(true);
@@ -89,7 +68,7 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
       abortController.current.abort();
     }
 
-    // Check if content needs full MDX serialization
+    // Check if content needs full server-side MDX compilation
     const needsFull = needsFullSerialization(source);
 
     if (!needsFull) {
@@ -101,7 +80,7 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
       return;
     }
 
-    // Content has dangerous patterns, switch to full MDX mode with debounce
+    // Content has MDX/math/code — compile server-side with debounce
     setUseFastMode(false);
     setError(null);
 
@@ -110,16 +89,16 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
       abortController.current = controller;
 
       try {
-        const result = await serialize(source, {
-          mdxOptions: {
-            remarkPlugins: [remarkMath, remarkGfm, remarkWikilinks],
-            rehypePlugins: [rehypeKatex],
-          },
-        });
+        const result = await previewMdx(source);
 
         if (!controller.signal.aborted) {
-          setCompiledSource(result.compiledSource);
-          onError?.(false);
+          if ("error" in result) {
+            setError(new Error(result.error));
+            onError?.(true);
+          } else {
+            setPreviewHtml(result.html);
+            onError?.(false);
+          }
         }
       } catch (err: unknown) {
         if (!controller.signal.aborted) {
@@ -177,33 +156,12 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
     );
   }
 
-  // Full MDX mode
-  if (!compiledSource) return <p className="text-zinc-400 text-sm">Rendering...</p>;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const knownComponents: Record<string, React.ComponentType<any>> = {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    DynamicAnimation: (props: any) => <DynamicAnimation {...props} />,
-    p: MdxParagraph,
-  };
-
-  const components = new Proxy(knownComponents, {
-    get(target, prop: string | symbol) {
-      if (typeof prop !== "string") return undefined;
-      if (prop in target) return target[prop];
-      return () => (
-        <span className="text-xs text-amber-500 dark:text-amber-400 font-mono">
-          &lt;{String(prop)} /&gt;
-        </span>
-      );
-    },
-  });
+  // Full MDX mode — server-rendered HTML, no new Function() in the browser
+  if (!previewHtml) return <p className="text-zinc-400 text-sm">Rendering...</p>;
 
   return (
     <div className="markdown-content">
-      <MdxErrorBoundary key={compiledSource}>
-        <MDXRemote compiledSource={compiledSource} scope={{}} frontmatter={{}} components={components} />
-      </MdxErrorBoundary>
+      <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
     </div>
   );
 });
