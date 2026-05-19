@@ -19,14 +19,21 @@ import {
  * Exactly one of `userId` or `orgId` is non-null (enforced by CHECK).
  * Cascade-deletes when the owning user or org is deleted.
  */
-export const publishers = pgTable("publishers", {
-  id: serial("id").primaryKey(),
-  slug: text("slug").unique().notNull(),
-  kind: text("kind").notNull(), // 'user' | 'org'
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
-  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const publishers = pgTable(
+  "publishers",
+  {
+    id: serial("id").primaryKey(),
+    slug: text("slug").unique().notNull(),
+    kind: text("kind").notNull(), // 'user' | 'org'
+    userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
+    orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [
+    unique().on(t.kind, t.userId),
+    unique().on(t.kind, t.orgId),
+  ]
+);
 
 // ---------------------------------------------------------------------------
 // Users
@@ -400,4 +407,55 @@ export const articleViews = pgTable(
     viewedAt: timestamp("viewed_at").defaultNow().notNull(),
   },
   (t) => [index("article_views_article_viewed_idx").on(t.articleId, t.viewedAt)]
+);
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+
+/**
+ * Publisher-scoped events (conferences, lectures, releases, etc.).
+ * Visibility is managed via the `resourceVisibility` table (absent = public).
+ * Slugs are unique per publisher (ownerType + ownerId).
+ */
+export const events = pgTable(
+  "events",
+  {
+    id: serial("id").primaryKey(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    eventDate: timestamp("event_date").notNull(),
+    category: text("category"),
+    isEraStart: boolean("is_era_start").default(false).notNull(),
+    isEraEnd: boolean("is_era_end").default(false).notNull(),
+    eraName: text("era_name"),
+    ownerType: text("owner_type").notNull(),
+    ownerId: integer("owner_id").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => [
+    unique().on(t.ownerType, t.ownerId, t.slug),
+    index("events_owner_idx").on(t.ownerType, t.ownerId),
+    index("events_event_date_idx").on(t.eventDate),
+    index("events_category_idx").on(t.category),
+  ]
+);
+
+/**
+ * Many-to-many join between events and articles.
+ * Both sides cascade-delete.
+ */
+export const eventArticles = pgTable(
+  "event_articles",
+  {
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    articleId: integer("article_id")
+      .notNull()
+      .references(() => articles.id, { onDelete: "cascade" }),
+  },
+  (t) => [unique().on(t.eventId, t.articleId)]
 );

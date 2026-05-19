@@ -1,0 +1,2 @@
+ALTER TABLE "publishers" ADD CONSTRAINT "publishers_kind_user_id_unique" UNIQUE("kind","user_id");--> statement-breakpoint
+ALTER TABLE "publishers" ADD CONSTRAINT "publishers_kind_org_id_unique" UNIQUE("kind","org_id");

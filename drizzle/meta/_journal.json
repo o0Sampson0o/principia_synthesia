@@ -8,6 +8,27 @@
       "when": 1778926699834,
       "tag": "0000_first_outlaw_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779099787257,
+      "tag": "0001_brave_riptide",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779112994561,
+      "tag": "0002_superb_speed_demon",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779115302354,
+      "tag": "0003_kind_mojo",
+      "breakpoints": true
     }
   ]
 }
