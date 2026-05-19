@@ -6,9 +6,7 @@ import Link from "next/link"
 
 import { yearMarkerInterval, deriveEras, toFractionalYear } from "@/lib/timeline-utils"
 
-const CONTAINER_HEIGHT_PX = 640
 const BUFFER_MULTIPLIER = 1.5
-const BUFFER_PX = CONTAINER_HEIGHT_PX * BUFFER_MULTIPLIER
 const TOP_PADDING_PX = 60
 const BOTTOM_PADDING_PX = 120
 
@@ -16,7 +14,10 @@ export type { EventRow } from "@/lib/timeline-utils"
 import type { EventRow } from "@/lib/timeline-utils"
 
 export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
-  const [pxPerYear, setPxPerYear] = useState(80)
+  const [pxPerYear, setPxPerYear] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 640 ? 30 : 80
+  )
+  const [containerHeight, setContainerHeight] = useState(640)
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const rafIdRef = useRef<number | null>(null)
@@ -44,6 +45,16 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
         rafIdRef.current = null
       }
     }
+  }, [])
+
+  useEffect(() => {
+    function computeHeight() {
+      const vh65 = Math.round(window.innerHeight * 0.65)
+      setContainerHeight(Math.min(720, Math.max(320, vh65)))
+    }
+    computeHeight()
+    window.addEventListener('resize', computeHeight)
+    return () => window.removeEventListener('resize', computeHeight)
   }, [])
 
   const openModal = useCallback((event: EventRow) => {
@@ -94,6 +105,8 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
 
   if (rows.length === 0) return null
 
+  const bufferPx = containerHeight * BUFFER_MULTIPLIER
+
   const totalHeight = (maxFractYear - minFractYear) * pxPerYear + TOP_PADDING_PX + BOTTOM_PADDING_PX
 
   const cardMode: "full" | "compact" | "dot" =
@@ -104,8 +117,8 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
   const markerYears: number[] = []
   for (let y = firstMarkerYear; y <= maxYear; y += interval) markerYears.push(y)
 
-  const viewportTop = scrollTop - BUFFER_PX
-  const viewportBottom = scrollTop + CONTAINER_HEIGHT_PX + BUFFER_PX
+  const viewportTop = scrollTop - bufferPx
+  const viewportBottom = scrollTop + containerHeight + bufferPx
 
   const visibleRows = rowsWithYear.filter(({ fractYear }) => {
     const top = topOffset(fractYear)
@@ -121,7 +134,7 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
     const el = scrollContainerRef.current
     if (!el || idx < 0 || idx >= sortedEvents.length) return
     el.scrollTo({
-      top: sortedEvents[idx].offset - CONTAINER_HEIGHT_PX / 4,
+      top: sortedEvents[idx].offset - containerHeight / 4,
       behavior: "smooth",
     })
   }
@@ -129,70 +142,76 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
   return (
     <div className="w-full">
       {/* Controls: Back/Next navigation + zoom */}
-      <div className="flex items-center gap-2 mb-3 text-sm">
-        <button
-          type="button"
-          onClick={() => {
-            const next = navIndex - 1
-            setNavIndex(next)
-            scrollToIndex(next)
-          }}
-          disabled={navIndex <= 0}
-          className="themed-btn-ghost px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
-          aria-label="Scroll to previous event"
-        >
-          ← Back
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            let next: number
-            if (navIndex === -1) {
-              const firstAhead = sortedEvents.findIndex(({ offset }) => offset > scrollTop)
-              next = firstAhead === -1 ? 0 : firstAhead
-            } else {
-              next = navIndex + 1
-            }
-            setNavIndex(next)
-            scrollToIndex(next)
-          }}
-          disabled={navIndex >= sortedEvents.length - 1}
-          className="themed-btn-ghost px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
-          aria-label="Scroll to next event"
-        >
-          Next →
-        </button>
-        <span className="themed-muted text-xs ml-2">Zoom</span>
-        <button
-          type="button"
-          onClick={() => setPxPerYear((p) => p > 20 ? Math.max(20, p - 20) : Math.max(2, p - 4))}
-          className="themed-btn-ghost px-2 py-1"
-          aria-label="Zoom out"
-        >
-          −
-        </button>
-        <span className="themed-muted w-28 text-center tabular-nums text-xs">
-          {pxPerYear}px/yr · {cardMode === "full" ? "Full" : cardMode === "compact" ? "Compact" : "Dots"}
-        </span>
-        <button
-          type="button"
-          onClick={() => setPxPerYear((p) => p >= 20 ? Math.min(400, p + 20) : Math.min(20, p + 4))}
-          className="themed-btn-ghost px-2 py-1"
-          aria-label="Zoom in"
-        >
-          +
-        </button>
-        <span className="themed-muted ml-auto text-xs tabular-nums" aria-live="polite">
-          Viewing ~{currentYear}
-        </span>
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-2 mb-3 text-sm">
+        {/* Navigation group */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              const next = navIndex - 1
+              setNavIndex(next)
+              scrollToIndex(next)
+            }}
+            disabled={navIndex <= 0}
+            className="themed-btn-ghost px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Scroll to previous event"
+          >
+            ← Back
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              let next: number
+              if (navIndex === -1) {
+                const firstAhead = sortedEvents.findIndex(({ offset }) => offset > scrollTop)
+                next = firstAhead === -1 ? 0 : firstAhead
+              } else {
+                next = navIndex + 1
+              }
+              setNavIndex(next)
+              scrollToIndex(next)
+            }}
+            disabled={navIndex >= sortedEvents.length - 1}
+            className="themed-btn-ghost px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Scroll to next event"
+          >
+            Next →
+          </button>
+        </div>
+        {/* Zoom group */}
+        <div className="flex items-center gap-1 ml-2">
+          <span className="themed-muted text-xs">Zoom</span>
+          <button
+            type="button"
+            onClick={() => setPxPerYear((p) => p > 20 ? Math.max(20, p - 20) : Math.max(2, p - 4))}
+            className="themed-btn-ghost px-2 py-1"
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <span className="themed-muted w-24 text-center tabular-nums text-xs">
+            {pxPerYear}px/yr · {cardMode === "full" ? "Full" : cardMode === "compact" ? "Compact" : "Dots"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPxPerYear((p) => p >= 20 ? Math.min(400, p + 20) : Math.min(20, p + 4))}
+            className="themed-btn-ghost px-2 py-1"
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+        </div>
+        {/* Current year */}
+        <span className="themed-muted ml-auto text-xs tabular-nums" aria-live="polite">~{currentYear}</span>
       </div>
+      <p className="sm:hidden text-xs themed-muted mb-2">Scroll to navigate · tap a dot to open</p>
 
       {/* Scroll container — fixed height keeps the page layout stable */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className="overflow-y-auto overscroll-contain rounded-md border themed-border scrollbar-none p-4"
-        style={{ height: CONTAINER_HEIGHT_PX }}
+        style={{ height: containerHeight }}
       >
         {/* Canvas — height is data-driven; extra 80px bottom padding so last card isn't clipped */}
         <div className="relative" style={{ height: totalHeight, contain: "layout" } as CSSProperties}>
@@ -229,8 +248,6 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
         ))}
 
         {visibleRows.map(({ row: e, fractYear }) => {
-          const href = e.publisherSlug ? `/${e.publisherSlug}/events/${e.slug}` : "#"
-
           return (
             <div
               key={e.id}

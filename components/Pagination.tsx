@@ -20,13 +20,13 @@ export default function Pagination({ currentPage, totalPages, basePath, query }:
   return (
     <nav className="flex items-center justify-center gap-2 mt-10">
       {currentPage > 1 && (
-        <Link href={qs(currentPage - 1)} className="themed-link text-sm">← Previous</Link>
+        <Link href={qs(currentPage - 1)} className="themed-link text-sm px-4 py-2 rounded-md border themed-border">← Previous</Link>
       )}
       <span className="text-sm themed-muted px-4">
         Page {currentPage} of {totalPages}
       </span>
       {currentPage < totalPages && (
-        <Link href={qs(currentPage + 1)} className="themed-link text-sm">Next →</Link>
+        <Link href={qs(currentPage + 1)} className="themed-link text-sm px-4 py-2 rounded-md border themed-border">Next →</Link>
       )}
     </nav>
   )

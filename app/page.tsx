@@ -50,15 +50,15 @@ export default async function HomePage() {
   return (
     <main>
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 py-20 text-center">
-        <h1 className="text-5xl font-bold tracking-tight themed-heading mb-6">
+      <section className="max-w-6xl mx-auto px-4 py-12 sm:py-20 text-center">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight themed-heading mb-4 sm:mb-6">
           Principia Synthesia
         </h1>
-        <p className="text-xl themed-muted mb-8 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-base sm:text-xl themed-muted mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
           A collaborative publishing platform for mathematical and scientific knowledge.
           Write articles, build curricula, and share interactive animations.
         </p>
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
           {session ? (
             <Link href={`/${session.userSlug}`} className="themed-btn-primary px-6 py-3 text-base">
               My profile
@@ -100,7 +100,7 @@ export default async function HomePage() {
 
       {/* Top articles this month */}
       {topArticles.length > 0 && (
-        <section className="max-w-5xl mx-auto px-6 pb-20">
+        <section className="max-w-5xl mx-auto px-4 pb-12 sm:pb-20">
           <h2 className="text-2xl font-semibold themed-heading mb-6">Top articles this month</h2>
           <ul className="space-y-4">
             {topArticles.map((a) => {

@@ -277,3 +277,30 @@ dialog::backdrop {
 .markdown-content .katex {
   font-size: 1.1em;
 }
+
+/* ─── Mobile responsive overrides ───────────────────────────────── */
+
+/* Prevent iOS auto-zoom on focused inputs (requires min 16px font-size) */
+@media (max-width: 639px) {
+  .themed-input {
+    font-size: 1rem;
+  }
+}
+
+/* Markdown tables: scroll horizontally on mobile instead of breaking page layout */
+@media (max-width: 767px) {
+  .markdown-content table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Minimum 44px touch targets for nav links on mobile */
+@media (max-width: 767px) {
+  .themed-nav-link {
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+  }
+}

@@ -98,7 +98,7 @@ export default async function MembersPage({
   }
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main className="max-w-2xl mx-auto px-4 py-8">
       <nav className="text-sm themed-muted mb-6">
         <Link href={`/${publisherSlug}`} className="themed-link">{org.name}</Link>
         <span className="mx-2">›</span>
@@ -141,7 +141,7 @@ export default async function MembersPage({
                 key={m.membershipId}
                 className="px-4 py-3 rounded-lg border themed-border themed-surface"
               >
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium themed-heading truncate">
                       {m.displayName || m.email}
@@ -152,7 +152,7 @@ export default async function MembersPage({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {canChangeRole ? (
                       <form action={changeRole} className="flex items-center gap-2">
                         <input type="hidden" name="membershipId" value={m.membershipId} />

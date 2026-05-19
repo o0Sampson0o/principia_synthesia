@@ -11,7 +11,7 @@ async function ErrorMessage({ searchParams }: { searchParams: Promise<{ error?: 
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   return (
-    <main className="max-w-md mx-auto px-6 py-20">
+    <main className="max-w-md mx-auto px-4 py-20">
       <h1 className="text-3xl font-bold mb-6 themed-heading">Sign in</h1>
       <ErrorMessage searchParams={searchParams} />
       <form action={loginAction} className="space-y-4">

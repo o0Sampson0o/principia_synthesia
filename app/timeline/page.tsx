@@ -197,8 +197,8 @@ export default async function TimelinePage({
   };
 
   return (
-    <main className="max-w-6xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold themed-heading mb-8">Timeline</h1>
+    <main className="max-w-6xl mx-auto px-4 py-8">
+      <h1 className="text-2xl sm:text-3xl font-bold themed-heading mb-8">Timeline</h1>
 
       <form method="GET" action="/timeline" className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>

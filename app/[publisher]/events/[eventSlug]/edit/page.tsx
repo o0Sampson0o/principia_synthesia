@@ -185,7 +185,7 @@ export default async function EditEventPage({
           </div>
         </fieldset>
 
-        <div className="flex items-center gap-4 pt-2">
+        <div className="flex flex-wrap items-center gap-3 pt-2">
           <button type="submit" className="themed-btn-primary px-6 py-2">
             Save changes
           </button>

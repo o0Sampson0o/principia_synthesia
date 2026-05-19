@@ -31,25 +31,27 @@ export default async function RelatedEvents({
       <h2 className="text-lg font-semibold themed-heading mb-4">Related events</h2>
       <ul className="space-y-3">
         {rows.map((e) => (
-          <li key={e.id} className="flex items-start gap-3">
+          <li key={e.id} className="space-y-0.5">
             <Link
               href={`/${publisherSlug}/events/${e.slug}`}
-              className="themed-link font-medium"
+              className="themed-link font-medium block"
             >
               {e.title}
             </Link>
-            <span className="text-xs themed-muted whitespace-nowrap">
-              {new Date(e.eventDate).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </span>
-            {e.category && (
-              <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary whitespace-nowrap">
-                {e.category}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs themed-muted">
+                {new Date(e.eventDate).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </span>
-            )}
+              {e.category && (
+                <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
+                  {e.category}
+                </span>
+              )}
+            </div>
           </li>
         ))}
       </ul>

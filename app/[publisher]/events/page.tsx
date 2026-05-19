@@ -70,8 +70,8 @@ export default async function PublisherEventsPage({
   const totalPages = Math.ceil(total / PER_PAGE);
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10">
-      <div className="flex items-center justify-between mb-8">
+    <main className="max-w-5xl mx-auto px-4 py-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold themed-heading mb-1">
             {pub.displayName}&rsquo;s events
@@ -81,7 +81,7 @@ export default async function PublisherEventsPage({
         {isOwner && (
           <Link
             href={`/${publisherSlug}/events/new`}
-            className="themed-btn-primary text-sm px-4 py-2"
+            className="themed-btn-primary text-sm px-4 py-2 self-start sm:self-auto"
           >
             New event
           </Link>

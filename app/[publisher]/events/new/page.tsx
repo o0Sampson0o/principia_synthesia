@@ -25,7 +25,7 @@ export default async function NewEventPage({
   const action = createEvent.bind(null, publisherSlug, null);
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
+    <main className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold themed-heading mb-8">New event</h1>
 
       <form action={action as (fd: FormData) => void} className="space-y-6">
