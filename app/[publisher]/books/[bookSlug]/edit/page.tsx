@@ -263,16 +263,30 @@ export default async function EditBookPage({
                         </button>
                       </form>
                     )}
-                    <form action={removeChapter}>
-                      <input type="hidden" name="id" value={ch.entryId} />
-                      <input type="hidden" name="bookId" value={bookRow.id} />
-                      <button
-                        type="submit"
-                        className="themed-btn-ghost text-xs px-2 py-1 text-red-500"
-                      >
-                        Remove
-                      </button>
-                    </form>
+                    {isExternal ? (
+                      <form action={removeChapter}>
+                        <input type="hidden" name="id" value={ch.entryId} />
+                        <input type="hidden" name="bookId" value={bookRow.id} />
+                        <button
+                          type="submit"
+                          className="themed-btn-ghost text-xs px-2 py-1 text-blue-500"
+                          title="Remove from this book (the original article is not affected)"
+                        >
+                          Unlink
+                        </button>
+                      </form>
+                    ) : (
+                      <form action={removeChapter}>
+                        <input type="hidden" name="id" value={ch.entryId} />
+                        <input type="hidden" name="bookId" value={bookRow.id} />
+                        <button
+                          type="submit"
+                          className="themed-btn-ghost text-xs px-2 py-1 text-red-500"
+                        >
+                          Remove
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </li>
               );

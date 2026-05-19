@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import type { SessionPayload } from "@/lib/auth"
@@ -8,11 +8,58 @@ import type { SessionPayload } from "@/lib/auth"
 export default function NavClient({ session }: { session: SessionPayload | null }) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
+  const navPanelRef = useRef<HTMLDivElement>(null)
+  const hamburgerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (navPanelRef.current?.contains(document.activeElement)) {
+      hamburgerRef.current?.focus()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     setOpen(false)
   }, [pathname])
+
+  useEffect(() => {
+    if (!open) return
+
+    const panel = navPanelRef.current
+    if (!panel) return
+
+    const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+    function getFocusable(): HTMLElement[] {
+      return Array.from(panel!.querySelectorAll<HTMLElement>(FOCUSABLE))
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        setOpen(false)
+        hamburgerRef.current?.focus()
+        return
+      }
+      if (e.key !== "Tab") return
+
+      const focusable = getFocusable()
+      if (focusable.length === 0) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    getFocusable()[0]?.focus()   // move focus into panel on open
+
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [open])
 
   return (
     <nav className="themed-nav">
@@ -68,6 +115,7 @@ export default function NavClient({ session }: { session: SessionPayload | null 
 
         {/* Hamburger button — mobile only */}
         <button
+          ref={hamburgerRef}
           type="button"
           className="md:hidden w-11 h-11 flex items-center justify-center themed-nav-link"
           aria-expanded={open}
@@ -115,7 +163,11 @@ export default function NavClient({ session }: { session: SessionPayload | null 
       {/* Mobile panel */}
       {open && (
         <div
+          ref={navPanelRef}
           id="mobile-nav"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
           className="md:hidden border-t themed-border themed-surface px-4 pb-4 flex flex-col"
         >
           <Link href="/search" className="themed-nav-link block py-3 border-b themed-border text-sm">

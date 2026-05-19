@@ -230,6 +230,13 @@ dialog::backdrop {
   }
 }
 
+/* Prevent body scroll behind open dialogs (iOS Safari) */
+body:has(dialog[open]) {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
 /* Close button: 44×44px minimum touch target (WCAG 2.5.5) */
 .dialog-close-btn {
   display: flex;
