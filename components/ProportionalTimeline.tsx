@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties } from "react"
 import Link from "next/link"
 
-import { categoryColor, yearMarkerInterval } from "@/lib/timeline-utils"
+import { yearMarkerInterval, deriveEras, toFractionalYear } from "@/lib/timeline-utils"
 
 const CONTAINER_HEIGHT_PX = 640
 const BUFFER_MULTIPLIER = 1.5
 const BUFFER_PX = CONTAINER_HEIGHT_PX * BUFFER_MULTIPLIER
+const TOP_PADDING_PX = 60
+const BOTTOM_PADDING_PX = 120
 
 export type { EventRow } from "@/lib/timeline-utils"
 import type { EventRow } from "@/lib/timeline-utils"
@@ -19,8 +21,9 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const rafIdRef = useRef<number | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
-  const [openDotId, setOpenDotId] = useState<number | null>(null)
-  const popoverContainerRef = useRef<HTMLDivElement | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null)
+  const [navIndex, setNavIndex] = useState(-1)
+  const dialogRef = useRef<HTMLDialogElement>(null)
 
   const handleScroll = useCallback(() => {
     if (rafIdRef.current !== null) {
@@ -43,48 +46,55 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
     }
   }, [])
 
-  useEffect(() => {
-    const mode = pxPerYear >= 60 ? "full" : pxPerYear >= 30 ? "compact" : "dot"
-    if (mode !== "dot") setOpenDotId(null)
-  }, [pxPerYear])
+  const openModal = useCallback((event: EventRow) => {
+    setSelectedEvent(event)
+    dialogRef.current?.showModal()
+  }, [])
 
-  useEffect(() => {
-    if (openDotId === null) return
-    const handler = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node | null
-      if (!target) return
-      if (popoverContainerRef.current && popoverContainerRef.current.contains(target)) return
-      setOpenDotId(null)
-    }
-    document.addEventListener("mousedown", handler)
-    document.addEventListener("touchstart", handler)
-    return () => {
-      document.removeEventListener("mousedown", handler)
-      document.removeEventListener("touchstart", handler)
-    }
-  }, [openDotId])
+  const closeModal = useCallback(() => {
+    dialogRef.current?.close()
+  }, [])
 
-  const { minYear, maxYear, rowsWithYear } = useMemo(() => {
-    if (rows.length === 0) return { minYear: 0, maxYear: 0, rowsWithYear: [] }
-    let lo = Infinity
-    let hi = -Infinity
+  const eras = useMemo(() => deriveEras(rows), [rows])
+
+  const { minYear, maxYear, minFractYear, maxFractYear, rowsWithYear } = useMemo(() => {
+    if (rows.length === 0) return { minYear: 0, maxYear: 0, minFractYear: 0, maxFractYear: 0, rowsWithYear: [] }
+    let loFract = Infinity
+    let hiFract = -Infinity
     const withYear = rows.map((r) => {
-      const y = new Date(r.eventDate).getFullYear()
-      if (y < lo) lo = y
-      if (y > hi) hi = y
-      return { row: r, year: y }
+      const fractYear = toFractionalYear(new Date(r.eventDate))
+      if (fractYear < loFract) loFract = fractYear
+      if (fractYear > hiFract) hiFract = fractYear
+      return { row: r, fractYear }
     })
-    return { minYear: lo, maxYear: hi, rowsWithYear: withYear }
+    return {
+      minYear: Math.floor(loFract),
+      maxYear: Math.ceil(hiFract),
+      minFractYear: loFract,
+      maxFractYear: hiFract,
+      rowsWithYear: withYear,
+    }
   }, [rows])
 
   const topOffset = useCallback(
-    (year: number) => (year - minYear) * pxPerYear,
-    [minYear, pxPerYear],
+    (fractYear: number) => (fractYear - minFractYear) * pxPerYear + TOP_PADDING_PX,
+    [minFractYear, pxPerYear],
+  )
+
+  const sortedEvents = useMemo(
+    () =>
+      [...rowsWithYear]
+        .sort((a, b) => a.fractYear - b.fractYear)
+        .map((item) => ({
+          ...item,
+          offset: (item.fractYear - minFractYear) * pxPerYear + TOP_PADDING_PX,
+        })),
+    [rowsWithYear, minFractYear, pxPerYear],
   )
 
   if (rows.length === 0) return null
 
-  const totalHeight = (maxYear - minYear + 1) * pxPerYear
+  const totalHeight = (maxFractYear - minFractYear) * pxPerYear + TOP_PADDING_PX + BOTTOM_PADDING_PX
 
   const cardMode: "full" | "compact" | "dot" =
     pxPerYear >= 60 ? "full" : pxPerYear >= 30 ? "compact" : "dot"
@@ -97,21 +107,62 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
   const viewportTop = scrollTop - BUFFER_PX
   const viewportBottom = scrollTop + CONTAINER_HEIGHT_PX + BUFFER_PX
 
-  const visibleRows = rowsWithYear.filter(({ year }) => {
-    const top = (year - minYear) * pxPerYear
+  const visibleRows = rowsWithYear.filter(({ fractYear }) => {
+    const top = topOffset(fractYear)
     return top >= viewportTop && top <= viewportBottom
   })
 
   const currentYear = Math.min(
     maxYear,
-    Math.max(minYear, Math.round(scrollTop / pxPerYear) + minYear),
+    Math.max(minYear, Math.round((scrollTop - TOP_PADDING_PX) / pxPerYear + minFractYear)),
   )
+
+  const scrollToIndex = (idx: number) => {
+    const el = scrollContainerRef.current
+    if (!el || idx < 0 || idx >= sortedEvents.length) return
+    el.scrollTo({
+      top: sortedEvents[idx].offset - CONTAINER_HEIGHT_PX / 4,
+      behavior: "smooth",
+    })
+  }
 
   return (
     <div className="w-full">
-      {/* Zoom controls live outside the scroll area so they stay reachable at all times */}
+      {/* Controls: Back/Next navigation + zoom */}
       <div className="flex items-center gap-2 mb-3 text-sm">
-        <span className="themed-muted text-xs">Zoom</span>
+        <button
+          type="button"
+          onClick={() => {
+            const next = navIndex - 1
+            setNavIndex(next)
+            scrollToIndex(next)
+          }}
+          disabled={navIndex <= 0}
+          className="themed-btn-ghost px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+          aria-label="Scroll to previous event"
+        >
+          ← Back
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            let next: number
+            if (navIndex === -1) {
+              const firstAhead = sortedEvents.findIndex(({ offset }) => offset > scrollTop)
+              next = firstAhead === -1 ? 0 : firstAhead
+            } else {
+              next = navIndex + 1
+            }
+            setNavIndex(next)
+            scrollToIndex(next)
+          }}
+          disabled={navIndex >= sortedEvents.length - 1}
+          className="themed-btn-ghost px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+          aria-label="Scroll to next event"
+        >
+          Next →
+        </button>
+        <span className="themed-muted text-xs ml-2">Zoom</span>
         <button
           type="button"
           onClick={() => setPxPerYear((p) => p > 20 ? Math.max(20, p - 20) : Math.max(2, p - 4))}
@@ -144,8 +195,27 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
         style={{ height: CONTAINER_HEIGHT_PX }}
       >
         {/* Canvas — height is data-driven; extra 80px bottom padding so last card isn't clipped */}
-        <div className="relative" style={{ height: totalHeight + 80, contain: "layout" } as CSSProperties}>
+        <div className="relative" style={{ height: totalHeight, contain: "layout" } as CSSProperties}>
           <div className="absolute left-[7px] top-0 bottom-0 w-0.5 bg-[var(--border)]" />
+
+        {Array.from(
+          eras.reduce((map, era) => {
+            const names = map.get(era.startYear) ?? []
+            map.set(era.startYear, [...names, era.name])
+            return map
+          }, new Map<number, string[]>())
+        ).map(([year, names]) => (
+          <div
+            key={year}
+            className="absolute left-0 right-0 flex items-center z-10"
+            style={{ top: Math.max(0, topOffset(year) - 22) }}
+          >
+            <span className="text-xs font-semibold uppercase tracking-widest themed-muted ml-6 pr-3 bg-[var(--background)] whitespace-nowrap">
+              {names.join(" · ")}
+            </span>
+            <div className="flex-1 h-px bg-[var(--border)]" />
+          </div>
+        ))}
 
         {markerYears.map((year) => (
           <div
@@ -158,8 +228,7 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
           </div>
         ))}
 
-        {visibleRows.map(({ row: e, year }) => {
-          const dotColor = categoryColor(e.category)
+        {visibleRows.map(({ row: e, fractYear }) => {
           const href = e.publisherSlug ? `/${e.publisherSlug}/events/${e.slug}` : "#"
 
           return (
@@ -167,35 +236,29 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
               key={e.id}
               className="absolute flex items-start gap-4"
               style={{
-                top: topOffset(year),
+                top: topOffset(fractYear),
                 left: 0,
                 right: 0,
               }}
             >
-              {cardMode === "dot" ? (
+              <div className="w-4 shrink-0 flex justify-center mt-1">
                 <button
                   type="button"
-                  aria-label={e.title}
-                  aria-expanded={openDotId === e.id}
-                  onClick={(ev) => {
-                    ev.stopPropagation()
-                    setOpenDotId((cur) => (cur === e.id ? null : e.id))
-                  }}
-                  className="relative z-10 mt-1 w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-[var(--background)] cursor-pointer p-0"
-                  style={{ backgroundColor: dotColor }}
+                  aria-label={`View details: ${e.title}`}
+                  onClick={() => openModal(e)}
+                  className="relative z-10 w-2 h-2 rounded-full ring-2 ring-[var(--background)] bg-[var(--foreground)] cursor-pointer p-0 hover:opacity-70 transition-opacity"
                 />
-              ) : (
-                <div
-                  className="relative z-10 mt-1 w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-[var(--background)]"
-                  style={{ backgroundColor: dotColor }}
-                />
-              )}
+              </div>
 
               {cardMode === "full" && (
                 <div className="flex-1 themed-card p-3 -mt-0.5">
-                  <Link href={href} className="text-sm font-medium themed-link">
+                  <button
+                    type="button"
+                    onClick={() => openModal(e)}
+                    className="text-sm font-medium themed-link text-left hover:opacity-70 transition-opacity"
+                  >
                     {e.title}
-                  </Link>
+                  </button>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span className="text-xs themed-muted">
                       {new Date(e.eventDate).toLocaleDateString("en-US", {
@@ -215,37 +278,13 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
 
               {cardMode === "compact" && (
                 <div className="flex-1 py-0.5 px-2 text-xs">
-                  <Link href={href} className="text-xs font-medium themed-link">
+                  <button
+                    type="button"
+                    onClick={() => openModal(e)}
+                    className="text-xs font-medium themed-link text-left hover:opacity-70 transition-opacity"
+                  >
                     {e.title}
-                  </Link>
-                </div>
-              )}
-
-              {cardMode === "dot" && openDotId === e.id && (
-                <div
-                  ref={popoverContainerRef}
-                  className="absolute themed-card p-3 shadow-lg z-[100] w-56"
-                  style={{ left: 24, top: 0 }}
-                  role="dialog"
-                  aria-label={e.title}
-                >
-                  <Link href={href} className="text-sm font-medium themed-link">
-                    {e.title}
-                  </Link>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-xs themed-muted">
-                      {new Date(e.eventDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                    {e.category && (
-                      <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
-                        {e.category}
-                      </span>
-                    )}
-                  </div>
+                  </button>
                 </div>
               )}
             </div>
@@ -253,6 +292,68 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
         })}
         </div>
       </div>
+
+      <dialog
+        ref={dialogRef}
+        className="w-[min(90vw,32rem)] rounded-xl themed-card shadow-2xl flex flex-col"
+        onClick={(e) => { if (e.target === dialogRef.current) closeModal() }}
+        onClose={() => setSelectedEvent(null)}
+        aria-labelledby="event-modal-title"
+      >
+        {selectedEvent && (
+          <div className="flex flex-col min-h-0 overflow-hidden">
+            {/* Header — fixed, never scrolls */}
+            <div className="flex items-start justify-between mb-4 flex-shrink-0">
+              <h2 id="event-modal-title" className="text-xl font-bold themed-heading pr-4">
+                {selectedEvent.title}
+              </h2>
+              <button type="button" onClick={closeModal} className="dialog-close-btn" aria-label="Close">
+                ✕
+              </button>
+            </div>
+
+            {/* Body — scrolls when content is long */}
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              <div className="flex items-center gap-2 mb-4 flex-wrap">
+                <span className="text-sm themed-muted">
+                  {new Date(selectedEvent.eventDate).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+                {selectedEvent.category && (
+                  <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
+                    {selectedEvent.category}
+                  </span>
+                )}
+              </div>
+
+              {selectedEvent.description && (
+                <p className="text-sm themed-secondary leading-relaxed">{selectedEvent.description}</p>
+              )}
+            </div>
+
+            {/* Footer — fixed, never scrolls */}
+            <div className="flex items-center justify-between mt-4 pt-3 border-t themed-border flex-shrink-0">
+              {selectedEvent.publisherSlug ? (
+                <span className="text-xs themed-muted">@{selectedEvent.publisherSlug}</span>
+              ) : (
+                <span />
+              )}
+              {selectedEvent.publisherSlug && (
+                <Link
+                  href={`/${selectedEvent.publisherSlug}/events/${selectedEvent.slug}`}
+                  className="themed-btn-primary text-sm px-4 py-2"
+                  onClick={closeModal}
+                >
+                  View full page →
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+      </dialog>
     </div>
   )
 }
