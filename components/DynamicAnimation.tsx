@@ -28,6 +28,7 @@ export default function DynamicAnimation({ publisher, slug }: DynamicAnimationPr
       {src && (
         <iframe
           src={src}
+          sandbox="allow-scripts"
           className="w-full border-0"
           style={{ height: "400px" }}
           title={`Animation: ${slug}`}
