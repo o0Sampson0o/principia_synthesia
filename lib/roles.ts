@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { orgMemberships } from "@/db/schema";
+import { orgMemberships, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { SessionPayload } from "@/lib/auth";
 
@@ -40,8 +40,10 @@ export async function canManageOrg(
  * Returns true if the session can create/edit/delete content owned by the
  * given publisher (ownerType + ownerId).
  *
- * - User-owned content: only the same user (or root admin).
- * - Org-owned content: super_admin or admin of that org (or root admin).
+ * - Root admin: always allowed.
+ * - User-owned content: only the same user, and email must be verified.
+ * - Org-owned content: super_admin or admin of that org (email verification
+ *   is not required — org membership is the gate).
  */
 export async function canEditContent(
   session: SessionPayload | null,
@@ -52,10 +54,15 @@ export async function canEditContent(
   if (session.isRootAdmin) return true;
 
   if (ownerType === "user") {
-    return session.userId === ownerId;
+    if (session.userId !== ownerId) return false;
+    const [userRow] = await db
+      .select({ emailVerifiedAt: users.emailVerifiedAt })
+      .from(users)
+      .where(eq(users.id, session.userId))
+      .limit(1);
+    return !!userRow?.emailVerifiedAt;
   }
 
-  // org-owned
   const role = await getOrgRole(session.userId, ownerId);
   return role === "super_admin" || role === "admin";
 }

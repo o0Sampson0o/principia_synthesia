@@ -3,6 +3,10 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getJwtSecret } from "@/lib/env";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq, and, gt } from "drizzle-orm";
+import { createHash, randomBytes } from "crypto";
 const COOKIE_NAME = "session";
 const BCRYPT_ROUNDS = 10;
 
@@ -142,4 +146,50 @@ export async function clearSessionCookie(): Promise<void> {
     maxAge: 0,
     path: "/",
   });
+}
+
+/**
+ * Generates a 32-byte random verification token (base64url-encoded).
+ * Stores the SHA-256 hash in the database with a 24-hour expiry.
+ * Returns the raw token to be sent via email.
+ */
+export async function createVerificationToken(userId: number): Promise<string> {
+  const rawToken = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  await db
+    .update(users)
+    .set({ verificationTokenHash: tokenHash, verificationTokenExpiresAt: expiresAt })
+    .where(eq(users.id, userId));
+
+  return rawToken;
+}
+
+/**
+ * Consumes a verification token: SHA-256 hashes the raw token, looks up a user
+ * with a matching non-expired hash, marks the email as verified, and clears the
+ * token columns. Returns the userId on success, or null if invalid/expired.
+ */
+export async function consumeVerificationToken(rawToken: string): Promise<number | null> {
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const now = new Date();
+
+  const [updated] = await db
+    .update(users)
+    .set({
+      emailVerifiedAt: now,
+      verificationTokenHash: null,
+      verificationTokenExpiresAt: null,
+    })
+    .where(
+      and(
+        eq(users.verificationTokenHash, tokenHash),
+        gt(users.verificationTokenExpiresAt, now)
+      )
+    )
+    .returning({ id: users.id });
+
+  if (!updated) return null;
+  return updated.id;
 }

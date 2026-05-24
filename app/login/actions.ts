@@ -7,11 +7,24 @@ import { verifyPassword, setSessionCookie } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { loginSchema } from "@/lib/validations";
 
+function isSafeRedirect(path: string | null): path is string {
+  if (!path) return false;
+  if (!path.startsWith("/")) return false;
+  if (path.startsWith("//")) return false;
+  if (/[\r\n]/.test(path)) return false;
+  return true;
+}
+
 export async function loginAction(formData: FormData) {
   const validated = loginSchema.parse({
     email: formData.get("email"),
     password: formData.get("password"),
   });
+
+  const redirectRaw = formData.get("redirect");
+  const safeRedirect = isSafeRedirect(typeof redirectRaw === "string" ? redirectRaw : null)
+    ? redirectRaw
+    : null;
 
   const [row] = await db
     .select({
@@ -26,12 +39,18 @@ export async function loginAction(formData: FormData) {
     .limit(1);
 
   if (!row) {
-    redirect("/login?error=invalid");
+    const errorUrl = safeRedirect
+      ? `/login?error=invalid&redirect=${encodeURIComponent(safeRedirect)}`
+      : "/login?error=invalid";
+    redirect(errorUrl);
   }
 
   const valid = await verifyPassword(validated.password, row.passwordHash);
   if (!valid) {
-    redirect("/login?error=invalid");
+    const errorUrl = safeRedirect
+      ? `/login?error=invalid&redirect=${encodeURIComponent(safeRedirect)}`
+      : "/login?error=invalid";
+    redirect(errorUrl);
   }
 
   await setSessionCookie({
@@ -41,5 +60,5 @@ export async function loginAction(formData: FormData) {
     isRootAdmin: row.isRootAdmin,
   });
 
-  redirect(`/${row.userSlug}`);
+  redirect(safeRedirect ?? `/${row.userSlug}`);
 }

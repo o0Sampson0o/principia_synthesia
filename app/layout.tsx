@@ -4,10 +4,11 @@ import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import CommandPalette from "@/components/CommandPalette";
 import OfflineGuard from "@/components/OfflineGuard";
+import EmailVerificationBannerGate from "@/components/EmailVerificationBannerGate";
 import "./globals.css";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
-import { userThemes } from "@/db/schema";
+import { userThemes, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { buildThemeStyle, defaultThemeStyle, defaultLight, defaultDark } from "@/lib/theme";
 import { Analytics } from "@vercel/analytics/next";
@@ -38,20 +39,21 @@ export default async function RootLayout({
   const session = await getSession();
 
   let themeStyle = defaultThemeStyle();
+  let emailVerifiedAt: Date | null = null;
 
   if (session?.userId) {
-    const theme = await db
-      .select()
-      .from(userThemes)
-      .where(eq(userThemes.userId, session.userId))
-      .limit(1);
+    const [theme, userRow] = await Promise.all([
+      db.select().from(userThemes).where(eq(userThemes.userId, session.userId)).limit(1).then((r) => r[0] ?? null),
+      db.select({ emailVerifiedAt: users.emailVerifiedAt }).from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0] ?? null),
+    ]);
 
-    if (theme[0]) {
+    if (theme) {
       themeStyle = buildThemeStyle(
-        theme[0].lightTokens ?? defaultLight,
-        theme[0].darkTokens ?? defaultDark
+        theme.lightTokens ?? defaultLight,
+        theme.darkTokens ?? defaultDark
       );
     }
+    emailVerifiedAt = userRow?.emailVerifiedAt ?? null;
   }
 
   return (
@@ -68,6 +70,9 @@ export default async function RootLayout({
         <Nav />
         <CommandPalette />
         <OfflineGuard />
+        {session && !emailVerifiedAt && (
+          <EmailVerificationBannerGate email={session.email} />
+        )}
         {children}
         <Footer />
         <Analytics />

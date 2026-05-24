@@ -3,9 +3,11 @@
 import { db } from "@/db";
 import { users, publishers } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { hashPassword, setSessionCookie } from "@/lib/auth";
+import { hashPassword, setSessionCookie, createVerificationToken } from "@/lib/auth";
+import { sendEmail, buildVerificationEmailHtml } from "@/lib/email";
 import { redirect } from "next/navigation";
 import { signupSchema } from "@/lib/validations";
+import { headers } from "next/headers";
 
 export async function signupAction(formData: FormData) {
   const validated = signupSchema.parse({
@@ -63,6 +65,19 @@ export async function signupAction(formData: FormData) {
     return insertedUser;
   });
 
+  const rawToken = await createVerificationToken(newUser.id);
+
+  const headerStore = await headers();
+  const host = headerStore.get("host") ?? "localhost:3000";
+  const proto = process.env.NODE_ENV === "production" ? "https" : "http";
+  const verificationUrl = `${proto}://${host}/verify-email/${rawToken}`;
+
+  await sendEmail({
+    to: newUser.email,
+    subject: "Verify your email address",
+    html: buildVerificationEmailHtml(verificationUrl),
+  });
+
   await setSessionCookie({
     userId: newUser.id,
     email: newUser.email,
@@ -70,5 +85,5 @@ export async function signupAction(formData: FormData) {
     isRootAdmin: false,
   });
 
-  redirect(`/${validated.publisherSlug}`);
+  redirect("/signup/check-email");
 }
