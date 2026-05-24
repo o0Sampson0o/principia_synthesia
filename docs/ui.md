@@ -12,13 +12,34 @@
 
 `components/ContentEditor.tsx` renders a two-column split at `h-[760px]`. CodeMirror inner height: `728px` with toolbar, `760px` without.
 
+## Responsive breakpoints
+
+Mobile-first. Standard Tailwind breakpoints:
+
+| Breakpoint | Min-width | Behaviour change |
+|---|---|---|
+| _(default)_ | 0 px | Hamburger nav visible; single-column layouts |
+| `sm` | 640 px | Article heading font scales up (`sm:text-3xl`); `ProportionalTimeline` initial `pxPerYear` set to 80 (vs 30 below) |
+| `md` | 768 px | Desktop nav links shown (`hidden md:flex`); hamburger hidden (`md:hidden`); mobile nav panel hidden (`md:hidden`) |
+| `lg` | 1024 px | Article heading scales up again (`lg:text-4xl`) |
+| `xl` | 1280 px | No project-specific behaviour; available for future use |
+| `2xl` | 1536 px | No project-specific behaviour; available for future use |
+
+**Per-component notes:**
+
+- **Nav** (`NavClient.tsx`): switches to hamburger at `md:` (768 px). Menu panel closes on route change via `usePathname()` — see the Nav section below.
+- **Article reader** (`app/[publisher]/articles/[slug]/page.tsx`): `max-w-5xl`, no column change across breakpoints; horizontal padding is constant.
+- **Split editor** (`components/ContentEditor.tsx`): fixed `grid-cols-2` at `h-[760px]` — no responsive collapse. Editors narrow to 50% each at any viewport. Design intent is desktop-only.
+- **ProportionalTimeline** (`components/ProportionalTimeline.tsx`): reads `window.innerWidth < 640` on first paint to pick `pxPerYear=30` (mobile) vs `pxPerYear=80` (desktop). This is a one-time init; zoom can be changed by the user afterwards.
+- **iOS scroll-lock**: applied to `<body>` when a modal is open. See `docs/ui.md` Nav section and `components/NavClient.tsx`.
+
 ## Content Security Policy
 
 `middleware.ts` generates a per-request nonce and sends an enforced `Content-Security-Policy` header (not Report-Only) on every response. The nonce is attached as `x-csp-nonce` so Server Components can pass it to inline scripts.
 
 - `frame-src 'self'` — animation iframes are same-origin.
 - `style-src 'unsafe-inline'` — required because KaTeX emits inline `<style>` tags.
-- `unsafe-eval` additionally allowed on `/settings/**` only. Editor routes (`/:publisher/articles/new`, `/:publisher/articles/[slug]/edit`, `/:publisher/objects/new`, `/:publisher/objects/[slug]/edit`) no longer need it: MDX preview compilation was moved to a server action (`previewMdx` in `app/[publisher]/articles/actions.ts`), so `new Function()` never runs in the browser. `/settings` still requires it because `ThemeEditor` uses CodeMirror.
+- `unsafe-eval` is **dev-only** (Next.js Fast Refresh / Webpack HMR require it in development). No production path includes `unsafe-eval`. MDX preview compilation runs in a server action (`previewMdx` in `app/[publisher]/articles/actions.ts`), so `new Function()` never runs in the browser. The CodeMirror editor (`ContentEditor.tsx`) is used on article edit routes but the version in use (CodeMirror 6) does not require `unsafe-eval`.
 
 ## Sentry
 

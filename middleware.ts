@@ -3,12 +3,12 @@ import { jwtVerify } from "jose";
 import { rateLimit } from "@/lib/rate-limit";
 import { getJwtSecret } from "@/lib/env";
 
-function buildCsp(nonce: string, allowEval: boolean = false): string {
+function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV === "development";
   const scriptSrc = [
     `'nonce-${nonce}'`,
     "'strict-dynamic'",
-    isDev || allowEval ? "'unsafe-eval'" : "",
+    isDev ? "'unsafe-eval'" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -66,12 +66,7 @@ export async function middleware(request: NextRequest) {
 
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
 
-  // Allow unsafe-eval on settings pages (ThemeEditor uses CodeMirror).
-  // Article/object editor routes no longer need it — preview compilation
-  // was moved server-side, eliminating new Function() from the browser.
-  const allowEval = pathname.startsWith("/settings");
-
-  const csp = buildCsp(nonce, allowEval);
+  const csp = buildCsp(nonce);
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-csp-nonce", nonce);
