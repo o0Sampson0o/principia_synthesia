@@ -13,6 +13,7 @@ import {
   updateEventSchema,
   deleteEventSchema,
 } from "@/lib/validations";
+import { buildRruleString } from "@/lib/recurrence";
 
 async function assertEditRights(publisherSlug: string) {
   const session = await requireSession();
@@ -62,6 +63,13 @@ export async function createEvent(
   const parsed = createEventSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
 
+  const freq = parsed.data.recurrenceFrequency ?? "none";
+  const recurrenceRule = buildRruleString(
+    freq,
+    parsed.data.recurrenceCount,
+    parsed.data.recurrenceUntil ? new Date(parsed.data.recurrenceUntil) : undefined
+  );
+
   const [row] = await db
     .insert(events)
     .values({
@@ -73,6 +81,8 @@ export async function createEvent(
       isEraStart: parsed.data.isEraStart,
       isEraEnd: parsed.data.isEraEnd,
       eraName: parsed.data.eraName?.trim() || null,
+      recurrenceRule,
+      recurrenceUntil: parsed.data.recurrenceUntil ? new Date(parsed.data.recurrenceUntil) : null,
       ownerType,
       ownerId,
     })
@@ -102,6 +112,13 @@ export async function updateEvent(
   const parsed = updateEventSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
 
+  const updateFreq = parsed.data.recurrenceFrequency ?? "none";
+  const updateRecurrenceRule = buildRruleString(
+    updateFreq,
+    parsed.data.recurrenceCount,
+    parsed.data.recurrenceUntil ? new Date(parsed.data.recurrenceUntil) : undefined
+  );
+
   await db
     .update(events)
     .set({
@@ -112,6 +129,8 @@ export async function updateEvent(
       isEraStart: parsed.data.isEraStart,
       isEraEnd: parsed.data.isEraEnd,
       eraName: parsed.data.eraName?.trim() || null,
+      recurrenceRule: updateRecurrenceRule,
+      recurrenceUntil: parsed.data.recurrenceUntil ? new Date(parsed.data.recurrenceUntil) : null,
       updatedAt: new Date(),
     })
     .where(

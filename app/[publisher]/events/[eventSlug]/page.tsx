@@ -7,13 +7,15 @@ import { eq, and } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { canEditContent } from "@/lib/roles";
+import { getNextOccurrences, describeRecurrence } from "@/lib/recurrence";
 
 export default async function EventPage({
   params,
 }: {
   params: Promise<{ publisher: string; eventSlug: string }>;
 }) {
-  const { publisher: publisherSlug, eventSlug } = await params;
+  const { publisher: publisherSlug, eventSlug: rawEventSlug } = await params;
+  const eventSlug = rawEventSlug.split("--")[0];
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -47,6 +49,18 @@ export default async function EventPage({
   if (!event) notFound();
 
   const isEditor = await canEditContent(session, ownerType, ownerId);
+
+  const nextOccurrences = event.recurrenceRule
+    ? getNextOccurrences(
+        {
+          ...event,
+          publisherSlug: publisherSlug,
+          recurrenceRule: event.recurrenceRule,
+          recurrenceUntil: event.recurrenceUntil,
+        },
+        5
+      )
+    : [];
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
@@ -95,6 +109,31 @@ export default async function EventPage({
       {event.description && (
         <div className="themed-muted leading-relaxed whitespace-pre-wrap">
           {event.description}
+        </div>
+      )}
+
+      {event.recurrenceRule && (
+        <div className="mt-8 p-4 rounded-lg border themed-border themed-surface">
+          <p className="text-sm font-medium themed-heading mb-3">
+            Repeats {describeRecurrence(event.recurrenceRule)}
+          </p>
+          {nextOccurrences.length > 0 && (
+            <>
+              <p className="text-xs themed-muted mb-2">Next occurrences:</p>
+              <ul className="space-y-1">
+                {nextOccurrences.map((date) => (
+                  <li key={date.toISOString()} className="text-sm themed-secondary">
+                    {date.toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
     </main>

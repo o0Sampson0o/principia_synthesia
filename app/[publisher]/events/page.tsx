@@ -79,12 +79,26 @@ export default async function PublisherEventsPage({
           <p className="themed-muted text-sm">@{pub.slug}</p>
         </div>
         {isOwner && (
-          <Link
-            href={`/${publisherSlug}/events/new`}
-            className="themed-btn-primary text-sm px-4 py-2 self-start sm:self-auto"
-          >
-            New event
-          </Link>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Link
+              href={`/${publisherSlug}/events/eras`}
+              className="themed-btn-ghost text-sm px-4 py-2"
+            >
+              Eras
+            </Link>
+            <Link
+              href={`/${publisherSlug}/events/import`}
+              className="themed-btn-ghost text-sm px-4 py-2"
+            >
+              Import
+            </Link>
+            <Link
+              href={`/${publisherSlug}/events/new`}
+              className="themed-btn-primary text-sm px-4 py-2"
+            >
+              New event
+            </Link>
+          </div>
         )}
       </div>
 
