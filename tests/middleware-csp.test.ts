@@ -54,4 +54,25 @@ describe("middleware CSP", () => {
     const csp = res.headers.get("content-security-policy");
     expect(csp).not.toContain("'unsafe-eval'");
   });
+
+  it("does NOT include 'unsafe-eval' on any public path in production", async () => {
+    // @ts-expect-error — assigning to read-only NODE_ENV in tests
+    process.env.NODE_ENV = "production";
+    const req = makeRequest("/about");
+    const res = await middleware(req);
+    const csp = res.headers.get("content-security-policy") ?? "";
+    expect(csp).not.toContain("'unsafe-eval'");
+  });
+
+  it("no public path includes 'unsafe-eval' when NODE_ENV is production", async () => {
+    // @ts-expect-error — assigning to read-only NODE_ENV in tests
+    process.env.NODE_ENV = "production";
+    const paths = ["/", "/login", "/signup", "/timeline", "/search"];
+    for (const path of paths) {
+      const req = makeRequest(path);
+      const res = await middleware(req);
+      const csp = res.headers.get("content-security-policy") ?? "";
+      expect(csp, `path ${path} should not include unsafe-eval`).not.toContain("'unsafe-eval'");
+    }
+  });
 });

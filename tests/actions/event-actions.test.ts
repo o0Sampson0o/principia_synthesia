@@ -14,8 +14,6 @@ const mockUpdate = vi.hoisted(() => vi.fn());
 const mockDeleteWhere = vi.hoisted(() => vi.fn());
 const mockDelete = vi.hoisted(() => vi.fn());
 
-const mockSelectFrom = vi.hoisted(() => vi.fn());
-const mockSelectWhere = vi.hoisted(() => vi.fn());
 const mockSelect = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db", () => ({
@@ -83,6 +81,12 @@ vi.mock("drizzle-orm", async (importOriginal) => {
 
 import { and, eq } from "drizzle-orm";
 import { createEvent, updateEvent, deleteEvent } from "@/app/[publisher]/events/actions";
+import {
+  setupSelectQueue,
+  setupInsertQueue,
+  setupUpdateQueue,
+  setupDeleteQueue,
+} from "@/tests/helpers/drizzle-mocks";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,29 +115,6 @@ function setupPublisherA() {
   mockCanEditContent.mockResolvedValue(true);
 }
 
-function setupInsertChain(returnedRow: { id: number; slug: string }) {
-  mockInsertReturning.mockResolvedValue([returnedRow]);
-  mockInsertValues.mockReturnValue({ returning: mockInsertReturning });
-  mockInsert.mockReturnValue({ values: mockInsertValues });
-}
-
-function setupSelectChain(result: unknown[]) {
-  mockSelectWhere.mockResolvedValue(result);
-  mockSelectFrom.mockReturnValue({ where: mockSelectWhere });
-  mockSelect.mockReturnValue({ from: mockSelectFrom });
-}
-
-function setupDeleteChain() {
-  mockDeleteWhere.mockResolvedValue({ rowCount: 1 });
-  mockDelete.mockReturnValue({ where: mockDeleteWhere });
-}
-
-function setupUpdateChain() {
-  mockUpdateWhere.mockResolvedValue({ rowCount: 1 });
-  mockUpdateSet.mockReturnValue({ where: mockUpdateWhere });
-  mockUpdate.mockReturnValue({ set: mockUpdateSet });
-}
-
 // ─── createEvent ──────────────────────────────────────────────────────────────
 
 describe("createEvent", () => {
@@ -143,9 +124,9 @@ describe("createEvent", () => {
   });
 
   it("inserts an event and redirects to the event page", async () => {
-    setupInsertChain({ id: 1, slug: "event-foo" });
-    setupDeleteChain();
-    setupSelectChain([]);
+    setupInsertQueue(mockInsert, mockInsertValues, mockInsertReturning, { id: 1, slug: "event-foo" });
+    setupDeleteQueue(mockDelete, mockDeleteWhere);
+    setupSelectQueue(mockSelect, [{ result: [], withLimit: false }]);
 
     mockInsert.mockImplementation((table) => {
       if (table && (table as { _: { name: string } })?._?.name === "event_articles") {
@@ -189,9 +170,9 @@ describe("createEvent", () => {
   });
 
   it("calls revalidateTag with 'timeline'", async () => {
-    setupInsertChain({ id: 2, slug: "event-bar" });
-    setupDeleteChain();
-    setupSelectChain([]);
+    setupInsertQueue(mockInsert, mockInsertValues, mockInsertReturning, { id: 2, slug: "event-bar" });
+    setupDeleteQueue(mockDelete, mockDeleteWhere);
+    setupSelectQueue(mockSelect, [{ result: [], withLimit: false }]);
 
     mockInsert.mockImplementation((table) => {
       if (table && (table as { _: { name: string } })?._?.name === "event_articles") {
@@ -233,9 +214,9 @@ describe("updateEvent", () => {
   });
 
   it("scopes the DB update to ownerType + ownerId", async () => {
-    setupUpdateChain();
-    setupDeleteChain();
-    setupSelectChain([]);
+    setupUpdateQueue(mockUpdate, mockUpdateSet, mockUpdateWhere);
+    setupDeleteQueue(mockDelete, mockDeleteWhere);
+    setupSelectQueue(mockSelect, [{ result: [], withLimit: false }]);
 
     mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue([]) });
 
@@ -255,9 +236,9 @@ describe("updateEvent", () => {
   });
 
   it("redirects to the event page on success", async () => {
-    setupUpdateChain();
-    setupDeleteChain();
-    setupSelectChain([]);
+    setupUpdateQueue(mockUpdate, mockUpdateSet, mockUpdateWhere);
+    setupDeleteQueue(mockDelete, mockDeleteWhere);
+    setupSelectQueue(mockSelect, [{ result: [], withLimit: false }]);
 
     mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue([]) });
 
@@ -280,7 +261,7 @@ describe("deleteEvent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupPublisherA();
-    setupDeleteChain();
+    setupDeleteQueue(mockDelete, mockDeleteWhere);
   });
 
   it("calls db.delete and redirects to the events list", async () => {

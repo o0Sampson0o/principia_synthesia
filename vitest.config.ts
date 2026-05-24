@@ -11,5 +11,8 @@ export default defineConfig({
   },
   resolve: {
     tsconfigPaths: true,
+    alias: {
+      nodemailer: "/home/lagrange/dev/principia-synthesia/tests/__mocks__/nodemailer.ts",
+    },
   },
 });

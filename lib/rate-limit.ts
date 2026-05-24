@@ -26,3 +26,7 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
   b.tokens -= 1;
   return true;
 }
+
+export function __resetForTests(): void {
+  buckets.clear();
+}

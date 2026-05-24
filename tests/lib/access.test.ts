@@ -23,6 +23,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
 import { canView, filterVisible } from "@/lib/access";
 import type { ContentRef } from "@/lib/access";
 import type { SessionPayload } from "@/lib/auth";
+import { setupSelectQueue } from "@/tests/helpers/drizzle-mocks";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -44,29 +45,6 @@ function makeRef(overrides: Partial<ContentRef> = {}): ContentRef {
   };
 }
 
-/**
- * Sets up the mock DB chain.
- * `canView` uses: db.select().from().where().limit(1)  for getVisibility
- *                 db.select().from().where()            for getUserOrgIds (no limit)
- *                 db.select().from().where().limit(1)  for hasGrant (user grant)
- *                 db.select().from().where().limit(1)  for hasGrant (org grant)
- */
-function setupQueryQueue(queue: Array<{ result: unknown[]; withLimit?: boolean }>) {
-  let idx = 0;
-  mockSelect.mockImplementation(() => {
-    const item = queue[idx++] ?? { result: [], withLimit: true };
-    const limitFn = vi.fn().mockResolvedValue(item.result);
-    const whereFn = vi.fn();
-    if (item.withLimit) {
-      whereFn.mockReturnValue({ limit: limitFn });
-    } else {
-      whereFn.mockResolvedValue(item.result);
-    }
-    const fromFn = vi.fn().mockReturnValue({ where: whereFn });
-    return { from: fromFn };
-  });
-}
-
 // ─── canView ─────────────────────────────────────────────────────────────────
 
 describe("canView", () => {
@@ -82,19 +60,19 @@ describe("canView", () => {
 
   it("no visibility row → true (public default)", async () => {
     // getVisibility → [] → defaults to 'public'
-    setupQueryQueue([{ result: [], withLimit: true }]);
+    setupSelectQueue(mockSelect,[{ result: [], withLimit: true }]);
     const result = await canView(makeRef(), null);
     expect(result).toBe(true);
   });
 
   it("visibility row with visibility='public' → true", async () => {
-    setupQueryQueue([{ result: [{ visibility: "public" }], withLimit: true }]);
+    setupSelectQueue(mockSelect,[{ result: [{ visibility: "public" }], withLimit: true }]);
     const result = await canView(makeRef(), null);
     expect(result).toBe(true);
   });
 
   it("private + no session → false", async () => {
-    setupQueryQueue([{ result: [{ visibility: "private" }], withLimit: true }]);
+    setupSelectQueue(mockSelect,[{ result: [{ visibility: "private" }], withLimit: true }]);
     const result = await canView(makeRef(), null);
     expect(result).toBe(false);
   });
@@ -103,7 +81,7 @@ describe("canView", () => {
     // 1. getVisibility → private  (withLimit)
     // 2. getUserOrgIds → []  (no limit — .where() is terminal)
     // 3. user grant check → [{ id: 5 }]  (withLimit)
-    setupQueryQueue([
+    setupSelectQueue(mockSelect,[
       { result: [{ visibility: "private" }], withLimit: true },
       { result: [], withLimit: false },
       { result: [{ id: 5 }], withLimit: true },
@@ -117,7 +95,7 @@ describe("canView", () => {
     // 2. getUserOrgIds → [{ orgId: 3 }]
     // 3. user grant → []
     // 4. org grant → [{ id: 7 }]
-    setupQueryQueue([
+    setupSelectQueue(mockSelect,[
       { result: [{ visibility: "private" }], withLimit: true },
       { result: [{ orgId: 3 }], withLimit: false },
       { result: [], withLimit: true },
@@ -128,7 +106,7 @@ describe("canView", () => {
   });
 
   it("private + session has neither user nor org grant → false", async () => {
-    setupQueryQueue([
+    setupSelectQueue(mockSelect,[
       { result: [{ visibility: "private" }], withLimit: true },
       { result: [{ orgId: 3 }], withLimit: false },
       { result: [], withLimit: true },
@@ -141,7 +119,7 @@ describe("canView", () => {
   it("org visibility + org-owned content + user is member → true", async () => {
     // 1. getVisibility → org
     // 2. getUserOrgIds → [{ orgId: 10 }]  (matches ownerId=10)
-    setupQueryQueue([
+    setupSelectQueue(mockSelect,[
       { result: [{ visibility: "org" }], withLimit: true },
       { result: [{ orgId: 10 }], withLimit: false },
     ]);
@@ -153,7 +131,7 @@ describe("canView", () => {
   });
 
   it("org visibility + org-owned content + user is NOT member → false", async () => {
-    setupQueryQueue([
+    setupSelectQueue(mockSelect,[
       { result: [{ visibility: "org" }], withLimit: true },
       { result: [{ orgId: 99 }], withLimit: false },
     ]);
@@ -166,13 +144,13 @@ describe("canView", () => {
 });
 
   it("canView with type 'event' and no visibility row returns true (public default)", async () => {
-    setupQueryQueue([{ result: [], withLimit: true }]);
+    setupSelectQueue(mockSelect,[{ result: [], withLimit: true }]);
     const result = await canView(makeRef({ type: "event", slug: "event-foo" }), null);
     expect(result).toBe(true);
   });
 
   it("canView with type 'event' and private visibility respects grants", async () => {
-    setupQueryQueue([
+    setupSelectQueue(mockSelect,[
       { result: [{ visibility: "private" }], withLimit: true },
       { result: [], withLimit: false },
       { result: [{ id: 9 }], withLimit: true },

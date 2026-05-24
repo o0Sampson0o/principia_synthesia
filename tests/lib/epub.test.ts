@@ -82,7 +82,7 @@ describe("buildEpub", () => {
       chapters: [{ title: "Ch1", content: null }],
     });
     const [, chapters] = mockEpub.mock.calls[0];
-    expect(chapters[0].content).toBe("");
+    expect(chapters[0].content).toContain('<main role="main"');
   });
 
   it("renders GFM tables", async () => {
@@ -90,5 +90,94 @@ describe("buildEpub", () => {
     await buildEpub({ title: "Book", chapters: [{ title: "Ch1", content: mdx }] });
     const [, chapters] = mockEpub.mock.calls[0];
     expect(chapters[0].content).toContain("<table");
+  });
+
+  it("wraps chapter body in main with role=main and aria-labelledby", async () => {
+    await buildEpub({
+      title: "Book",
+      chapters: [{ title: "Chapter One", content: "Hello world." }],
+    });
+    const [, chapters] = mockEpub.mock.calls[0];
+    expect(chapters[0].content).toContain('<main role="main" aria-labelledby="chapter-title"');
+  });
+
+  it("includes a header with h1 carrying the chapter title", async () => {
+    await buildEpub({
+      title: "Book",
+      chapters: [{ title: "My Chapter", content: "Content." }],
+    });
+    const [, chapters] = mockEpub.mock.calls[0];
+    expect(chapters[0].content).toContain("<header>");
+    expect(chapters[0].content).toContain('<h1 id="chapter-title">My Chapter</h1>');
+  });
+
+  it("includes an empty footer element", async () => {
+    await buildEpub({
+      title: "Book",
+      chapters: [{ title: "Ch1", content: "Content." }],
+    });
+    const [, chapters] = mockEpub.mock.calls[0];
+    expect(chapters[0].content).toContain("<footer>");
+  });
+
+  it("normalises skipped headings (h1 → h3 becomes h1 → h2)", async () => {
+    await buildEpub({
+      title: "Book",
+      chapters: [{ title: "Ch1", content: "# Top\n\n### Skipped" }],
+    });
+    const [, chapters] = mockEpub.mock.calls[0];
+    expect(chapters[0].content).not.toContain("<h3");
+    expect(chapters[0].content).toContain("<h2");
+  });
+
+  it("does not alter already-sequential headings", async () => {
+    await buildEpub({
+      title: "Book",
+      chapters: [{ title: "Ch1", content: "# Top\n\n## Sub\n\n### SubSub" }],
+    });
+    const [, chapters] = mockEpub.mock.calls[0];
+    expect(chapters[0].content).toContain("<h1");
+    expect(chapters[0].content).toContain("<h2");
+    expect(chapters[0].content).toContain("<h3");
+  });
+
+  it("wraps timeline chapter in landmarks when events are provided", async () => {
+    const events = [{
+      id: 1,
+      slug: "event-a",
+      title: "Event A",
+      description: null,
+      category: null,
+      publisherSlug: null,
+      isEraStart: false,
+      isEraEnd: false,
+      eraName: null,
+      eventDate: new Date("2000-01-01"),
+    }];
+    await buildEpub({ title: "Book", chapters: [], events });
+    const [, chapters] = mockEpub.mock.calls[0];
+    expect(chapters.length).toBe(1);
+    expect(chapters[0].title).toBe("Timeline");
+    expect(chapters[0].content).toContain('<main role="main"');
+  });
+
+  it("timeline chapter has exactly one h1 (from wrapChapterHtml, not renderTimelineHtml)", async () => {
+    const events = [{
+      id: 1,
+      slug: "event-a",
+      title: "Event A",
+      description: null,
+      category: null,
+      publisherSlug: null,
+      isEraStart: false,
+      isEraEnd: false,
+      eraName: null,
+      eventDate: new Date("2000-01-01"),
+    }];
+    await buildEpub({ title: "Book", chapters: [], events });
+    const [, chapters] = mockEpub.mock.calls[0];
+    const content: string = chapters[0].content;
+    const h1Count = (content.match(/<h1[\s>]/g) ?? []).length;
+    expect(h1Count).toBe(1);
   });
 });

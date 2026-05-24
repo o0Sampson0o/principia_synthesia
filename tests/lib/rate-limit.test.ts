@@ -4,9 +4,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Import after potential vi.useFakeTimers setup — the module uses Date.now()
 // internally with a module-level Map, so we need a fresh module per test where
 // we want isolated state. We accomplish isolation by clearing the buckets via
-// time manipulation (advancing past the window).
+// time manipulation (advancing past the window) or __resetForTests().
 
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, __resetForTests } from "@/lib/rate-limit";
 
 describe("rateLimit", () => {
   beforeEach(() => {
@@ -91,5 +91,43 @@ describe("rateLimit", () => {
     expect(rateLimit(key, limit, windowMs)).toBe(true);  // tokens left: 0
     expect(rateLimit(key, limit, windowMs)).toBe(false); // rejected
     expect(rateLimit(key, limit, windowMs)).toBe(false); // still rejected
+  });
+});
+
+describe("__resetForTests", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-06-01T00:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    __resetForTests();
+  });
+
+  it("clears all buckets so previously-exhausted keys are allowed again", () => {
+    const key = "test-reset-helper";
+    rateLimit(key, 1, 60_000);
+    expect(rateLimit(key, 1, 60_000)).toBe(false);
+    __resetForTests();
+    expect(rateLimit(key, 1, 60_000)).toBe(true);
+  });
+
+  it("verify action: rejects on the 4th call within the same window", () => {
+    const userId = 999;
+    const key = `verify:${userId}`;
+    expect(rateLimit(key, 3, 60 * 60 * 1000)).toBe(true);
+    expect(rateLimit(key, 3, 60 * 60 * 1000)).toBe(true);
+    expect(rateLimit(key, 3, 60 * 60 * 1000)).toBe(true);
+    expect(rateLimit(key, 3, 60 * 60 * 1000)).toBe(false);
+  });
+
+  it("invite action: rejects on the 6th call within the same window", () => {
+    const orgId = 42;
+    const key = `invite:${orgId}`;
+    for (let i = 0; i < 5; i++) {
+      expect(rateLimit(key, 5, 60 * 60 * 1000)).toBe(true);
+    }
+    expect(rateLimit(key, 5, 60 * 60 * 1000)).toBe(false);
   });
 });

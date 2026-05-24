@@ -100,11 +100,11 @@ describe("middleware", () => {
       expect(res.headers.get("content-security-policy")).toBeTruthy();
     });
 
-    it("allows unsafe-eval for settings pages", async () => {
+    it("does NOT include unsafe-eval for settings pages in non-dev", async () => {
       mockJwtVerify.mockResolvedValue({ payload: { userId: 1 } });
       const res = await middleware(makeRequest("/settings/theme", "valid-token"));
       const csp = res.headers.get("content-security-policy") ?? "";
-      expect(csp).toContain("unsafe-eval");
+      expect(csp).not.toContain("unsafe-eval");
     });
 
     it("does NOT allow unsafe-eval for publisher article new page", async () => {

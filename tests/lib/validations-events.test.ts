@@ -138,6 +138,66 @@ describe("deleteEventSchema", () => {
   });
 });
 
+describe("createEventSchema recurrence validation", () => {
+  const validInput = {
+    title: "Seminar",
+    slug: "event-seminar",
+    eventDate: "2024-01-01",
+  };
+
+  it("accepts a non-recurring event (default)", () => {
+    const result = createEventSchema.safeParse(validInput);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts weekly frequency on a normal event", () => {
+    const result = createEventSchema.safeParse({
+      ...validInput,
+      recurrenceFrequency: "weekly",
+      recurrenceCount: "10",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.recurrenceFrequency).toBe("weekly");
+      expect(result.data.recurrenceCount).toBe(10);
+    }
+  });
+
+  it("rejects weekly frequency on an era start marker", () => {
+    const result = createEventSchema.safeParse({
+      ...validInput,
+      isEraStart: "on",
+      eraName: "Cold War Era",
+      recurrenceFrequency: "weekly",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const msgs = result.error.issues.map((i) => i.message);
+      expect(msgs.some((m) => m.includes("Era marker events cannot recur"))).toBe(true);
+    }
+  });
+
+  it("rejects non-none frequency on an era end marker", () => {
+    const result = createEventSchema.safeParse({
+      ...validInput,
+      isEraEnd: "on",
+      eraName: "Cold War Era",
+      recurrenceFrequency: "annually",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts 'none' frequency on an era marker", () => {
+    const result = createEventSchema.safeParse({
+      ...validInput,
+      isEraStart: "on",
+      eraName: "Cold War Era",
+      recurrenceFrequency: "none",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
 describe("setVisibilitySchema with event resourceType", () => {
   it("accepts resourceType 'event'", () => {
     const result = setVisibilitySchema.safeParse({

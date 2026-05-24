@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   deriveEras,
   yearMarkerInterval,
+  assignEraLabelLanes,
 } from "@/lib/timeline-utils";
-import type { EventRow } from "@/lib/timeline-utils";
+import type { EventRow, DerivedEra } from "@/lib/timeline-utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,66 @@ function makeRow(overrides: Partial<Omit<EventRow, "eventDate">> & { eventDate: 
     eventDate: new Date(overrides.eventDate),
   };
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function makeEra(name: string, startYear: number, endYear: number | null = null): DerivedEra {
+  return { name, startYear, endYear };
+}
+
+// ─── assignEraLabelLanes ──────────────────────────────────────────────────────
+
+describe("assignEraLabelLanes", () => {
+  it("returns empty array for empty input", () => {
+    expect(assignEraLabelLanes([], 10, 1000)).toEqual([]);
+  });
+
+  it("single era is assigned lane 0", () => {
+    const result = assignEraLabelLanes([makeEra("Modern Age", 2000)], 10, 1990);
+    expect(result).toHaveLength(1);
+    expect(result[0].lane).toBe(0);
+  });
+
+  it("two eras starting 100 years apart at 10px/yr do not overlap and stay on lane 0", () => {
+    const eras = [makeEra("Era A", 1000), makeEra("Era B", 1100)];
+    const result = assignEraLabelLanes(eras, 10, 1000, 22);
+    expect(result[0].lane).toBe(0);
+    expect(result[1].lane).toBe(0);
+  });
+
+  it("two eras starting close together at low pxPerYear get different lanes", () => {
+    const eras = [makeEra("Era A", 1000), makeEra("Era B", 1001)];
+    const result = assignEraLabelLanes(eras, 10, 1000, 22);
+    expect(result[0].lane).toBe(0);
+    expect(result[1].lane).toBe(1);
+  });
+
+  it("three eras all starting in the same window get lanes 0, 1, 2", () => {
+    const eras = [
+      makeEra("Era A", 1000),
+      makeEra("Era B", 1001),
+      makeEra("Era C", 1002),
+    ];
+    const result = assignEraLabelLanes(eras, 10, 1000, 22);
+    expect(result[0].lane).toBe(0);
+    expect(result[1].lane).toBe(1);
+    expect(result[2].lane).toBe(2);
+  });
+
+  it("sorts by startYear ascending regardless of input order", () => {
+    const eras = [makeEra("Era B", 1100), makeEra("Era A", 1000)];
+    const result = assignEraLabelLanes(eras, 10, 1000, 22);
+    expect(result[0].name).toBe("Era A");
+    expect(result[1].name).toBe("Era B");
+  });
+
+  it("uses canvas-relative coordinates: eras at 2000 and 2001 with minYear=1990 and pxPerYear=30 get different lanes", () => {
+    const eras = [makeEra("Era A", 2000), makeEra("Era B", 2001)];
+    const result = assignEraLabelLanes(eras, 30, 1990, 22);
+    expect(result[0].lane).toBe(0);
+    expect(result[1].lane).toBe(1);
+  });
+});
 
 // ─── yearMarkerInterval ───────────────────────────────────────────────────────
 
