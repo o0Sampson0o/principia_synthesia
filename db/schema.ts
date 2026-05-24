@@ -51,6 +51,9 @@ export const users = pgTable("users", {
   isRootAdmin: boolean("is_root_admin").default(false).notNull(),
   displayName: text("display_name").notNull().default(""),
   publisherSlug: text("publisher_slug").unique().notNull().default(""),
+  emailVerifiedAt: timestamp("email_verified_at"),
+  verificationTokenHash: text("verification_token_hash"),
+  verificationTokenExpiresAt: timestamp("verification_token_expires_at"),
 });
 
 // ---------------------------------------------------------------------------
@@ -430,6 +433,8 @@ export const events = pgTable(
     isEraStart: boolean("is_era_start").default(false).notNull(),
     isEraEnd: boolean("is_era_end").default(false).notNull(),
     eraName: text("era_name"),
+    recurrenceRule: text("recurrence_rule"),
+    recurrenceUntil: timestamp("recurrence_until"),
     ownerType: text("owner_type").notNull(),
     ownerId: integer("owner_id").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
@@ -441,6 +446,31 @@ export const events = pgTable(
     index("events_event_date_idx").on(t.eventDate),
     index("events_category_idx").on(t.category),
   ]
+);
+
+// ---------------------------------------------------------------------------
+// Org invitations
+// ---------------------------------------------------------------------------
+
+/**
+ * Pending invitations for a user to join an org by email.
+ * Unique on (orgId, email) so only one pending invite per email per org.
+ * Token is stored as SHA-256 hash only.
+ */
+export const orgInvitations = pgTable(
+  "org_invitations",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role").notNull(), // 'admin' | 'member'
+    tokenHash: text("token_hash").notNull(),
+    invitedBy: integer("invited_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at").notNull(),
+    acceptedAt: timestamp("accepted_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [unique().on(t.orgId, t.email)]
 );
 
 /**
