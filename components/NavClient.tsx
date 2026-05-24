@@ -1,65 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { usePathname } from "next/navigation"
 import Link from "next/link"
 import type { SessionPayload } from "@/lib/auth"
+import { useNavMenu } from "@/components/useNavMenu"
 
 export default function NavClient({ session }: { session: SessionPayload | null }) {
-  const [open, setOpen] = useState(false)
-  const pathname = usePathname()
-  const navPanelRef = useRef<HTMLDivElement>(null)
-  const hamburgerRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (navPanelRef.current?.contains(document.activeElement)) {
-      hamburgerRef.current?.focus()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    setOpen(false)
-  }, [pathname])
-
-  useEffect(() => {
-    if (!open) return
-
-    const panel = navPanelRef.current
-    if (!panel) return
-
-    const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
-    function getFocusable(): HTMLElement[] {
-      return Array.from(panel!.querySelectorAll<HTMLElement>(FOCUSABLE))
-    }
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        setOpen(false)
-        hamburgerRef.current?.focus()
-        return
-      }
-      if (e.key !== "Tab") return
-
-      const focusable = getFocusable()
-      if (focusable.length === 0) return
-
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown)
-    getFocusable()[0]?.focus()   // move focus into panel on open
-
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [open])
+  const { open, setOpen, navPanelRef, hamburgerRef } = useNavMenu()
 
   return (
     <nav className="themed-nav">
