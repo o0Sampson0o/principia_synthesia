@@ -1,12 +1,13 @@
 import { db } from "@/db";
-import { articles, books, curriculumEntries, pdfCaches, publishers } from "@/db/schema";
-import { eq, asc, and } from "drizzle-orm";
+import { articles, books, curriculumEntries, events, pdfCaches, publishers, resourceVisibility } from "@/db/schema";
+import { eq, asc, and, isNull, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { renderBookHtml } from "@/lib/pdf/render-book-html";
 import { createHash } from "crypto";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { getLicenseFromRequest, featureEnabled } from "@/lib/license";
+import type { EventRow } from "@/lib/timeline-utils";
 
 export const maxDuration = 60;
 
@@ -15,6 +16,8 @@ export async function GET(
   { params }: { params: Promise<{ publisher: string; slug: string }> }
 ) {
   const { publisher: publisherSlug, slug: bookSlug } = await params;
+  const url = new URL(req.url);
+  const includeEvents = url.searchParams.get("include") !== "no-events";
 
   // Resolve publisher
   const [pubRow] = await db
@@ -62,8 +65,51 @@ export async function GET(
 
   if (entries.length === 0) return new NextResponse("Book not found", { status: 404 });
 
+  let publisherEvents: (EventRow & { updatedAt: Date | null })[] = [];
+  if (includeEvents) {
+    publisherEvents = await db
+      .select({
+        id: events.id,
+        slug: events.slug,
+        title: events.title,
+        description: events.description,
+        eventDate: events.eventDate,
+        category: events.category,
+        isEraStart: events.isEraStart,
+        isEraEnd: events.isEraEnd,
+        eraName: events.eraName,
+        publisherSlug: publishers.slug,
+        updatedAt: events.updatedAt,
+      })
+      .from(events)
+      .innerJoin(publishers, eq(publishers.slug, publisherSlug))
+      .leftJoin(
+        resourceVisibility,
+        and(
+          eq(resourceVisibility.resourceType, "event"),
+          eq(resourceVisibility.ownerType, events.ownerType),
+          eq(resourceVisibility.ownerId, events.ownerId),
+          eq(resourceVisibility.resourceKey, events.slug)
+        )
+      )
+      .where(
+        and(
+          eq(events.ownerType, ownerType),
+          eq(events.ownerId, ownerId),
+          or(
+            isNull(resourceVisibility.visibility),
+            eq(resourceVisibility.visibility, "public")
+          )
+        )
+      );
+  }
+
+  const sortedEventSnapshot = [...publisherEvents]
+    .sort((a, b) => a.id - b.id)
+    .map((e) => ({ id: e.id, updatedAt: e.updatedAt?.toISOString() ?? null }));
+
   const contentHash = createHash("sha256")
-    .update(JSON.stringify({ bookTitle: bookRow.title, entries }))
+    .update(JSON.stringify({ bookTitle: bookRow.title, entries, events: sortedEventSnapshot }))
     .digest("hex");
 
   const [cached] = await db
@@ -82,7 +128,11 @@ export async function GET(
     });
   }
 
-  const html = await renderBookHtml(bookRow.title, entries);
+  const html = await renderBookHtml(
+    bookRow.title,
+    entries,
+    publisherEvents.length > 0 ? publisherEvents : undefined
+  );
 
   const { chromium } = await import("playwright-core");
   let launchOptions: Parameters<typeof chromium.launch>[0];

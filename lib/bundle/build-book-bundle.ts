@@ -1,5 +1,7 @@
 import JSZip from "jszip";
 import { mdxToHtml, PRINT_CSS, cleanMdx } from "@/lib/pdf/render-book-html";
+import type { EventRow } from "@/lib/timeline-utils";
+import { renderTimelineHtml } from "@/lib/events-html";
 
 interface BookChapter {
   title: string;
@@ -11,7 +13,8 @@ export async function buildBookBundle(
   bookSlug: string,
   bookTitle: string,
   chapters: BookChapter[],
-  animationCodes: Map<string, string>
+  animationCodes: Map<string, string>,
+  events?: EventRow[]
 ): Promise<ArrayBuffer> {
   const zip = new JSZip();
 
@@ -86,6 +89,25 @@ export async function buildBookBundle(
     zip.folder("chapters")!.file(filename, html);
   }
 
+  // timeline.html (optional)
+  const timelineHtmlContent = events && events.length > 0 ? renderTimelineHtml(events) : "";
+  if (timelineHtmlContent) {
+    const timelinePageHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Timeline &mdash; ${escapeHtml(bookTitle)}</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="chapter-nav"><a href="index.html">&larr; Table of Contents</a></nav>
+  <main>${timelineHtmlContent}</main>
+</body>
+</html>`;
+    zip.file("timeline.html", timelinePageHtml);
+  }
+
   // index.html
   const chapterLinks = chapters
     .map((ch, i) => {
@@ -93,6 +115,10 @@ export async function buildBookBundle(
       return `<li><a href="${file}">${escapeHtml(ch.title)}</a></li>`;
     })
     .join("\n");
+
+  const timelineLink = timelineHtmlContent
+    ? `\n    <p><a href="timeline.html">Timeline</a></p>`
+    : "";
 
   const indexHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -106,7 +132,7 @@ export async function buildBookBundle(
   <main>
     <h1>${escapeHtml(bookTitle)}</h1>
     <p>${chapters.length} chapter${chapters.length !== 1 ? "s" : ""}</p>
-    <ol class="chapter-list">${chapterLinks}</ol>
+    <ol class="chapter-list">${chapterLinks}</ol>${timelineLink}
   </main>
 </body>
 </html>`;
@@ -148,15 +174,23 @@ ${PRINT_CSS}
   zip.file("router.js", routerJs);
 
   // manifest.json
+  const manifestChapters = chapters.map((ch, i) => ({
+    index: i + 1,
+    title: ch.title,
+    file: `chapters/ch-${String(i + 1).padStart(3, "0")}-${slugify(ch.title)}.html`,
+  }));
+  if (timelineHtmlContent) {
+    manifestChapters.push({
+      index: chapters.length + 1,
+      title: "Timeline",
+      file: "timeline.html",
+    });
+  }
   const manifest = {
     title: bookTitle,
     bookSlug,
     generatedAt: new Date().toISOString(),
-    chapters: chapters.map((ch, i) => ({
-      index: i + 1,
-      title: ch.title,
-      file: `chapters/ch-${String(i + 1).padStart(3, "0")}-${slugify(ch.title)}.html`,
-    })),
+    chapters: manifestChapters,
   };
   zip.file("manifest.json", JSON.stringify(manifest, null, 2));
 

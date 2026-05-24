@@ -9,7 +9,9 @@ import rehypeStringify from "rehype-stringify";
 import { visit } from "unist-util-visit";
 import { fromHtml } from "hast-util-from-html";
 import type { Root, Element, Parent } from "hast";
-import { mdxSanitizeSchema } from "./mdx-sanitize";
+import { mdxSanitizeSchemaEpub } from "./mdx-sanitize";
+import type { EventRow } from "@/lib/timeline-utils";
+import { renderTimelineHtml } from "@/lib/events-html";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,6 +25,7 @@ export interface BuildEpubOptions {
   title: string;
   author?: string;
   chapters: EpubChapter[];
+  events?: EventRow[];
 }
 
 // ─── MathJax SVG renderer ─────────────────────────────────────────────────────
@@ -139,6 +142,29 @@ function rehypeMathSvg() {
   };
 }
 
+// ─── rehype plugin: normalise heading hierarchy ───────────────────────────────
+
+const HEADING_TAGS = ["h1", "h2", "h3", "h4", "h5", "h6"] as const;
+type HeadingTag = typeof HEADING_TAGS[number];
+
+function headingLevel(tag: string): number {
+  return parseInt(tag[1], 10);
+}
+
+function rehypeNormaliseHeadings() {
+  return (tree: Root) => {
+    let lastLevel = 0;
+    visit(tree, "element", (node: Element) => {
+      if (!HEADING_TAGS.includes(node.tagName as HeadingTag)) return;
+      const level = headingLevel(node.tagName);
+      if (lastLevel > 0 && level > lastLevel + 1) {
+        node.tagName = `h${lastLevel + 1}` as Element["tagName"];
+      }
+      lastLevel = headingLevel(node.tagName);
+    });
+  };
+}
+
 // ─── MDX → HTML ───────────────────────────────────────────────────────────────
 
 function cleanMdx(mdx: string): string {
@@ -157,12 +183,22 @@ async function mdxToHtml(mdx: string): Promise<string> {
     .use(remarkMath)
     .use(remarkGfm)
     .use(remarkRehype)
-    .use(rehypeSanitize, mdxSanitizeSchema)
+    .use(rehypeSanitize, mdxSanitizeSchemaEpub)
+    .use(rehypeNormaliseHeadings)
     .use(rehypeMathSvg)
     .use(rehypeStringify)
     .process(cleanMdx(mdx));
 
   return String(file);
+}
+
+function wrapChapterHtml(title: string, bodyHtml: string): string {
+  const id = "chapter-title";
+  return `<header><h1 id="${id}">${title.replace(/</g, "&lt;")}</h1></header>
+<main role="main" aria-labelledby="${id}">
+${bodyHtml}
+</main>
+<footer></footer>`;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -175,15 +211,27 @@ const EPUB_CSS = `
 .toc-link { color: #999; font-size: 85%; display: block; }
 hr { border: 0; border-bottom: 1px solid #dedede; margin: 60px 10%; }
 svg { max-width: 100%; }
+footer:empty { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; }
 `;
 
-export async function buildEpub({ title, author, chapters }: BuildEpubOptions): Promise<Buffer> {
+export async function buildEpub({ title, author, chapters, events }: BuildEpubOptions): Promise<Buffer> {
   const epubChapters = await Promise.all(
-    chapters.map(async (ch) => ({
-      title: ch.title,
-      content: await mdxToHtml(ch.content ?? ""),
-    }))
+    chapters.map(async (ch) => {
+      const bodyHtml = await mdxToHtml(ch.content ?? "");
+      return {
+        title: ch.title,
+        content: wrapChapterHtml(ch.title, bodyHtml),
+      };
+    })
   );
+
+  if (events && events.length > 0) {
+    epubChapters.push({
+      title: "Timeline",
+      content: wrapChapterHtml("Timeline", renderTimelineHtml(events, { includeHeading: false })),
+    });
+  }
 
   const buffer = await epub(
     {

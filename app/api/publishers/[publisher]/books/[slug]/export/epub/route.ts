@@ -1,17 +1,20 @@
 import { db } from "@/db";
-import { articles, books, curriculumEntries, publishers } from "@/db/schema";
-import { eq, asc, and } from "drizzle-orm";
+import { articles, books, curriculumEntries, events, publishers, resourceVisibility } from "@/db/schema";
+import { eq, asc, and, isNull, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { buildEpub } from "@/lib/epub";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { getLicenseFromRequest, featureEnabled } from "@/lib/license";
+import type { EventRow } from "@/lib/timeline-utils";
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ publisher: string; slug: string }> }
 ) {
   const { publisher: publisherSlug, slug: bookSlug } = await params;
+  const url = new URL(req.url);
+  const includeEvents = url.searchParams.get("include") !== "no-events";
 
   const [pubRow] = await db
     .select({ kind: publishers.kind, userId: publishers.userId, orgId: publishers.orgId })
@@ -57,6 +60,44 @@ export async function GET(
 
   if (entries.length === 0) return new NextResponse("Book not found", { status: 404 });
 
+  let publisherEvents: EventRow[] = [];
+  if (includeEvents) {
+    publisherEvents = await db
+      .select({
+        id: events.id,
+        slug: events.slug,
+        title: events.title,
+        description: events.description,
+        eventDate: events.eventDate,
+        category: events.category,
+        isEraStart: events.isEraStart,
+        isEraEnd: events.isEraEnd,
+        eraName: events.eraName,
+        publisherSlug: publishers.slug,
+      })
+      .from(events)
+      .innerJoin(publishers, eq(publishers.slug, publisherSlug))
+      .leftJoin(
+        resourceVisibility,
+        and(
+          eq(resourceVisibility.resourceType, "event"),
+          eq(resourceVisibility.ownerType, events.ownerType),
+          eq(resourceVisibility.ownerId, events.ownerId),
+          eq(resourceVisibility.resourceKey, events.slug)
+        )
+      )
+      .where(
+        and(
+          eq(events.ownerType, ownerType),
+          eq(events.ownerId, ownerId),
+          or(
+            isNull(resourceVisibility.visibility),
+            eq(resourceVisibility.visibility, "public")
+          )
+        )
+      );
+  }
+
   const buffer = await buildEpub({
     title: bookRow.title,
     chapters: entries.map((e) => ({
@@ -64,6 +105,7 @@ export async function GET(
       content: e.content,
       partTitle: e.partTitle,
     })),
+    events: publisherEvents.length > 0 ? publisherEvents : undefined,
   });
 
   return new NextResponse(buffer as unknown as BodyInit, {

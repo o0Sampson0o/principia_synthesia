@@ -1,11 +1,12 @@
 import { db } from "@/db";
-import { articles, books, curriculumEntries, objects, publishers } from "@/db/schema";
-import { eq, asc, and, inArray } from "drizzle-orm";
+import { articles, books, curriculumEntries, events, objects, publishers, resourceVisibility } from "@/db/schema";
+import { eq, asc, and, inArray, isNull, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { buildBookBundle } from "@/lib/bundle/build-book-bundle";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { getLicenseFromRequest, featureEnabled } from "@/lib/license";
+import type { EventRow } from "@/lib/timeline-utils";
 
 export const maxDuration = 60;
 
@@ -14,6 +15,8 @@ export async function GET(
   { params }: { params: Promise<{ publisher: string; slug: string }> }
 ) {
   const { publisher: publisherSlug, slug: bookSlug } = await params;
+  const url = new URL(req.url);
+  const includeEvents = url.searchParams.get("include") !== "no-events";
 
   const [pubRow] = await db
     .select({ kind: publishers.kind, userId: publishers.userId, orgId: publishers.orgId })
@@ -83,7 +86,51 @@ export async function GET(
     }
   }
 
-  const buffer = await buildBookBundle(bookSlug, bookRow.title, entries, animCodes);
+  let publisherEvents: EventRow[] = [];
+  if (includeEvents) {
+    publisherEvents = await db
+      .select({
+        id: events.id,
+        slug: events.slug,
+        title: events.title,
+        description: events.description,
+        eventDate: events.eventDate,
+        category: events.category,
+        isEraStart: events.isEraStart,
+        isEraEnd: events.isEraEnd,
+        eraName: events.eraName,
+        publisherSlug: publishers.slug,
+      })
+      .from(events)
+      .innerJoin(publishers, eq(publishers.slug, publisherSlug))
+      .leftJoin(
+        resourceVisibility,
+        and(
+          eq(resourceVisibility.resourceType, "event"),
+          eq(resourceVisibility.ownerType, events.ownerType),
+          eq(resourceVisibility.ownerId, events.ownerId),
+          eq(resourceVisibility.resourceKey, events.slug)
+        )
+      )
+      .where(
+        and(
+          eq(events.ownerType, ownerType),
+          eq(events.ownerId, ownerId),
+          or(
+            isNull(resourceVisibility.visibility),
+            eq(resourceVisibility.visibility, "public")
+          )
+        )
+      );
+  }
+
+  const buffer = await buildBookBundle(
+    bookSlug,
+    bookRow.title,
+    entries,
+    animCodes,
+    publisherEvents.length > 0 ? publisherEvents : undefined
+  );
 
   return new NextResponse(buffer, {
     headers: {

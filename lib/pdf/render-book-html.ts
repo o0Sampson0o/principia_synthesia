@@ -8,6 +8,8 @@ import rehypeKatex from "rehype-katex";
 import rehypeSanitize from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import { mdxSanitizeSchema } from "@/lib/mdx-sanitize";
+import type { EventRow } from "@/lib/timeline-utils";
+import { renderTimelineHtml } from "@/lib/events-html";
 
 export interface BookChapter {
   title: string;
@@ -128,7 +130,8 @@ function escapeHtml(str: string): string {
 
 export async function renderBookHtml(
   bookTitle: string,
-  chapters: BookChapter[]
+  chapters: BookChapter[],
+  events?: EventRow[]
 ): Promise<string> {
   const katexCss = getKatexCss();
 
@@ -148,12 +151,20 @@ export async function renderBookHtml(
     })
   );
 
+  const timelineHtml = events && events.length > 0
+    ? `<div class="chapter">${renderTimelineHtml(events)}</div>`
+    : "";
+
+  const tocChapters: BookChapter[] = events && events.length > 0
+    ? [...chapters, { title: "Timeline" }]
+    : chapters;
+
   const coverHtml = `<div class="cover-page">
     <h1>${escapeHtml(bookTitle)}</h1>
     <div class="subtitle">Principia Synthesia</div>
   </div>`;
 
-  const tocHtml = buildTocHtml(chapters);
+  const tocHtml = buildTocHtml(tocChapters);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -168,6 +179,7 @@ export async function renderBookHtml(
   ${coverHtml}
   ${tocHtml}
   ${chapterHtmlParts.join("\n")}
+  ${timelineHtml}
 </body>
 </html>`;
 }

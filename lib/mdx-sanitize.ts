@@ -65,3 +65,36 @@ export const mdxSanitizeSchema: Schema = {
     src: ["http", "https"],
   },
 };
+
+/**
+ * Extended sanitize schema for EPUB output.
+ *
+ * Permits ARIA roles and `epub:type` landmarks on sectioning elements
+ * so generated EPUBs satisfy WCAG 2.1 Level A landmark requirements.
+ * The web pipeline continues to use the stricter `mdxSanitizeSchema`.
+ */
+export const mdxSanitizeSchemaEpub: Schema = {
+  ...mdxSanitizeSchema,
+  attributes: {
+    ...mdxSanitizeSchema.attributes,
+    "*": [...(mdxSanitizeSchema.attributes?.["*"] ?? []), "role", "aria-label", "aria-labelledby"],
+    main: ["role", "aria-label", "aria-labelledby"],
+    header: ["role"],
+    footer: ["role"],
+    nav: ["role", "epub:type"],
+    section: ["role", "aria-label", "aria-labelledby", "epub:type"],
+    h1: ["id"],
+    h2: ["id"],
+    h3: ["id"],
+    h4: ["id"],
+    h5: ["id"],
+    h6: ["id"],
+  },
+  tagNames: [
+    ...(mdxSanitizeSchema.tagNames ?? []),
+    "main",
+    "header",
+    "footer",
+    "nav",
+  ],
+};
