@@ -292,7 +292,7 @@ export async function updateArticleContent(
   publisherSlug: string,
   slug: string,
   content: string
-) {
+): Promise<{ ok: true }> {
   await assertEditRights(publisherSlug);
 
   const parsed = parseFrontmatter(content);
@@ -304,4 +304,6 @@ export async function updateArticleContent(
 
   revalidatePath(`/${publisherSlug}/articles/${slug}`);
   revalidatePath(`/${publisherSlug}/articles/${slug}/edit`);
+
+  return { ok: true };
 }

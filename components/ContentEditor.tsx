@@ -5,6 +5,8 @@ import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import type { EditorView } from "@codemirror/view";
 import Preview from "./Preview";
+import { findMissingAlt } from "@/lib/alt-text-lint";
+import type { AltTextFinding } from "@/lib/alt-text-lint";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -23,15 +25,16 @@ export default forwardRef<ContentEditorRef, {
 }>(function ContentEditor({ initial, onChange, onError, toolbar }, ref) {
   const contentValue = useRef<string>(initial);
   const [isDark, setIsDark] = useState(false);
+  const [altFindings, setAltFindings] = useState<AltTextFinding[]>([]);
+  const [showAltList, setShowAltList] = useState(false);
   const previewRef = useRef<{ updateSource: (src: string) => void } | null>(null);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const altLintTimer = useRef<NodeJS.Timeout | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
 
-  // Simple extensions without loading all language data
   const extensions = useMemo(() => [
     markdown({
       base: markdownLanguage,
-      // Don't load all languages - just markdown
     }),
   ], []);
 
@@ -44,21 +47,31 @@ export default forwardRef<ContentEditorRef, {
     return () => mq.removeEventListener("change", () => {});
   }, []);
 
+  useEffect(() => {
+    setAltFindings(findMissingAlt(initial));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleChange = useCallback((val: string) => {
     contentValue.current = val;
     onChange?.(val);
 
-    // Keep hidden input in sync
     const field = document.getElementById("content-field") as HTMLInputElement | null;
     if (field) field.value = val;
 
-    // Debounce preview updates
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
     debounceTimer.current = setTimeout(() => {
       previewRef.current?.updateSource(val);
     }, 500);
+
+    if (altLintTimer.current) {
+      clearTimeout(altLintTimer.current);
+    }
+    altLintTimer.current = setTimeout(() => {
+      setAltFindings(findMissingAlt(val));
+    }, 800);
   }, [onChange]);
 
   const handleCompile = useCallback((e?: React.MouseEvent) => {
@@ -97,9 +110,9 @@ export default forwardRef<ContentEditorRef, {
     const field = document.getElementById("content-field") as HTMLInputElement | null;
     if (field) field.value = text;
     previewRef.current?.updateSource(text);
+    setAltFindings(findMissingAlt(text));
   }, []);
 
-  // Expose compile, insertText, getValue, setValue to parent
   useImperativeHandle(ref, () => ({
     compile: handleCompile,
     insertText: handleInsertText,
@@ -110,6 +123,28 @@ export default forwardRef<ContentEditorRef, {
   return (
     <>
       <input type="hidden" name="content" id="content-field" />
+      {altFindings.length > 0 && (
+        <div className="mb-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAltList((v) => !v)}
+            aria-label={`${altFindings.length} image${altFindings.length === 1 ? "" : "s"} missing alt text`}
+            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700 font-medium"
+          >
+            <span aria-hidden="true">!</span>
+            {altFindings.length} missing alt
+          </button>
+          {showAltList && (
+            <ul className="flex flex-wrap gap-2">
+              {altFindings.map((f) => (
+                <li key={`${f.line}-${f.src}`} className="text-xs themed-muted">
+                  Line {f.line}{f.src ? `: ${f.src.slice(0, 40)}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4 h-[760px]">
         <div className="flex flex-col">
           {toolbar && (
