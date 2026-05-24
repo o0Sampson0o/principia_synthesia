@@ -282,14 +282,32 @@ export const deleteKaoSchema = z.object({
   slug: z.string().min(1),
 });
 
+export const createDiagramSchema = z.object({
+  slug: objectSlugSchema,
+  name: z.string().min(1, "Name is required").max(200),
+  description: z.string().max(1000).optional(),
+  format: z.enum(["mermaid", "graphviz"]),
+  source: z.string().min(1, "Source is required").max(50_000),
+  ownerType: z.enum(["user", "org"]),
+  ownerId: z.coerce.number().int().positive("Invalid owner ID"),
+});
+
+export const updateDiagramSchema = createDiagramSchema.extend({
+  id: z.coerce.number().int().positive(),
+});
+
 // ---------------------------------------------------------------------------
 // Event schemas
 // ---------------------------------------------------------------------------
 
-/** Event slug: must start with `event-` */
+/** Event slug: must start with `event-` but NOT with the reserved `event-era-` prefix. */
 export const eventSlugSchema = z
   .string()
-  .regex(/^event-[a-z0-9]+(?:-[a-z0-9]+)*$/, "Event slug must start with 'event-'");
+  .regex(/^event-[a-z0-9]+(?:-[a-z0-9]+)*$/, "Event slug must start with 'event-'")
+  .refine((s) => !s.startsWith("event-era-"), "Event slug must not start with 'event-era-' (reserved for era markers)");
+
+/** Recurrence frequency for events. */
+export const recurrenceFrequencySchema = z.enum(["none", "weekly", "monthly", "annually"]).default("none");
 
 /** Validates form data for creating a new event. */
 export const createEventSchema = z
@@ -303,6 +321,12 @@ export const createEventSchema = z
     isEraStart: z.string().optional().transform((v) => v === "on"),
     isEraEnd: z.string().optional().transform((v) => v === "on"),
     eraName: z.string().max(100, "Era name too long").optional(),
+    recurrenceFrequency: recurrenceFrequencySchema.optional(),
+    recurrenceCount: z.coerce.number().int().min(1).max(100).optional(),
+    recurrenceUntil: z
+      .string()
+      .optional()
+      .refine((s) => !s || !Number.isNaN(Date.parse(s)), "Invalid recurrence end date"),
   })
   .superRefine((data, ctx) => {
     if (data.isEraStart && !data.eraName?.trim()) {
@@ -319,6 +343,14 @@ export const createEventSchema = z
         path: ["eraName"],
       });
     }
+    const freq = data.recurrenceFrequency ?? "none";
+    if (freq !== "none" && (data.isEraStart || data.isEraEnd)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Era marker events cannot recur",
+        path: ["recurrenceFrequency"],
+      });
+    }
   });
 
 /** Validates form data for updating an existing event. */
@@ -330,6 +362,97 @@ export const updateEventSchema = createEventSchema.extend({
 export const deleteEventSchema = z.object({
   id: z.coerce.number().int().positive("Invalid event ID"),
   slug: z.string().min(1),
+});
+
+// ---------------------------------------------------------------------------
+// Era schemas
+// ---------------------------------------------------------------------------
+
+/** Validates form data for creating a new era (paired start + optional end events). */
+export const createEraSchema = z
+  .object({
+    name: z.string().min(1, "Era name is required").max(100, "Era name too long").trim(),
+    startDate: z
+      .string()
+      .refine((s) => !Number.isNaN(Date.parse(s)), "Start date is required"),
+    endDate: z
+      .string()
+      .optional()
+      .refine((s) => !s || !Number.isNaN(Date.parse(s)), "Invalid end date"),
+    description: z.string().max(5000, "Description too long").optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.endDate && !Number.isNaN(Date.parse(data.endDate))) {
+      if (new Date(data.endDate) < new Date(data.startDate)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "End date must be after start date",
+          path: ["endDate"],
+        });
+      }
+    }
+  });
+
+/** Validates form data for renaming an era (updates eraName on all matching events). */
+export const renameEraSchema = z.object({
+  currentName: z.string().min(1, "Current era name is required"),
+  newName: z.string().min(1, "New era name is required").max(100, "Name too long").trim(),
+});
+
+/** Validates form data for updating an era's start/end dates. */
+export const updateEraSchema = z
+  .object({
+    eraName: z.string().min(1, "Era name is required"),
+    startEventId: z.coerce.number().int().positive("Invalid start event ID"),
+    startDate: z
+      .string()
+      .refine((s) => !Number.isNaN(Date.parse(s)), "Start date is required"),
+    endEventId: z.coerce.number().int().positive().optional(),
+    endDate: z
+      .string()
+      .optional()
+      .refine((s) => !s || !Number.isNaN(Date.parse(s)), "Invalid end date"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.endDate && !Number.isNaN(Date.parse(data.endDate))) {
+      if (new Date(data.endDate) < new Date(data.startDate)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "End date must be after start date",
+          path: ["endDate"],
+        });
+      }
+    }
+  });
+
+/** Validates form data for deleting an era (deletes only the marker events). */
+export const deleteEraSchema = z.object({
+  eraName: z.string().min(1, "Era name is required"),
+  startEventId: z.coerce.number().int().positive("Invalid start event ID"),
+  endEventId: z.coerce.number().int().positive().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Org invitation schemas
+// ---------------------------------------------------------------------------
+
+export const inviteMemberSchema = z.object({
+  orgId: z.coerce.number().int().positive("Invalid org ID"),
+  email: z.string().email("Invalid email address"),
+  role: z.enum(["admin", "member"]),
+});
+
+export const cancelInvitationSchema = z.object({
+  invitationId: z.coerce.number().int().positive("Invalid invitation ID"),
+});
+
+// ---------------------------------------------------------------------------
+// Bulk event import schemas
+// ---------------------------------------------------------------------------
+
+export const bulkImportSourceSchema = z.object({
+  format: z.enum(["csv", "json", "wikidata"]),
+  sparqlQuery: z.string().max(10_000).optional(),
 });
 
 // ---------------------------------------------------------------------------
