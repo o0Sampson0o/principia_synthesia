@@ -3,10 +3,11 @@ import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { getOrgRole, isSuperAdminProtected } from "@/lib/roles";
 import { db } from "@/db";
-import { organizations, orgMemberships, users } from "@/db/schema";
-import { eq, notInArray } from "drizzle-orm";
+import { organizations, orgMemberships, users, orgInvitations } from "@/db/schema";
+import { eq, notInArray, and, isNull, gt } from "drizzle-orm";
 import Link from "next/link";
 import { addOrgMember, removeOrgMember, leaveOrg, updateOrgMemberRole } from "@/app/organizations/actions";
+import { inviteMember, cancelInvitation, resendInvitation } from "@/app/[publisher]/members/actions";
 
 export default async function MembersPage({
   params,
@@ -66,6 +67,25 @@ export default async function MembersPage({
           .where(notInArray(users.id, memberUserIds))
       : await db.select({ id: users.id, email: users.email, displayName: users.displayName }).from(users);
 
+  const pendingInvitations = canManage
+    ? await db
+        .select({
+          id: orgInvitations.id,
+          email: orgInvitations.email,
+          role: orgInvitations.role,
+          expiresAt: orgInvitations.expiresAt,
+          createdAt: orgInvitations.createdAt,
+        })
+        .from(orgInvitations)
+        .where(
+          and(
+            eq(orgInvitations.orgId, orgId),
+            isNull(orgInvitations.acceptedAt),
+            gt(orgInvitations.expiresAt, new Date())
+          )
+        )
+    : [];
+
   const roleLabels: Record<string, string> = {
     super_admin: "Super admin",
     admin: "Admin",
@@ -95,6 +115,21 @@ export default async function MembersPage({
   async function changeRole(formData: FormData) {
     "use server";
     await updateOrgMemberRole(formData);
+  }
+
+  async function sendInvite(_prevState: unknown, formData: FormData) {
+    "use server";
+    return inviteMember(publisherSlug, _prevState, formData);
+  }
+
+  async function cancelInvite(formData: FormData) {
+    "use server";
+    await cancelInvitation(publisherSlug, formData);
+  }
+
+  async function resendInvite(formData: FormData) {
+    "use server";
+    await resendInvitation(publisherSlug, formData);
   }
 
   return (
@@ -192,12 +227,81 @@ export default async function MembersPage({
         </ul>
       </section>
 
+      {/* Pending invitations — admin/super_admin only */}
+      {canManage && pendingInvitations.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-lg font-semibold themed-heading mb-4">Pending invitations</h2>
+          <ul className="space-y-2">
+            {pendingInvitations.map((inv) => (
+              <li
+                key={inv.id}
+                className="px-4 py-3 rounded-lg border themed-border themed-surface flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+              >
+                <div>
+                  <p className="text-sm font-medium themed-heading">{inv.email}</p>
+                  <p className="text-xs themed-muted">
+                    {inv.role} · Expires {inv.expiresAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <form action={resendInvite}>
+                    <input type="hidden" name="invitationId" value={inv.id} />
+                    <button type="submit" className="text-xs themed-btn-ghost px-2 py-1">
+                      Resend
+                    </button>
+                  </form>
+                  <form action={cancelInvite}>
+                    <input type="hidden" name="invitationId" value={inv.id} />
+                    <button type="submit" className="text-xs text-red-500 themed-btn-ghost px-2 py-1">
+                      Cancel
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Invite by email — admin/super_admin only */}
+      {canManage && (
+        <section className="mb-10">
+          <h2 className="text-lg font-semibold themed-heading mb-1">Invite by email</h2>
+          <p className="text-sm themed-muted mb-4">
+            Send an invitation link to anyone. They do not need an existing account.
+          </p>
+          <form action={sendInvite} className="space-y-3">
+            <input type="hidden" name="orgId" value={orgId} />
+            <div>
+              <label className="block text-sm font-medium themed-secondary mb-1">Email address</label>
+              <input
+                type="email"
+                name="email"
+                required
+                className="themed-input text-sm w-full"
+                placeholder="colleague@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium themed-secondary mb-1">Role</label>
+              <select name="role" required className="themed-input text-sm w-full">
+                <option value="admin">Admin</option>
+                <option value="member">Member</option>
+              </select>
+            </div>
+            <button type="submit" className="themed-btn-primary text-sm">
+              Send invitation
+            </button>
+          </form>
+        </section>
+      )}
+
       {/* Add member — admin/super_admin only */}
       {canManage && (
         <section>
-          <h2 className="text-lg font-semibold themed-heading mb-1">Add member</h2>
+          <h2 className="text-lg font-semibold themed-heading mb-1">Add existing user</h2>
           <p className="text-sm themed-muted mb-4">
-            Add an existing user account to this organisation.
+            Add an existing user account to this organisation directly.
           </p>
 
           {nonMembers.length === 0 ? (
