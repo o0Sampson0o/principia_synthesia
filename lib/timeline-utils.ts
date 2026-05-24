@@ -1,5 +1,5 @@
 export type EventRow = {
-  id: number;
+  id: number | string;
   slug: string;
   title: string;
   description: string | null;
@@ -9,6 +9,8 @@ export type EventRow = {
   isEraStart: boolean;
   isEraEnd: boolean;
   eraName: string | null;
+  recurrenceRule?: string | null;
+  recurrenceUntil?: Date | null;
 };
 
 export type DerivedEra = {
@@ -30,6 +32,70 @@ export function yearMarkerInterval(pxPerYear: number): number {
   if (pxPerYear >= 80) return 10;
   if (pxPerYear >= 40) return 25;
   return 100;
+}
+
+export type DerivedEraWithLane = DerivedEra & { lane: number };
+
+export function assignEraLabelLanes(
+  eras: DerivedEra[],
+  pxPerYear: number,
+  minYear: number,
+  labelHeightPx = 22,
+): DerivedEraWithLane[] {
+  const MAX_LANES = 3;
+  const sorted = [...eras].sort((a, b) => a.startYear - b.startYear);
+  const lastBottomPx: number[] = [];
+  return sorted.map((era) => {
+    const startPx = (era.startYear - minYear) * pxPerYear;
+    let lane = lastBottomPx.findIndex(
+      (bottom) => bottom + labelHeightPx <= startPx,
+    );
+    if (lane === -1) {
+      lane = lastBottomPx.length < MAX_LANES ? lastBottomPx.length : 0;
+    }
+    lastBottomPx[lane] = startPx + labelHeightPx;
+    return { ...era, lane };
+  });
+}
+
+export function eraToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export type TimelineSearch = {
+  q: string | undefined;
+  era: string | undefined;
+  category: string | undefined;
+  publisher: string | undefined;
+  from: string | undefined;
+  to: string | undefined;
+  page: number;
+};
+
+export function parseTimelineSearch(params: URLSearchParams): TimelineSearch {
+  const rawQ = params.get("q")?.trim();
+  const q = rawQ ? rawQ.slice(0, 200) : undefined;
+
+  const rawEra = params.get("era")?.trim();
+  const era = rawEra || undefined;
+
+  const category = params.get("category")?.trim() || undefined;
+  const publisher = params.get("publisher")?.trim() || undefined;
+
+  const rawFrom = params.get("from")?.trim() ?? "";
+  const from = rawFrom && !Number.isNaN(Date.parse(rawFrom)) ? rawFrom : undefined;
+
+  const rawTo = params.get("to")?.trim() ?? "";
+  const to = rawTo && !Number.isNaN(Date.parse(rawTo)) ? rawTo : undefined;
+
+  const rawPage = params.get("page");
+  const parsedPage = parseInt(rawPage ?? "1", 10);
+  const page = Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1;
+
+  return { q, era, category, publisher, from, to, page };
 }
 
 export function deriveEras(rows: EventRow[]): DerivedEra[] {

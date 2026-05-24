@@ -4,6 +4,8 @@ import Link from "next/link"
 
 type Props = {
   activeView: "visual" | "list"
+  q: string | undefined
+  era: string | undefined
   category: string | undefined
   pubFilter: string | undefined
   from: string | undefined
@@ -12,12 +14,16 @@ type Props = {
 
 function viewHref(
   view: "visual" | "list",
+  q: string | undefined,
+  era: string | undefined,
   category: string | undefined,
   pubFilter: string | undefined,
   from: string | undefined,
   to: string | undefined
 ): string {
   const params = new URLSearchParams()
+  if (q) params.set("q", q)
+  if (era) params.set("era", era)
   if (category) params.set("category", category)
   if (pubFilter) params.set("publisher", pubFilter)
   if (from) params.set("from", from)
@@ -27,11 +33,11 @@ function viewHref(
   return qs ? `/timeline?${qs}` : "/timeline"
 }
 
-export default function TimelineViewToggle({ activeView, category, pubFilter, from, to }: Props) {
+export default function TimelineViewToggle({ activeView, q, era, category, pubFilter, from, to }: Props) {
   return (
     <div className="flex items-center gap-1 mb-6">
       <Link
-        href={viewHref("visual", category, pubFilter, from, to)}
+        href={viewHref("visual", q, era, category, pubFilter, from, to)}
         className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
           activeView === "visual"
             ? "themed-surface border themed-border themed-heading"
@@ -41,7 +47,7 @@ export default function TimelineViewToggle({ activeView, category, pubFilter, fr
         Visual
       </Link>
       <Link
-        href={viewHref("list", category, pubFilter, from, to)}
+        href={viewHref("list", q, era, category, pubFilter, from, to)}
         className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
           activeView === "list"
             ? "themed-surface border themed-border themed-heading"

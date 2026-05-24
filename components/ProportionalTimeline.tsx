@@ -1,10 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties } from "react"
 import Link from "next/link"
 
-import { yearMarkerInterval, deriveEras, toFractionalYear } from "@/lib/timeline-utils"
+import { yearMarkerInterval, deriveEras, toFractionalYear, assignEraLabelLanes } from "@/lib/timeline-utils"
+import { clusterEvents, clusteringThreshold } from "@/lib/timeline-clusters"
 
 const BUFFER_MULTIPLIER = 1.5
 const TOP_PADDING_PX = 60
@@ -23,8 +24,10 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
   const rafIdRef = useRef<number | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null)
+  const [clusterEvents_, setClusterEvents_] = useState<EventRow[] | null>(null)
   const [navIndex, setNavIndex] = useState(-1)
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const clusterDialogRef = useRef<HTMLDialogElement>(null)
 
   const handleScroll = useCallback(() => {
     if (rafIdRef.current !== null) {
@@ -66,6 +69,15 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
     dialogRef.current?.close()
   }, [])
 
+  const openClusterModal = useCallback((clusterEvts: EventRow[]) => {
+    setClusterEvents_(clusterEvts)
+    clusterDialogRef.current?.showModal()
+  }, [])
+
+  const closeClusterModal = useCallback(() => {
+    clusterDialogRef.current?.close()
+  }, [])
+
   const eras = useMemo(() => deriveEras(rows), [rows])
 
   const { minYear, maxYear, minFractYear, maxFractYear, rowsWithYear } = useMemo(() => {
@@ -87,6 +99,11 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
     }
   }, [rows])
 
+  const eraLabels = useMemo(
+    () => assignEraLabelLanes(eras, pxPerYear, minYear),
+    [eras, pxPerYear, minYear],
+  )
+
   const topOffset = useCallback(
     (fractYear: number) => (fractYear - minFractYear) * pxPerYear + TOP_PADDING_PX,
     [minFractYear, pxPerYear],
@@ -103,19 +120,69 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
     [rowsWithYear, minFractYear, pxPerYear],
   )
 
-  if (rows.length === 0) return null
+  const dotRefs = useRef<Map<number | string, HTMLButtonElement>>(new Map())
+
+  const scrollToIndex = useCallback(
+    (idx: number) => {
+      const el = scrollContainerRef.current
+      if (!el || idx < 0 || idx >= sortedEvents.length) return
+      el.scrollTo({
+        top: sortedEvents[idx].offset - containerHeight / 4,
+        behavior: "smooth",
+      })
+    },
+    [sortedEvents, containerHeight],
+  )
+
+  useLayoutEffect(() => {
+    if (navIndex < 0) return
+    const sortedId = sortedEvents[navIndex]?.row.id
+    if (sortedId === undefined) return
+    const btn = dotRefs.current.get(sortedId)
+    if (btn) btn.focus()
+  }, [navIndex, sortedEvents])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (sortedEvents.length === 0) return
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault()
+          {
+            const next = navIndex < sortedEvents.length - 1 ? navIndex + 1 : navIndex
+            setNavIndex(next)
+            scrollToIndex(next)
+          }
+          break
+        case "ArrowUp":
+          e.preventDefault()
+          {
+            const next = navIndex > 0 ? navIndex - 1 : 0
+            setNavIndex(next)
+            scrollToIndex(next)
+          }
+          break
+        case "Home":
+          e.preventDefault()
+          setNavIndex(0)
+          scrollToIndex(0)
+          break
+        case "End":
+          e.preventDefault()
+          setNavIndex(sortedEvents.length - 1)
+          scrollToIndex(sortedEvents.length - 1)
+          break
+        default:
+          break
+      }
+    },
+    [navIndex, sortedEvents, scrollToIndex]
+  )
 
   const bufferPx = containerHeight * BUFFER_MULTIPLIER
 
-  const totalHeight = (maxFractYear - minFractYear) * pxPerYear + TOP_PADDING_PX + BOTTOM_PADDING_PX
-
   const cardMode: "full" | "compact" | "dot" =
     pxPerYear >= 60 ? "full" : pxPerYear >= 30 ? "compact" : "dot"
-
-  const interval = yearMarkerInterval(pxPerYear)
-  const firstMarkerYear = Math.ceil(minYear / interval) * interval
-  const markerYears: number[] = []
-  for (let y = firstMarkerYear; y <= maxYear; y += interval) markerYears.push(y)
 
   const viewportTop = scrollTop - bufferPx
   const viewportBottom = scrollTop + containerHeight + bufferPx
@@ -125,19 +192,25 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
     return top >= viewportTop && top <= viewportBottom
   })
 
+  const threshold = clusteringThreshold(pxPerYear)
+  const clusters = useMemo(
+    () => cardMode === "dot" ? clusterEvents(visibleRows.map((r) => r.row), pxPerYear, threshold) : null,
+    [cardMode, pxPerYear, threshold, visibleRows]
+  )
+
+  if (rows.length === 0) return null
+
+  const totalHeight = (maxFractYear - minFractYear) * pxPerYear + TOP_PADDING_PX + BOTTOM_PADDING_PX
+
+  const interval = yearMarkerInterval(pxPerYear)
+  const firstMarkerYear = Math.ceil(minYear / interval) * interval
+  const markerYears: number[] = []
+  for (let y = firstMarkerYear; y <= maxYear; y += interval) markerYears.push(y)
+
   const currentYear = Math.min(
     maxYear,
     Math.max(minYear, Math.round((scrollTop - TOP_PADDING_PX) / pxPerYear + minFractYear)),
   )
-
-  const scrollToIndex = (idx: number) => {
-    const el = scrollContainerRef.current
-    if (!el || idx < 0 || idx >= sortedEvents.length) return
-    el.scrollTo({
-      top: sortedEvents[idx].offset - containerHeight / 4,
-      behavior: "smooth",
-    })
-  }
 
   return (
     <div className="w-full">
@@ -210,6 +283,7 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
+        onKeyDown={handleKeyDown}
         className="overflow-y-auto overscroll-contain rounded-md border themed-border scrollbar-none p-4"
         style={{ height: containerHeight }}
       >
@@ -217,20 +291,17 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
         <div className="relative" style={{ height: totalHeight, contain: "layout" } as CSSProperties}>
           <div className="absolute left-[7px] top-0 bottom-0 w-0.5 bg-[var(--border)]" />
 
-        {Array.from(
-          eras.reduce((map, era) => {
-            const names = map.get(era.startYear) ?? []
-            map.set(era.startYear, [...names, era.name])
-            return map
-          }, new Map<number, string[]>())
-        ).map(([year, names]) => (
+        {eraLabels.map((era) => (
           <div
-            key={year}
+            key={era.name}
             className="absolute left-0 right-0 flex items-center z-10"
-            style={{ top: Math.max(0, topOffset(year) - 22) }}
+            style={{
+              top: Math.max(0, topOffset(era.startYear) - 22),
+              transform: era.lane > 0 ? `translateX(${era.lane * 64}px)` : undefined,
+            }}
           >
             <span className="text-xs font-semibold uppercase tracking-widest themed-muted ml-6 pr-3 bg-[var(--background)] whitespace-nowrap">
-              {names.join(" · ")}
+              {era.name}
             </span>
             <div className="flex-1 h-px bg-[var(--border)]" />
           </div>
@@ -247,66 +318,120 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
           </div>
         ))}
 
-        {visibleRows.map(({ row: e, fractYear }) => {
-          return (
-            <div
-              key={e.id}
-              className="absolute flex items-start gap-4"
-              style={{
-                top: topOffset(fractYear),
-                left: 0,
-                right: 0,
-              }}
-            >
-              <div className="w-4 shrink-0 flex justify-center mt-1">
-                <button
-                  type="button"
-                  aria-label={`View details: ${e.title}`}
-                  onClick={() => openModal(e)}
-                  className="relative z-10 w-2 h-2 rounded-full ring-2 ring-[var(--background)] bg-[var(--foreground)] cursor-pointer p-0 hover:opacity-70 transition-opacity"
-                />
-              </div>
-
-              {cardMode === "full" && (
-                <div className="flex-1 themed-card p-3 -mt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => openModal(e)}
-                    className="text-sm font-medium themed-link text-left hover:opacity-70 transition-opacity"
-                  >
-                    {e.title}
-                  </button>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-xs themed-muted">
-                      {new Date(e.eventDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                    {e.category && (
-                      <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
-                        {e.category}
-                      </span>
-                    )}
+        {cardMode === "dot" && clusters
+          ? clusters.map((cluster) => {
+              const firstEvent = cluster.events[0]
+              const fractYear = toFractionalYear(new Date(firstEvent.eventDate))
+              const isSingle = cluster.events.length === 1
+              const sortedIdx = sortedEvents.findIndex((s) => s.row.id === firstEvent.id)
+              const isFocused = navIndex === sortedIdx
+              return (
+                <div
+                  key={cluster.id}
+                  className="absolute flex items-center"
+                  style={{ top: topOffset(fractYear), left: 0 }}
+                >
+                  {isSingle ? (
+                    <button
+                      type="button"
+                      ref={(el) => {
+                        if (el) dotRefs.current.set(firstEvent.id, el)
+                        else dotRefs.current.delete(firstEvent.id)
+                      }}
+                      tabIndex={isFocused ? 0 : -1}
+                      aria-label={`View details: ${firstEvent.title}`}
+                      aria-current={isFocused ? "true" : undefined}
+                      onClick={() => {
+                        setNavIndex(sortedIdx)
+                        openModal(firstEvent)
+                      }}
+                      className="relative z-10 w-2 h-2 rounded-full ring-2 ring-[var(--background)] bg-[var(--foreground)] cursor-pointer p-0 hover:opacity-70 transition-opacity focus-visible:ring-[var(--input-focus-border)] focus-visible:outline-none focus-visible:ring-4"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => openClusterModal(cluster.events)}
+                      aria-label={`${cluster.events.length} events clustered around ${cluster.year}`}
+                      className="relative z-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--background)] text-xs font-bold cursor-pointer hover:opacity-70 transition-opacity focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--input-focus-border)] px-2"
+                    >
+                      {cluster.events.length}
+                    </button>
+                  )}
+                </div>
+              )
+            })
+          : visibleRows.map(({ row: e, fractYear }) => {
+              const sortedIdx = sortedEvents.findIndex((s) => s.row.id === e.id)
+              const isFocused = navIndex === sortedIdx
+              return (
+                <div
+                  key={e.id}
+                  className="absolute flex items-start gap-4"
+                  style={{
+                    top: topOffset(fractYear),
+                    left: 0,
+                    right: 0,
+                  }}
+                >
+                  <div className="w-4 shrink-0 flex justify-center mt-1">
+                    <button
+                      type="button"
+                      ref={(el) => {
+                        if (el) dotRefs.current.set(e.id, el)
+                        else dotRefs.current.delete(e.id)
+                      }}
+                      tabIndex={isFocused ? 0 : -1}
+                      aria-label={`View details: ${e.title}`}
+                      aria-current={isFocused ? "true" : undefined}
+                      onClick={() => {
+                        setNavIndex(sortedIdx)
+                        openModal(e)
+                      }}
+                      className="relative z-10 w-2 h-2 rounded-full ring-2 ring-[var(--background)] bg-[var(--foreground)] cursor-pointer p-0 hover:opacity-70 transition-opacity focus-visible:ring-[var(--input-focus-border)] focus-visible:outline-none focus-visible:ring-4"
+                    />
                   </div>
-                </div>
-              )}
 
-              {cardMode === "compact" && (
-                <div className="flex-1 py-0.5 px-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => openModal(e)}
-                    className="text-xs font-medium themed-link text-left hover:opacity-70 transition-opacity"
-                  >
-                    {e.title}
-                  </button>
+                  {cardMode === "full" && (
+                    <div className="flex-1 themed-card p-3 -mt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => openModal(e)}
+                        className="text-sm font-medium themed-link text-left hover:opacity-70 transition-opacity"
+                      >
+                        {e.title}
+                      </button>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-xs themed-muted">
+                          {new Date(e.eventDate).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                        {e.category && (
+                          <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
+                            {e.category}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {cardMode === "compact" && (
+                    <div className="flex-1 py-0.5 px-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => openModal(e)}
+                        className="text-xs font-medium themed-link text-left hover:opacity-70 transition-opacity"
+                      >
+                        {e.title}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )
-        })}
+              )
+            })
+        }
         </div>
       </div>
 
@@ -368,6 +493,50 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
                 </Link>
               )}
             </div>
+          </div>
+        )}
+      </dialog>
+
+      <dialog
+        ref={clusterDialogRef}
+        className="w-[min(90vw,32rem)] rounded-xl themed-card shadow-2xl flex flex-col"
+        onClick={(e) => { if (e.target === clusterDialogRef.current) closeClusterModal() }}
+        onClose={() => setClusterEvents_(null)}
+        aria-labelledby="cluster-modal-title"
+      >
+        {clusterEvents_ && (
+          <div className="flex flex-col min-h-0 overflow-hidden">
+            <div className="flex items-start justify-between mb-4 flex-shrink-0">
+              <h2 id="cluster-modal-title" className="text-xl font-bold themed-heading pr-4">
+                {clusterEvents_.length} events
+              </h2>
+              <button type="button" onClick={closeClusterModal} className="dialog-close-btn" aria-label="Close">
+                ✕
+              </button>
+            </div>
+            <ul className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+              {clusterEvents_.map((e) => (
+                <li key={`${e.id}-${e.slug}`} className="border-b themed-border pb-3 last:border-b-0 last:pb-0">
+                  <p className="text-sm font-medium themed-heading">{e.title}</p>
+                  <p className="text-xs themed-muted mt-0.5">
+                    {new Date(e.eventDate).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                  {e.publisherSlug && (
+                    <Link
+                      href={`/${e.publisherSlug}/events/${e.slug}`}
+                      className="text-xs themed-link mt-1 inline-block"
+                      onClick={closeClusterModal}
+                    >
+                      View →
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </dialog>

@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import TimelineViewToggle from "./TimelineViewToggle"
+import TimelineKeyboardNav, { useKeyboardNavContext } from "./TimelineKeyboardNav"
 import type { EventRow } from "./ProportionalTimeline"
 
 const ProportionalTimeline = dynamic(() => import("./ProportionalTimeline"), {
@@ -16,15 +17,72 @@ const ProportionalTimeline = dynamic(() => import("./ProportionalTimeline"), {
 type Props = {
   rows: EventRow[]
   activeView: "visual" | "list"
+  q: string | undefined
+  era: string | undefined
   category: string | undefined
   pubFilter: string | undefined
   from: string | undefined
   to: string | undefined
 }
 
+function ListEventCard({
+  event,
+  index,
+  onOpen,
+}: {
+  event: EventRow
+  index: number
+  onOpen: (e: EventRow) => void
+}) {
+  const { focusIndex, registerRef } = useKeyboardNavContext()
+  const isFocused = focusIndex === index
+
+  return (
+    <li
+      ref={(el) => registerRef(index, el)}
+      tabIndex={isFocused ? 0 : -1}
+      aria-current={isFocused ? "true" : undefined}
+      className="border-b themed-border pb-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--input-focus-border)]"
+    >
+      <button
+        type="button"
+        onClick={() => onOpen(event)}
+        className="text-xl font-medium themed-link text-left hover:opacity-70 transition-opacity"
+      >
+        {event.title}
+      </button>
+      <div className="flex items-center gap-3 mt-1 flex-wrap">
+        <span className="text-xs themed-muted">
+          {new Date(event.eventDate).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </span>
+        {event.category && (
+          <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
+            {event.category}
+          </span>
+        )}
+        {event.publisherSlug && (
+          <Link
+            href={`/${event.publisherSlug}`}
+            className="text-xs themed-muted hover:underline"
+            tabIndex={-1}
+          >
+            @{event.publisherSlug}
+          </Link>
+        )}
+      </div>
+    </li>
+  )
+}
+
 export default function TimelineClientShell({
   rows,
   activeView,
+  q,
+  era,
   category,
   pubFilter,
   from,
@@ -46,6 +104,8 @@ export default function TimelineClientShell({
     <>
       <TimelineViewToggle
         activeView={activeView}
+        q={q}
+        era={era}
         category={category}
         pubFilter={pubFilter}
         from={from}
@@ -55,39 +115,13 @@ export default function TimelineClientShell({
       {activeView === "visual" && <ProportionalTimeline rows={rows} />}
 
       {activeView === "list" && (
-        <ul className="space-y-4">
-          {rows.map((e) => (
-            <li key={e.id} className="border-b themed-border pb-4">
-              <button
-                type="button"
-                onClick={() => openModal(e)}
-                className="text-xl font-medium themed-link text-left hover:opacity-70 transition-opacity"
-              >
-                {e.title}
-              </button>
-              <div className="flex items-center gap-3 mt-1 flex-wrap">
-                <span className="text-xs themed-muted">
-                  {new Date(e.eventDate).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-                {e.category && (
-                  <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
-                    {e.category}
-                  </span>
-                )}
-                <Link
-                  href={`/${e.publisherSlug}`}
-                  className="text-xs themed-muted hover:underline"
-                >
-                  @{e.publisherSlug}
-                </Link>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <TimelineKeyboardNav count={rows.length}>
+          <ul className="space-y-4">
+            {rows.map((e, i) => (
+              <ListEventCard key={e.id} event={e} index={i} onOpen={openModal} />
+            ))}
+          </ul>
+        </TimelineKeyboardNav>
       )}
 
       <dialog
@@ -99,7 +133,6 @@ export default function TimelineClientShell({
       >
         {selectedEvent && (
           <div className="flex flex-col min-h-0 overflow-hidden">
-            {/* Header — fixed, never scrolls */}
             <div className="flex items-start justify-between mb-4 flex-shrink-0">
               <h2 id="list-event-modal-title" className="text-xl font-bold themed-heading pr-4">
                 {selectedEvent.title}
@@ -114,7 +147,6 @@ export default function TimelineClientShell({
               </button>
             </div>
 
-            {/* Body — scrolls when content is long */}
             <div className="flex-1 min-h-0 overflow-y-auto pr-1">
               <div className="flex items-center gap-2 mb-4 flex-wrap">
                 <span className="text-sm themed-muted">
@@ -136,7 +168,6 @@ export default function TimelineClientShell({
               )}
             </div>
 
-            {/* Footer — fixed, never scrolls */}
             <div className="flex items-center justify-between mt-4 pt-3 border-t themed-border flex-shrink-0">
               {selectedEvent.publisherSlug ? (
                 <span className="text-xs themed-muted">@{selectedEvent.publisherSlug}</span>
