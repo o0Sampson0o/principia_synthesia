@@ -25,6 +25,53 @@ An event can mark the boundary of a named era:
 - `eraName` is required when `isEraStart` or `isEraEnd` is true (validated by Zod).
 - `deriveEras(rows)` in `lib/timeline-utils.ts` computes `DerivedEra[]` from raw rows.
 
+## Era management UI
+
+The era editing UI lives at `/:publisher/events/eras`. Access requires `canEditContent()` — same authorisation as event CRUD.
+
+### How eras are stored
+
+There is no separate `eras` table. Eras are **derived** from `events` rows that carry `isEraStart: true` or `isEraEnd: true` together with a matching `eraName`. `deriveEras(rows)` computes `DerivedEra[]` on the fly. The UI creates paired marker events, not a new database entity.
+
+### Reserved slug prefix
+
+Era marker events use the `event-era-` prefix (e.g. `event-era-cold-war-era-start`). The `eventSlugSchema` Zod refinement rejects any user-supplied slug that begins with `event-era-`, preventing collisions.
+
+### Eras list page (`/:publisher/events/eras`)
+
+Displays a table with columns: era name | start year | end year | event count | actions. Event count is derived from `deriveEras()` and counts normal events whose `eventDate` falls within the era band.
+
+### Create era (`/:publisher/events/eras/new`)
+
+Accepts: `name` (required), `startDate` (required), `endDate` (optional), `description` (optional).
+
+The `createEra` server action inserts the marker events in a transaction:
+- One event with `isEraStart: true, eraName: name, slug: event-era-{slug}-start`.
+- One event with `isEraEnd: true, eraName: name, slug: event-era-{slug}-end` — only if `endDate` is provided.
+
+Redirects to `/:publisher/events/eras/{slug}` on success.
+
+### Rename era (`/:publisher/events/eras/[eraSlug]`)
+
+`renameEra` issues a single SQL UPDATE setting `eraName` on **all** `events` rows with matching `(ownerType, ownerId, eraName)`. This keeps marker events and any events manually tagged with that era name in sync.
+
+### Update era dates
+
+`updateEra` edits the `eventDate` on the start and (optionally) end marker events. Validates that `endDate >= startDate`.
+
+### Delete era
+
+`deleteEra` removes **only the marker events** (the `isEraStart`/`isEraEnd` rows). Normal events that happen to fall within the era band are unaffected — they will simply no longer be grouped under that era label on the timeline.
+
+### Cache invalidation
+
+Every era mutation calls:
+```ts
+revalidatePath("/timeline");
+revalidateTag("timeline");
+revalidatePath(`/${publisherSlug}/events`);
+```
+
 ## Related articles
 
 Events can be linked to articles from the same publisher via the `eventArticles` table. The `createEvent`/`updateEvent` actions accept a `relatedArticleSlugs` form field (comma-separated slugs). `setEventArticleLinks()` replaces all existing links atomically.
