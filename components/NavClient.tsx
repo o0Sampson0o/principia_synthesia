@@ -3,6 +3,9 @@
 import Link from "next/link"
 import type { SessionPayload } from "@/lib/auth"
 import { useNavMenu } from "@/components/useNavMenu"
+import NotificationsBell from "@/components/NotificationsBell"
+
+const NOTIFICATIONS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_NOTIFICATIONS === "true";
 
 export default function NavClient({ session }: { session: SessionPayload | null }) {
   const { open, setOpen, navPanelRef, hamburgerRef } = useNavMenu()
@@ -39,6 +42,7 @@ export default function NavClient({ session }: { session: SessionPayload | null 
               <Link href={`/${session.userSlug}`} className="themed-nav-link font-medium">
                 {session.userSlug}
               </Link>
+              {NOTIFICATIONS_ENABLED && <NotificationsBell />}
             </>
           )}
           {session ? (

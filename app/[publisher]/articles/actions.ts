@@ -6,8 +6,10 @@ import {
   revisions,
   categories,
   articleCategories,
+  orgMemberships,
+  publishers,
 } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
@@ -19,7 +21,11 @@ import {
   updateArticleSchema,
   deleteArticleSchema,
   restoreRevisionSchema,
+  markArticleVerifiedSchema,
 } from "@/lib/validations";
+import { createSnapshotIfPublished } from "@/lib/article-snapshots";
+import { syncArticleCitations } from "@/lib/citations-sync";
+import { notify, type ArticleCitedPayload } from "@/lib/notifications";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkMath from "remark-math";
@@ -56,6 +62,21 @@ export async function previewMdx(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Resolve notification recipients for an article owner.
+ * User-owned → [ownerUserId]. Org-owned → super_admin + admin userIds.
+ */
+async function resolveArticleAuthors(ownerType: string, ownerId: number): Promise<number[]> {
+  if (ownerType === "user") return [ownerId];
+  const members = await db
+    .select({ userId: orgMemberships.userId })
+    .from(orgMemberships)
+    .where(
+      sql`${orgMemberships.orgId} = ${ownerId} AND ${orgMemberships.role} IN ('super_admin', 'admin')`
+    );
+  return members.map((m) => m.userId);
+}
 
 async function resolvePublisherOrThrow(publisherSlug: string) {
   const pub = await resolvePublisher(publisherSlug);
@@ -119,6 +140,8 @@ export async function createArticle(publisherSlug: string, formData: FormData) {
   const categorySlugs = validated.categories?.split(",").filter(Boolean) ?? [];
   const parsed = parseFrontmatter(validated.content ?? "");
 
+  const isPublished = parsed.metadata.status === "published";
+
   const [article] = await db
     .insert(articles)
     .values({
@@ -129,10 +152,38 @@ export async function createArticle(publisherSlug: string, formData: FormData) {
       ownerType,
       ownerId,
       metadata: parsed.metadata,
+      ...(isPublished ? { lastVerifiedAt: new Date() } : {}),
     })
     .returning({ id: articles.id });
 
   await setArticleCategories(article.id, categorySlugs);
+
+  await createSnapshotIfPublished(article.id, {
+    title: validated.title,
+    summary: validated.summary ?? null,
+    content: validated.content ?? "",
+    metadata: parsed.metadata,
+  });
+
+  // Sync internal citations and notify newly-cited authors
+  {
+    const syncResult = await syncArticleCitations(article.id, validated.content ?? "");
+    if (syncResult.added.length > 0) {
+      for (const citedId of syncResult.added) {
+        const [citedRow] = await db.select({ ownerType: articles.ownerType, ownerId: articles.ownerId, slug: articles.slug }).from(articles).where(eq(articles.id, citedId)).limit(1);
+        if (!citedRow) continue;
+        const recipients = await resolveArticleAuthors(citedRow.ownerType, citedRow.ownerId);
+        const payload: ArticleCitedPayload = {
+          citingArticleId: article.id,
+          citingPublisherSlug: publisherSlug,
+          citingSlug: validated.slug,
+          citingTitle: validated.title,
+          citedSlug: citedRow.slug,
+        };
+        await Promise.all(recipients.map((uid) => notify(uid, "article_cited", payload).catch(() => {})));
+      }
+    }
+  }
 
   revalidatePath("/");
   revalidatePath(`/${publisherSlug}`);
@@ -187,6 +238,8 @@ export async function updateArticle(
     });
   }
 
+  const isPublishedUpdate = parsedFm.metadata.status === "published";
+
   await db
     .update(articles)
     .set({
@@ -196,10 +249,38 @@ export async function updateArticle(
       content: validated.content,
       metadata: parsedFm.metadata,
       updatedAt: new Date(),
+      ...(isPublishedUpdate ? { lastVerifiedAt: new Date() } : {}),
     })
     .where(eq(articles.id, validated.id));
 
   await setArticleCategories(validated.id, categorySlugs);
+
+  await createSnapshotIfPublished(validated.id, {
+    title: validated.title,
+    summary: validated.summary ?? null,
+    content: validated.content ?? "",
+    metadata: parsedFm.metadata,
+  });
+
+  // Sync internal citations and notify newly-cited authors
+  {
+    const syncResult = await syncArticleCitations(validated.id, validated.content ?? "");
+    if (syncResult.added.length > 0) {
+      for (const citedId of syncResult.added) {
+        const [citedRow] = await db.select({ ownerType: articles.ownerType, ownerId: articles.ownerId, slug: articles.slug }).from(articles).where(eq(articles.id, citedId)).limit(1);
+        if (!citedRow) continue;
+        const recipients = await resolveArticleAuthors(citedRow.ownerType, citedRow.ownerId);
+        const payload: ArticleCitedPayload = {
+          citingArticleId: validated.id,
+          citingPublisherSlug: publisherSlug,
+          citingSlug: validated.slug,
+          citingTitle: validated.title,
+          citedSlug: citedRow.slug,
+        };
+        await Promise.all(recipients.map((uid) => notify(uid, "article_cited", payload).catch(() => {})));
+      }
+    }
+  }
 
   if (current?.isInternal && current?.parentBookId) {
     // Find the book slug for the redirect
@@ -265,10 +346,23 @@ export async function restoreRevision(formData: FormData) {
   });
 
   const restoredFm = parseFrontmatter(revision.content ?? "");
+  const isRestoredPublished = restoredFm.metadata.status === "published";
   await db
     .update(articles)
-    .set({ content: revision.content, metadata: restoredFm.metadata, updatedAt: new Date() })
+    .set({
+      content: revision.content,
+      metadata: restoredFm.metadata,
+      updatedAt: new Date(),
+      ...(isRestoredPublished ? { lastVerifiedAt: new Date() } : {}),
+    })
     .where(eq(articles.id, validated.articleId));
+
+  await createSnapshotIfPublished(validated.articleId, {
+    title: article.title,
+    summary: article.summary ?? null,
+    content: revision.content ?? "",
+    metadata: restoredFm.metadata,
+  });
 
   if (article.isInternal && article.parentBookId) {
     const { books } = await import("@/db/schema");
@@ -306,4 +400,27 @@ export async function updateArticleContent(
   revalidatePath(`/${publisherSlug}/articles/${slug}/edit`);
 
   return { ok: true };
+}
+
+/**
+ * Mark an article as verified (resets the staleness clock).
+ * Only editors can call this.
+ */
+export async function markArticleVerified(
+  publisherSlug: string,
+  formData: FormData
+): Promise<void> {
+  await assertEditRights(publisherSlug);
+
+  const validated = markArticleVerifiedSchema.parse({
+    articleId: formData.get("articleId"),
+    publisherSlug: formData.get("publisherSlug") ?? publisherSlug,
+  });
+
+  await db
+    .update(articles)
+    .set({ lastVerifiedAt: new Date() })
+    .where(eq(articles.id, validated.articleId));
+
+  revalidatePath(`/${publisherSlug}`);
 }

@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/admin/cron/prune-views", "schedule": "0 3 * * 0" },
+    { "path": "/api/admin/cron/check-stale-articles", "schedule": "0 4 * * 1" }
+  ]
+}

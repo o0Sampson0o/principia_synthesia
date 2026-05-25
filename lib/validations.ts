@@ -578,3 +578,36 @@ export const deleteImageBodySchema = z.object({
       "Invalid blob path"
     ),
 });
+
+// ---------------------------------------------------------------------------
+// Feature 3: Article verification + notification schemas
+// ---------------------------------------------------------------------------
+
+export const markArticleVerifiedSchema = z.object({
+  articleId: z.coerce.number().int().positive(),
+  publisherSlug: z.string().min(1),
+});
+
+export const markNotificationReadSchema = z.object({
+  notificationId: z.coerce.number().int().positive(),
+});
+
+export const markAllNotificationsReadSchema = z.object({});
+
+// ---------------------------------------------------------------------------
+// Feature 5: Article forking schema
+// ---------------------------------------------------------------------------
+
+export const forkArticleSchema = z.object({
+  sourcePublisherSlug: z.string().min(1),
+  sourceArticleSlug: articleSlugSchema,
+});
+
+// ---------------------------------------------------------------------------
+// Feature 6: Internal citation slug schema
+// ---------------------------------------------------------------------------
+
+export const citationSlugSchema = z.string().regex(
+  /^[a-z0-9-]+\/article-[a-z0-9]+(?:-[a-z0-9]+)*$/,
+  "Citation slug must be 'publisher/article-slug'"
+);

@@ -8,6 +8,7 @@ import {
   unique,
   jsonb,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 // ---------------------------------------------------------------------------
@@ -158,10 +159,15 @@ export const articles = pgTable(
       .notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+    lastVerifiedAt: timestamp("last_verified_at").defaultNow(),
+    forkedFromId: integer("forked_from_id").references((): AnyPgColumn => articles.id, {
+      onDelete: "set null",
+    }),
   },
   (t) => [
     unique().on(t.ownerType, t.ownerId, t.slug),
     index("articles_owner_idx").on(t.ownerType, t.ownerId),
+    index("articles_forked_from_idx").on(t.forkedFromId),
   ]
 );
 
@@ -399,6 +405,9 @@ export const accessGrants = pgTable(
 /**
  * One row per article page render. No PII stored — just article + timestamp.
  * Indexed on (articleId, viewedAt) for the monthly aggregation query.
+ *
+ * Feature 4 adds referrer, referrerSource, and sessionId columns.
+ * Legacy rows keep NULLs for those columns.
  */
 export const articleViews = pgTable(
   "article_views",
@@ -408,8 +417,14 @@ export const articleViews = pgTable(
       .notNull()
       .references(() => articles.id, { onDelete: "cascade" }),
     viewedAt: timestamp("viewed_at").defaultNow().notNull(),
+    referrer: text("referrer"),              // raw Referer header, max 2000 chars
+    referrerSource: text("referrer_source"), // 'direct' | 'search' | 'social' | 'internal' | 'external'
+    sessionId: text("session_id"),           // 32-hex-char anonymous token, NULL for legacy rows
   },
-  (t) => [index("article_views_article_viewed_idx").on(t.articleId, t.viewedAt)]
+  (t) => [
+    index("article_views_article_viewed_idx").on(t.articleId, t.viewedAt),
+    index("article_views_article_session_idx").on(t.articleId, t.sessionId),
+  ]
 );
 
 // ---------------------------------------------------------------------------
@@ -488,4 +503,87 @@ export const eventArticles = pgTable(
       .references(() => articles.id, { onDelete: "cascade" }),
   },
   (t) => [unique().on(t.eventId, t.articleId)]
+);
+
+// ---------------------------------------------------------------------------
+// Article snapshots (publish-time immutable freeze; NOT the same as revisions)
+// ---------------------------------------------------------------------------
+
+/**
+ * Immutable publish-time snapshots of articles.
+ * Created when an article is saved with status === "published".
+ * Publicly addressable via /:publisher/articles/:slug?v=<shortHash>.
+ * Cascade-deletes with the parent article.
+ */
+export const articleSnapshots = pgTable(
+  "article_snapshots",
+  {
+    id: serial("id").primaryKey(),
+    articleId: integer("article_id")
+      .notNull()
+      .references(() => articles.id, { onDelete: "cascade" }),
+    contentHash: text("content_hash").notNull(), // full SHA-256 hex
+    shortHash: text("short_hash").notNull(),      // first 7 chars (denormalised)
+    title: text("title").notNull(),
+    summary: text("summary"),
+    content: text("content").notNull(),
+    metadata: jsonb("metadata").$type<ArticleMetadataShape>().notNull(),
+    publishedAt: timestamp("published_at").defaultNow().notNull(),
+  },
+  (t) => [
+    unique().on(t.articleId, t.contentHash),
+    index("article_snapshots_article_idx").on(t.articleId),
+    index("article_snapshots_short_hash_idx").on(t.articleId, t.shortHash),
+  ]
+);
+
+// ---------------------------------------------------------------------------
+// Notifications (in-app notification system)
+// ---------------------------------------------------------------------------
+
+/**
+ * In-app notifications for users. `type` is a free-text discriminant
+ * ('stale_article' | 'article_forked' | 'article_cited') to avoid
+ * migrations when adding new notification types.
+ */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("notifications_user_unread_idx").on(t.userId, t.readAt),
+    index("notifications_user_created_idx").on(t.userId, t.createdAt),
+  ]
+);
+
+// ---------------------------------------------------------------------------
+// Article citations (internal cross-article citation tracking)
+// ---------------------------------------------------------------------------
+
+/**
+ * Tracks <Cite slug="publisher/article-slug" /> references between articles.
+ * Rows are recomputed on every save — the old set is replaced atomically.
+ * Unique on (citingArticleId, citedArticleId) to deduplicate multiple <Cite>
+ * calls to the same target in one article.
+ */
+export const articleCitations = pgTable(
+  "article_citations",
+  {
+    id: serial("id").primaryKey(),
+    citingArticleId: integer("citing_article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+    citedArticleId: integer("cited_article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(), // 0-based order within the citing article
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    unique().on(t.citingArticleId, t.citedArticleId),
+    index("article_citations_citing_idx").on(t.citingArticleId),
+    index("article_citations_cited_idx").on(t.citedArticleId),
+  ]
 );

@@ -1,0 +1,176 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { markNotificationRead, markAllNotificationsRead } from "@/app/notifications/actions";
+
+type Notification = {
+  id: number;
+  type: string;
+  payload: Record<string, unknown>;
+  readAt: string | null;
+  createdAt: string;
+};
+
+function notificationHref(n: Notification): string {
+  const p = n.payload;
+  if (n.type === "stale_article") {
+    return `/${p.publisherSlug}/articles/${p.slug}`;
+  }
+  if (n.type === "article_forked") {
+    return `/${p.forkerPublisherSlug}/articles/${p.forkedArticleId}`;
+  }
+  if (n.type === "article_cited") {
+    return `/${p.citingPublisherSlug}/articles/${p.citingSlug}`;
+  }
+  return "/notifications";
+}
+
+function notificationLabel(n: Notification): string {
+  const p = n.payload;
+  if (n.type === "stale_article") {
+    return `"${p.title}" may be out of date`;
+  }
+  if (n.type === "article_forked") {
+    return `"${p.originalTitle}" was forked`;
+  }
+  if (n.type === "article_cited") {
+    return `"${p.citedSlug}" was cited in "${p.citingTitle}"`;
+  }
+  return n.type;
+}
+
+export default function NotificationsBell() {
+  const [count, setCount] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<Notification[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Fetch unread count on mount
+  useEffect(() => {
+    fetch("/api/notifications/unread-count")
+      .then((r) => r.json())
+      .then((d) => setCount(d.count ?? 0))
+      .catch(() => {});
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  async function handleOpen() {
+    setOpen((o) => !o);
+    if (!open && items.length === 0) {
+      setLoadingItems(true);
+      try {
+        const r = await fetch("/api/notifications/list");
+        if (r.ok) {
+          const d = await r.json();
+          setItems(d.notifications ?? []);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoadingItems(false);
+      }
+    }
+  }
+
+  if (typeof window === "undefined") return null;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={handleOpen}
+        aria-label="Notifications"
+        className="themed-nav-link relative flex items-center"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+        {count > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
+            {count > 9 ? "9+" : count}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Notifications"
+          className="absolute right-0 mt-2 w-80 themed-surface border themed-border rounded-lg shadow-lg z-50 overflow-hidden"
+        >
+          <div className="px-4 py-2 border-b themed-border flex items-center justify-between">
+            <span className="text-sm font-medium themed-heading">Notifications</span>
+            <form action={markAllNotificationsRead}>
+              <button type="submit" className="text-xs themed-link">
+                Mark all read
+              </button>
+            </form>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto">
+            {loadingItems ? (
+              <p className="px-4 py-3 text-sm themed-muted">Loading…</p>
+            ) : items.length === 0 ? (
+              <p className="px-4 py-3 text-sm themed-muted">No notifications.</p>
+            ) : (
+              items.slice(0, 10).map((n) => (
+                <div
+                  key={n.id}
+                  className={`flex items-start gap-2 px-4 py-3 border-b themed-border last:border-b-0 ${n.readAt ? "opacity-60" : ""}`}
+                >
+                  <Link
+                    href={notificationHref(n)}
+                    className="flex-1 text-sm themed-link leading-snug"
+                    onClick={() => setOpen(false)}
+                  >
+                    {notificationLabel(n)}
+                  </Link>
+                  {!n.readAt && (
+                    <form action={markNotificationRead}>
+                      <input type="hidden" name="notificationId" value={n.id} />
+                      <button type="submit" className="text-xs themed-muted hover:themed-link shrink-0">
+                        ✓
+                      </button>
+                    </form>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="px-4 py-2 border-t themed-border">
+            <Link href="/notifications" className="text-xs themed-link" onClick={() => setOpen(false)}>
+              View all notifications →
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

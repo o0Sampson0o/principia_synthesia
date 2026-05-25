@@ -1,0 +1,93 @@
+import { db } from "@/db";
+import { notifications } from "@/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type NotificationType = "stale_article" | "article_forked" | "article_cited";
+
+export type StaleArticlePayload = {
+  articleId: number;
+  slug: string;
+  publisherSlug: string;
+  title: string;
+};
+
+export type ArticleForkedPayload = {
+  forkedArticleId: number;
+  forkerPublisherSlug: string;
+  originalSlug: string;
+  originalTitle: string;
+};
+
+export type ArticleCitedPayload = {
+  citingArticleId: number;
+  citingPublisherSlug: string;
+  citingSlug: string;
+  citingTitle: string;
+  citedSlug: string;
+};
+
+export type NotificationPayload =
+  | StaleArticlePayload
+  | ArticleForkedPayload
+  | ArticleCitedPayload;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Insert a notification row for `userId`. No deduplication.
+ * Features 5 and 6 call this directly — every fork/citation is a discrete event.
+ */
+export async function notify(
+  userId: number,
+  type: NotificationType,
+  payload: NotificationPayload
+): Promise<void> {
+  await db.insert(notifications).values({
+    userId,
+    type,
+    payload: payload as Record<string, unknown>,
+  });
+}
+
+/**
+ * Insert a notification only when no unread notification with the same `type`
+ * and matching deduplication key already exists for this user.
+ *
+ * The cron (`check-stale-articles`) uses this so that a user is not spammed
+ * with repeated stale-article nudges until they read the first one.
+ */
+export async function notifyWithDedupe(
+  userId: number,
+  type: NotificationType,
+  payload: NotificationPayload,
+  dedupeKey: (p: NotificationPayload) => string
+): Promise<void> {
+  const key = dedupeKey(payload);
+
+  // Fetch existing unread notifications of this type for this user
+  const existing = await db
+    .select({ id: notifications.id, payload: notifications.payload })
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, type),
+        isNull(notifications.readAt)
+      )
+    );
+
+  // Check if any existing notification matches the dedupe key
+  for (const row of existing) {
+    if (dedupeKey(row.payload as NotificationPayload) === key) {
+      return; // already notified; skip
+    }
+  }
+
+  await notify(userId, type, payload);
+}
