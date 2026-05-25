@@ -76,7 +76,7 @@ describe("markNotificationRead", () => {
     const fd = makeFormData({ notificationId: "10" });
     const result = await markNotificationRead(fd);
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toBeUndefined();
     expect(mockUpdateSet).toHaveBeenCalledWith(
       expect.objectContaining({ readAt: expect.any(Date) })
     );
@@ -107,7 +107,7 @@ describe("markAllNotificationsRead", () => {
   it("updates all unread notifications for the session user", async () => {
     const result = await markAllNotificationsRead();
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toBeUndefined();
     expect(mockUpdate).toHaveBeenCalledTimes(1);
     expect(mockUpdateSet).toHaveBeenCalledWith(
       expect.objectContaining({ readAt: expect.any(Date) })

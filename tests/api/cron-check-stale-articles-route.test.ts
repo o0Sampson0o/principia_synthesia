@@ -17,10 +17,10 @@ vi.mock("@/db", () => ({
 
 // ─── notifications mock ───────────────────────────────────────────────────────
 
-const mockNotifyWithDedupe = vi.hoisted(() => vi.fn());
+const mockNotifyDigest = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/notifications", () => ({
-  notifyWithDedupe: mockNotifyWithDedupe,
+  notifyDigest: mockNotifyDigest,
 }));
 
 // ─── Drizzle-orm pass-through ─────────────────────────────────────────────────
@@ -80,7 +80,7 @@ describe("GET /api/admin/cron/check-stale-articles", () => {
     mockSelectFrom.mockReturnValue({ where: mockSelectFromWhere });
     mockSelect.mockReturnValue({ from: mockSelectFrom });
 
-    mockNotifyWithDedupe.mockResolvedValue(undefined);
+    mockNotifyDigest.mockResolvedValue(undefined);
 
     const req = new Request("http://localhost/api/admin/cron/check-stale-articles", {
       headers: { authorization: "Bearer test-secret" },
@@ -91,11 +91,15 @@ describe("GET /api/admin/cron/check-stale-articles", () => {
     expect(res.status).toBe(200);
     expect(body.checked).toBe(1);
     expect(body.notified).toBe(1);
-    expect(mockNotifyWithDedupe).toHaveBeenCalledWith(
+    expect(mockNotifyDigest).toHaveBeenCalledWith(
       42,
-      "stale_article",
-      expect.objectContaining({ articleId: 1, slug: "article-stale" }),
-      expect.any(Function)
+      "stale_articles_digest",
+      expect.objectContaining({
+        count: 1,
+        articles: expect.arrayContaining([
+          expect.objectContaining({ articleId: 1, slug: "article-stale" }),
+        ]),
+      })
     );
   });
 
@@ -110,6 +114,6 @@ describe("GET /api/admin/cron/check-stale-articles", () => {
 
     expect(body.checked).toBe(0);
     expect(body.notified).toBe(0);
-    expect(mockNotifyWithDedupe).not.toHaveBeenCalled();
+    expect(mockNotifyDigest).not.toHaveBeenCalled();
   });
 });

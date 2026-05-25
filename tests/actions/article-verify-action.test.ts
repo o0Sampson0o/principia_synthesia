@@ -106,7 +106,7 @@ describe("markArticleVerified", () => {
     const fd = makeFormData({ articleId: "5", publisherSlug: "alice" });
     const result = await markArticleVerified("alice", fd);
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toBeUndefined();
     expect(mockUpdate).toHaveBeenCalledTimes(1);
     expect(mockUpdateSet).toHaveBeenCalledWith(
       expect.objectContaining({ lastVerifiedAt: expect.any(Date) })
