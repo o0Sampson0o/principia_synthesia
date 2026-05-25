@@ -19,18 +19,18 @@ export default async function CategoriesIndexPage() {
   return (
     <main className="max-w-5xl mx-auto px-6 py-10">
       <header className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mb-2">
+        <h1 className="text-4xl font-bold tracking-tight themed-heading mb-2">
           Categories
         </h1>
-        <p className="text-sm text-zinc-400 dark:text-zinc-500">
+        <p className="text-sm themed-muted">
           {results.length} {results.length === 1 ? "category" : "categories"}
         </p>
       </header>
 
-      <hr className="border-zinc-200 dark:border-zinc-800 mb-8" />
+      <hr className="themed-border mb-8" />
 
       {results.length === 0 ? (
-        <p className="text-zinc-400 dark:text-zinc-500 text-sm">
+        <p className="themed-muted text-sm">
           No categories yet.
         </p>
       ) : (
@@ -41,10 +41,10 @@ export default async function CategoriesIndexPage() {
                 href={`/category/${c.slug}`}
                 className="flex items-baseline justify-between group py-1"
               >
-                <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200 group-hover:text-black dark:group-hover:text-white transition-colors">
+                <span className="text-sm font-medium themed-secondary group-hover:[color:var(--foreground)] transition-colors">
                   {c.name}
                 </span>
-                <span className="text-xs text-zinc-400 dark:text-zinc-500 ml-4 shrink-0">
+                <span className="text-xs themed-muted ml-4 shrink-0">
                   {c.articleCount} {c.articleCount === 1 ? "article" : "articles"}
                 </span>
               </Link>

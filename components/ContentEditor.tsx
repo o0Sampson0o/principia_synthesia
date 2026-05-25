@@ -148,7 +148,7 @@ export default forwardRef<ContentEditorRef, {
       <div className="grid grid-cols-2 gap-4 h-[760px]">
         <div className="flex flex-col">
           {toolbar && (
-            <div className="flex items-center justify-between px-2 py-1 mb-1 border rounded-t bg-zinc-50 dark:bg-zinc-900 border-b-0">
+            <div className="flex items-center justify-between px-2 py-1 mb-1 border themed-border rounded-t themed-surface border-b-0">
               <span className="text-xs themed-muted">MDX</span>
               <div className="flex items-center gap-2">{toolbar}</div>
             </div>
@@ -167,7 +167,7 @@ export default forwardRef<ContentEditorRef, {
           <button
             type="button"
             onClick={handleCompile}
-            className="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+            className="absolute top-2 right-2 text-xs px-2 py-1 rounded themed-muted-bg themed-muted themed-hover-foreground transition-colors"
             title="Force recompile preview"
           >
             Compile

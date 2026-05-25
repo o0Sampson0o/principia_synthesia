@@ -47,7 +47,7 @@ export default function CitationModal({ onClose, ...inputProps }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center themed-backdrop p-4"
       onClick={handleBackdrop}
     >
       <div
@@ -88,7 +88,7 @@ export default function CitationModal({ onClose, ...inputProps }: Props) {
 
         {/* Citation text */}
         <div className="px-5 py-4">
-          <pre className="text-xs themed-muted whitespace-pre-wrap break-all font-mono bg-black/5 dark:bg-white/5 rounded p-3 select-all">
+          <pre className="text-xs themed-muted whitespace-pre-wrap break-all themed-pre select-all">
             {citations[activeTab]}
           </pre>
         </div>

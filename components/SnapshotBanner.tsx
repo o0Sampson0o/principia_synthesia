@@ -23,7 +23,7 @@ export default function SnapshotBanner({
     <div className="mb-6 themed-surface border-l-4 border-yellow-400 px-4 py-3 text-sm">
       <p className="themed-heading font-medium">
         You are viewing version{" "}
-        <code className="font-mono text-xs bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded">
+        <code className="themed-inline-code">
           {shortHash}
         </code>{" "}
         — published {formatted}.

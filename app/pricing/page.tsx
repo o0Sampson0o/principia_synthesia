@@ -42,8 +42,8 @@ export default function PricingPage() {
   return (
     <main className="max-w-6xl mx-auto px-4 py-16">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-3 text-zinc-900 dark:text-zinc-100">Pricing</h1>
-        <p className="text-zinc-500 dark:text-zinc-400">Simple, transparent pricing.</p>
+        <h1 className="text-4xl font-bold mb-3 themed-heading">Pricing</h1>
+        <p className="themed-muted">Simple, transparent pricing.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -52,19 +52,19 @@ export default function PricingPage() {
             key={tier.name}
             className={`themed-card flex flex-col p-6 rounded-xl border${
               tier.name === "Pro"
-                ? " ring-2 ring-offset-2 ring-zinc-900 dark:ring-zinc-100"
+                ? " ring-2 ring-offset-2 ring-[color:var(--foreground)]"
                 : ""
             }`}
           >
-            <h2 className="text-xl font-bold mb-1 text-zinc-900 dark:text-zinc-100">{tier.name}</h2>
+            <h2 className="text-xl font-bold mb-1 themed-heading">{tier.name}</h2>
             <div className="flex items-baseline gap-1 mb-1">
-              <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{tier.price}</span>
+              <span className="text-3xl font-bold themed-heading">{tier.price}</span>
             </div>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-6">{tier.period}</p>
+            <p className="text-xs themed-muted mb-6">{tier.period}</p>
 
             <ul className="space-y-2 mb-8 flex-1">
               {tier.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                <li key={f} className="flex items-start gap-2 text-sm themed-secondary">
                   <span className="text-green-600 dark:text-green-400 font-semibold shrink-0">&#10003;</span>
                   {f}
                 </li>

@@ -45,7 +45,7 @@ export default function ArticleMetadataDisplay({
             <Link
               key={tag}
               href={`/search?tags=${encodeURIComponent(tag)}`}
-              className="text-xs px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 themed-muted hover:border-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+              className="themed-tag text-xs"
             >
               #{tag}
             </Link>
@@ -58,7 +58,7 @@ export default function ArticleMetadataDisplay({
             <Link
               key={cat.id}
               href={`/category/${cat.slug}`}
-              className="text-xs px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 themed-muted hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+              className="themed-category-pill"
             >
               {cat.name}
             </Link>

@@ -29,7 +29,7 @@ function renderFastMarkdown(source: string): string {
     .replace(/__(.+?)__/g, "<strong>$1</strong>")
     .replace(/_(.+?)_/g, "<em>$1</em>")
     // Inline code
-    .replace(/`([^`]+)`/g, '<code class="text-sm bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono">$1</code>')
+    .replace(/`([^`]+)`/g, '<code class="themed-inline-code text-sm">$1</code>')
     // Links
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 dark:text-blue-400 underline underline-offset-2">$1</a>')
     // Line breaks
@@ -136,7 +136,7 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
           Failed to render content
         </p>
         <details>
-          <summary className="text-xs text-zinc-400 cursor-pointer hover:text-zinc-600 dark:hover:text-zinc-300">
+          <summary className="text-xs themed-muted cursor-pointer themed-hover-foreground">
             Error details
           </summary>
           <pre className="mt-2 text-xs text-red-500 dark:text-red-400 whitespace-pre-wrap font-mono">
@@ -157,7 +157,7 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
   }
 
   // Full MDX mode — server-rendered HTML, no new Function() in the browser
-  if (!previewHtml) return <p className="text-zinc-400 text-sm">Rendering...</p>;
+  if (!previewHtml) return <p className="themed-muted text-sm">Rendering...</p>;
 
   return (
     <div className="markdown-content">

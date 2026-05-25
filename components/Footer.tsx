@@ -4,7 +4,7 @@ export default function Footer() {
   return (
     <footer className="border-t themed-surface mt-auto">
       <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
-        <span className="text-zinc-500 dark:text-zinc-400">
+        <span className="themed-muted">
           &copy; {new Date().getFullYear()} Principia Synthesia
         </span>
         <div className="flex items-center gap-4">

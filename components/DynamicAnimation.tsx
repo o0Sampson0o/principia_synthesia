@@ -38,7 +38,7 @@ export default function DynamicAnimation({ publisher, slug }: DynamicAnimationPr
       <div className="mt-2 text-right">
         <Link
           href={`/${publisher}/objects/${slug}`}
-          className="text-xs text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
+          className="text-xs themed-muted themed-hover-foreground transition-colors"
         >
           View animation →
         </Link>

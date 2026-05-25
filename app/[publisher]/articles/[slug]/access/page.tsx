@@ -127,7 +127,7 @@ export default async function ArticleAccessPage({
                   "w-full text-left px-4 py-3 rounded-lg border transition-colors",
                   currentVisibility === v
                     ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 themed-heading"
-                    : "themed-surface themed-border hover:border-zinc-400 themed-secondary",
+                    : "themed-surface themed-border themed-hover-border themed-secondary",
                 ].join(" ")}
               >
                 <span className="font-medium capitalize">{v}</span>

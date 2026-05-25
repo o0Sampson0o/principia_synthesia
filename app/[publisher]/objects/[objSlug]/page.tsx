@@ -77,7 +77,7 @@ export default async function ObjectDetailPage({
             <thead>
               <tr>
                 {content.headers.map((h, i) => (
-                  <th key={i} className="border border-zinc-300 dark:border-zinc-600 px-3 py-2 text-left font-semibold bg-zinc-100 dark:bg-zinc-800">
+                  <th key={i} className="border themed-border px-3 py-2 text-left font-semibold themed-muted-bg">
                     {h}
                   </th>
                 ))}
@@ -85,9 +85,9 @@ export default async function ObjectDetailPage({
             </thead>
             <tbody>
               {content.rows.map((row, ri) => (
-                <tr key={ri} className="even:bg-zinc-50 dark:even:bg-zinc-900">
+                <tr key={ri} className="even:[background:var(--muted)]">
                   {row.map((cell, ci) => (
-                    <td key={ci} className="border border-zinc-300 dark:border-zinc-600 px-3 py-2">
+                    <td key={ci} className="border themed-border px-3 py-2">
                       {String(cell)}
                     </td>
                   ))}

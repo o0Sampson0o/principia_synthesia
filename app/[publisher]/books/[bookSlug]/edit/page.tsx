@@ -217,7 +217,7 @@ export default async function EditBookPage({
                     </span>
                     <span className="text-xs themed-muted">{ch.articleSlug}</span>
                     {ch.isInternal && (
-                      <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 themed-muted">
+                      <span className="ml-2 themed-badge">
                         internal
                       </span>
                     )}

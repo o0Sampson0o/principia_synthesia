@@ -107,7 +107,7 @@ export default function InsertImageButton({
           role="dialog"
           aria-modal="true"
           aria-label="Insert image"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center themed-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
         >
           <div className="themed-surface rounded-lg shadow-xl w-full max-w-2xl mx-4 p-6 space-y-4 max-h-[80vh] flex flex-col">
@@ -145,7 +145,7 @@ export default function InsertImageButton({
                         "rounded-md overflow-hidden border-2 text-left transition-colors",
                         selected?.pathname === img.pathname
                           ? "border-blue-500"
-                          : "border-transparent hover:border-zinc-300 dark:hover:border-zinc-600",
+                          : "border-transparent themed-hover-border",
                       ].join(" ")}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}

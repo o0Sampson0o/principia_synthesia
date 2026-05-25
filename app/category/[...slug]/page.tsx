@@ -83,7 +83,7 @@ export default async function CategoryPage({
         </p>
       </header>
 
-      <hr className="border-zinc-200 dark:border-zinc-800 mb-8" />
+      <hr className="themed-border mb-8" />
 
       {results.length === 0 ? (
         <p className="themed-muted text-sm">No articles in this category yet.</p>

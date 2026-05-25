@@ -32,7 +32,7 @@ export default function DiagramRenderer({ format, source }: Props) {
 
   // Unknown format — show raw source as fallback
   return (
-    <pre className="bg-zinc-50 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700 p-4 text-sm font-mono overflow-x-auto whitespace-pre-wrap">
+    <pre className="themed-pre text-sm whitespace-pre-wrap">
       {source}
     </pre>
   );

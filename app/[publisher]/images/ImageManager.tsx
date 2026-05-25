@@ -118,9 +118,9 @@ export default function ImageManager({ publisherSlug, initialImages }: Props) {
               return (
                 <div
                   key={img.pathname}
-                  className="themed-surface rounded-lg overflow-hidden border border-transparent hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
+                  className="themed-surface rounded-lg overflow-hidden border border-transparent themed-hover-border transition-colors"
                 >
-                  <div className="w-full h-40 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
+                  <div className="w-full h-40 themed-muted-bg flex items-center justify-center overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={img.url} alt={name} className="max-h-40 max-w-full object-cover" />
                   </div>

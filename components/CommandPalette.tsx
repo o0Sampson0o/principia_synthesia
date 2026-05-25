@@ -78,7 +78,7 @@ export default function CommandPalette() {
       role="dialog"
       aria-label="Command palette"
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
+      <div className="absolute inset-0 themed-backdrop" aria-hidden="true" />
       <div
         className="relative w-full max-w-xl mx-4 rounded-xl shadow-2xl overflow-hidden themed-surface border themed-border"
         onClick={(e) => e.stopPropagation()}

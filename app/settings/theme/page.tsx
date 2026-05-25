@@ -22,16 +22,16 @@ export default async function ThemeSettingsPage() {
   return (
     <main className="max-w-2xl mx-auto px-6 py-10">
       <header className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mb-2">
+        <h1 className="text-4xl font-bold tracking-tight themed-heading mb-2">
           Theme
         </h1>
-        <p className="text-sm text-zinc-400 dark:text-zinc-500">
+        <p className="text-sm themed-muted">
           Customize your light and dark mode colors. Changes apply immediately
           as a preview and save on click.
         </p>
       </header>
 
-      <hr className="border-zinc-200 dark:border-zinc-800 mb-8" />
+      <hr className="themed-border mb-8" />
 
       <ThemeEditor initialLight={lightTokens} initialDark={darkTokens} />
     </main>

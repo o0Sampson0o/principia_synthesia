@@ -35,7 +35,7 @@ export default class MdxErrorBoundary extends Component<Props, State> {
               Failed to render content
             </p>
             <details>
-              <summary className="text-xs text-zinc-400 cursor-pointer hover:text-zinc-600 dark:hover:text-zinc-300">
+              <summary className="text-xs themed-muted cursor-pointer themed-hover-foreground">
                 Error details
               </summary>
               <pre className="mt-2 text-xs text-red-500 dark:text-red-400 whitespace-pre-wrap font-mono">
