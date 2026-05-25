@@ -4,8 +4,9 @@ import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
 import { articles, articleCategories, categories, revisions } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import { updateArticle } from "../../actions";
+import DeleteArticleButton from "@/components/DeleteArticleButton";
 import ArticleEditorPanel from "@/components/ArticleEditorPanel";
 import CategoryPicker from "@/components/CategoryPicker";
 import RevisionHistory from "@/components/RevisionHistory";
@@ -37,7 +38,8 @@ export default async function EditArticlePage({
       and(
         eq(articles.slug, slug),
         eq(articles.ownerType, ownerType),
-        eq(articles.ownerId, ownerId)
+        eq(articles.ownerId, ownerId),
+        isNull(articles.deletedAt)
       )
     )
     .limit(1);
@@ -71,6 +73,7 @@ export default async function EditArticlePage({
         <h1 className="text-3xl font-bold themed-heading">Edit article</h1>
         <Link
           href={`/${publisherSlug}/articles/${slug}/access`}
+          data-tour="article-access-link"
           className="themed-btn-ghost text-sm px-3 py-1"
         >
           Access &amp; visibility
@@ -146,6 +149,15 @@ export default async function EditArticlePage({
           Save changes
         </button>
       </form>
+
+      <div className="mt-12 pt-6 border-t themed-border">
+        <h2 className="text-sm font-semibold text-red-600 dark:text-red-400 mb-3">Danger zone</h2>
+        <DeleteArticleButton
+          publisherSlug={publisherSlug}
+          articleId={article.id}
+          articleSlug={article.slug}
+        />
+      </div>
     </main>
   );
 }

@@ -15,9 +15,8 @@
 
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { orgMemberships } from "@/db/schema";
 import { sql } from "drizzle-orm";
-import { notifyDigest, type StaleArticleItem } from "@/lib/notifications";
+import { notifyDigest, resolveArticleAuthors, type StaleArticleItem } from "@/lib/notifications";
 
 type StaleRow = {
   id: number;
@@ -27,23 +26,6 @@ type StaleRow = {
   owner_id: number;
   publisher_slug: string;
 };
-
-async function resolveAuthors(
-  ownerType: string,
-  ownerId: number
-): Promise<number[]> {
-  if (ownerType === "user") {
-    return [ownerId];
-  }
-  // Org: notify super_admins and admins
-  const members = await db
-    .select({ userId: orgMemberships.userId })
-    .from(orgMemberships)
-    .where(
-      sql`${orgMemberships.orgId} = ${ownerId} AND ${orgMemberships.role} IN ('super_admin', 'admin')`
-    );
-  return members.map((m) => m.userId);
-}
 
 export async function GET(req: Request) {
   const expected = process.env.CRON_SECRET;
@@ -62,6 +44,7 @@ export async function GET(req: Request) {
       (a.owner_type = 'user' AND p.user_id = a.owner_id) OR
       (a.owner_type = 'org'  AND p.org_id  = a.owner_id)
     WHERE a.is_internal = false
+      AND a.deleted_at IS NULL
       AND a.metadata->>'status' = 'published'
       AND a.last_verified_at < NOW() - (${threshold}::int * INTERVAL '1 day')
   `);
@@ -71,7 +54,7 @@ export async function GET(req: Request) {
   // Group stale articles by recipient user ID so each author gets one digest.
   const byUser = new Map<number, StaleArticleItem[]>();
   for (const row of staleRows) {
-    const recipients = await resolveAuthors(row.owner_type, row.owner_id);
+    const recipients = await resolveArticleAuthors(row.owner_type, row.owner_id);
     const item: StaleArticleItem = {
       articleId: row.id,
       slug: row.slug,
