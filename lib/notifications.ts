@@ -1,18 +1,27 @@
 import { db } from "@/db";
 import { notifications } from "@/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type NotificationType = "stale_article" | "article_forked" | "article_cited";
+export type NotificationType =
+  | "stale_articles_digest"
+  | "article_forked"
+  | "article_cited";
 
-export type StaleArticlePayload = {
+export type StaleArticleItem = {
   articleId: number;
   slug: string;
   publisherSlug: string;
   title: string;
+};
+
+export type StaleArticlesDigestPayload = {
+  articles: StaleArticleItem[];
+  count: number;
 };
 
 export type ArticleForkedPayload = {
@@ -31,7 +40,7 @@ export type ArticleCitedPayload = {
 };
 
 export type NotificationPayload =
-  | StaleArticlePayload
+  | StaleArticlesDigestPayload
   | ArticleForkedPayload
   | ArticleCitedPayload;
 
@@ -90,4 +99,36 @@ export async function notifyWithDedupe(
   }
 
   await notify(userId, type, payload);
+}
+
+/**
+ * Upsert a digest notification: if an unread notification of this type already
+ * exists for the user, update its payload in-place. Otherwise insert a new row.
+ * Used by the stale-articles cron so authors get one summary instead of N individual nudges.
+ */
+export async function notifyDigest(
+  userId: number,
+  type: NotificationType,
+  payload: NotificationPayload
+): Promise<void> {
+  const [existing] = await db
+    .select({ id: notifications.id })
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, type),
+        isNull(notifications.readAt)
+      )
+    )
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(notifications)
+      .set({ payload: payload as Record<string, unknown>, createdAt: sql`NOW()` })
+      .where(eq(notifications.id, existing.id));
+  } else {
+    await notify(userId, type, payload);
+  }
 }

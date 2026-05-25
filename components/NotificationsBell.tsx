@@ -14,9 +14,7 @@ type Notification = {
 
 function notificationHref(n: Notification): string {
   const p = n.payload;
-  if (n.type === "stale_article") {
-    return `/${p.publisherSlug}/articles/${p.slug}`;
-  }
+  if (n.type === "stale_articles_digest") return "/notifications";
   if (n.type === "article_forked") {
     return `/${p.forkerPublisherSlug}/articles/${p.forkedArticleId}`;
   }
@@ -28,8 +26,9 @@ function notificationHref(n: Notification): string {
 
 function notificationLabel(n: Notification): string {
   const p = n.payload;
-  if (n.type === "stale_article") {
-    return `"${p.title}" may be out of date`;
+  if (n.type === "stale_articles_digest") {
+    const count = p.count as number;
+    return `${count} article${count === 1 ? "" : "s"} need verification`;
   }
   if (n.type === "article_forked") {
     return `"${p.originalTitle}" was forked`;

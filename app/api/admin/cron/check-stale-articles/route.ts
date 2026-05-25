@@ -17,7 +17,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { orgMemberships } from "@/db/schema";
 import { sql } from "drizzle-orm";
-import { notifyWithDedupe, type StaleArticlePayload } from "@/lib/notifications";
+import { notifyDigest, type StaleArticleItem } from "@/lib/notifications";
 
 type StaleRow = {
   id: number;
@@ -68,25 +68,27 @@ export async function GET(req: Request) {
 
   const staleRows = (result as unknown as { rows?: StaleRow[] }).rows ?? (result as unknown as StaleRow[]);
 
-  let notified = 0;
+  // Group stale articles by recipient user ID so each author gets one digest.
+  const byUser = new Map<number, StaleArticleItem[]>();
   for (const row of staleRows) {
     const recipients = await resolveAuthors(row.owner_type, row.owner_id);
+    const item: StaleArticleItem = {
+      articleId: row.id,
+      slug: row.slug,
+      publisherSlug: row.publisher_slug,
+      title: row.title,
+    };
     for (const userId of recipients) {
-      const payload: StaleArticlePayload = {
-        articleId: row.id,
-        slug: row.slug,
-        publisherSlug: row.publisher_slug,
-        title: row.title,
-      };
-      await notifyWithDedupe(
-        userId,
-        "stale_article",
-        payload,
-        (p) => `articleId:${(p as StaleArticlePayload).articleId}`
-      );
-      notified++;
+      const existing = byUser.get(userId) ?? [];
+      existing.push(item);
+      byUser.set(userId, existing);
     }
   }
 
-  return NextResponse.json({ checked: staleRows.length, notified });
+  // Send (or update) one digest notification per author.
+  for (const [userId, articles] of byUser) {
+    await notifyDigest(userId, "stale_articles_digest", { articles, count: articles.length });
+  }
+
+  return NextResponse.json({ checked: staleRows.length, notified: byUser.size });
 }
