@@ -65,7 +65,6 @@ export async function middleware(request: NextRequest) {
   }
 
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
-
   const csp = buildCsp(nonce);
 
   const requestHeaders = new Headers(request.headers);
@@ -73,6 +72,20 @@ export async function middleware(request: NextRequest) {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("content-security-policy", csp);
+
+  // Mint the anonymous analytics session cookie here in middleware so Server
+  // Components can read it without needing to write cookies themselves.
+  if (!request.cookies.get("aview_sid")) {
+    const sessionId = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("hex");
+    response.cookies.set("aview_sid", sessionId, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+    });
+  }
+
   return response;
 }
 
