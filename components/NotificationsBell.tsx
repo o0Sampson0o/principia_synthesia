@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import Link from "next/link";
 import { markNotificationRead, markAllNotificationsRead } from "@/app/notifications/actions";
 
@@ -16,7 +16,7 @@ function notificationHref(n: Notification): string {
   const p = n.payload;
   if (n.type === "stale_articles_digest") return "/notifications";
   if (n.type === "article_forked") {
-    return `/${p.forkerPublisherSlug}/articles/${p.forkedArticleId}`;
+    return `/${p.forkerPublisherSlug}/articles/${p.originalSlug}`;
   }
   if (n.type === "article_cited") {
     return `/${p.citingPublisherSlug}/articles/${p.citingSlug}`;
@@ -39,14 +39,16 @@ function notificationLabel(n: Notification): string {
   return n.type;
 }
 
+const NOW = () => new Date().toISOString();
+
 export default function NotificationsBell() {
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
 
-  // Fetch unread count on mount
   useEffect(() => {
     fetch("/api/notifications/unread-count")
       .then((r) => r.json())
@@ -54,7 +56,6 @@ export default function NotificationsBell() {
       .catch(() => {});
   }, []);
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     function handle(e: MouseEvent) {
@@ -84,7 +85,25 @@ export default function NotificationsBell() {
     }
   }
 
-  if (typeof window === "undefined") return null;
+  function handleMarkRead(id: number) {
+    const fd = new FormData();
+    fd.append("notificationId", String(id));
+    startTransition(async () => {
+      await markNotificationRead(fd);
+      setItems((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, readAt: NOW() } : n))
+      );
+      setCount((c) => Math.max(0, c - 1));
+    });
+  }
+
+  function handleMarkAllRead() {
+    startTransition(async () => {
+      await markAllNotificationsRead();
+      setItems((prev) => prev.map((n) => ({ ...n, readAt: n.readAt ?? NOW() })));
+      setCount(0);
+    });
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -125,11 +144,14 @@ export default function NotificationsBell() {
         >
           <div className="px-4 py-2 border-b themed-border flex items-center justify-between">
             <span className="text-sm font-medium themed-heading">Notifications</span>
-            <form action={markAllNotificationsRead}>
-              <button type="submit" className="text-xs themed-link">
-                Mark all read
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={handleMarkAllRead}
+              disabled={isPending || count === 0}
+              className="text-xs themed-link disabled:opacity-40"
+            >
+              Mark all read
+            </button>
           </div>
 
           <div className="max-h-72 overflow-y-auto">
@@ -151,12 +173,15 @@ export default function NotificationsBell() {
                     {notificationLabel(n)}
                   </Link>
                   {!n.readAt && (
-                    <form action={markNotificationRead}>
-                      <input type="hidden" name="notificationId" value={n.id} />
-                      <button type="submit" className="text-xs themed-muted hover:themed-link shrink-0">
-                        ✓
-                      </button>
-                    </form>
+                    <button
+                      type="button"
+                      onClick={() => handleMarkRead(n.id)}
+                      disabled={isPending}
+                      className="text-xs themed-muted hover:themed-link shrink-0 disabled:opacity-40"
+                      aria-label="Mark as read"
+                    >
+                      ✓
+                    </button>
                   )}
                 </div>
               ))

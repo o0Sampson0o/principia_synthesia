@@ -88,11 +88,12 @@ async function seed() {
   // Root admin — credentials from env (skip silently if not set)
   if (adminEmail && adminPassword) {
     await db.insert(users).values({
-      email:         adminEmail,
-      passwordHash:  await hash(adminPassword),
-      isRootAdmin:   true,
-      displayName:   "Principia Admin",
-      publisherSlug: "principia-official",
+      email:           adminEmail,
+      passwordHash:    await hash(adminPassword),
+      isRootAdmin:     true,
+      displayName:     "Principia Admin",
+      publisherSlug:   "principia-official",
+      emailVerifiedAt: new Date(),
     }).onConflictDoNothing();
     console.log(`  admin: ${adminEmail} (principia-official)`);
   } else {
@@ -102,11 +103,12 @@ async function seed() {
   // Demo viewer — credentials from env (skip silently if not set)
   if (viewerEmail && viewerPassword) {
     await db.insert(users).values({
-      email:         viewerEmail,
-      passwordHash:  await hash(viewerPassword),
-      isRootAdmin:   false,
-      displayName:   "Dr. Feynman",
-      publisherSlug: "dr-feynman",
+      email:           viewerEmail,
+      passwordHash:    await hash(viewerPassword),
+      isRootAdmin:     false,
+      displayName:     "Dr. Feynman",
+      publisherSlug:   "dr-feynman",
+      emailVerifiedAt: new Date(),
     }).onConflictDoNothing();
     console.log(`  viewer: ${viewerEmail} (dr-feynman)`);
   } else {
@@ -115,20 +117,22 @@ async function seed() {
 
   // Demo user 3 — fixed non-sensitive demo password
   await db.insert(users).values({
-    email:         "mit@example.com",
-    passwordHash:  await hash("MitOcw-demo-2026!"),
-    isRootAdmin:   false,
-    displayName:   "MIT OCW",
-    publisherSlug: "mit-ocw",
+    email:           "mit@example.com",
+    passwordHash:    await hash("MitOcw-demo-2026!"),
+    isRootAdmin:     false,
+    displayName:     "MIT OCW",
+    publisherSlug:   "mit-ocw",
+    emailVerifiedAt: new Date(),
   }).onConflictDoNothing();
 
   // Demo user 4 — fixed non-sensitive demo password
   await db.insert(users).values({
-    email:         "quantum@example.com",
-    passwordHash:  await hash("QuantumLab-demo-2026!"),
-    isRootAdmin:   false,
-    displayName:   "Quantum Lab",
-    publisherSlug: "quantum-lab",
+    email:           "quantum@example.com",
+    passwordHash:    await hash("QuantumLab-demo-2026!"),
+    isRootAdmin:     false,
+    displayName:     "Quantum Lab",
+    publisherSlug:   "quantum-lab",
+    emailVerifiedAt: new Date(),
   }).onConflictDoNothing();
 
   const adminRow    = adminEmail
@@ -2082,23 +2086,21 @@ $$`;
   // ── 22. Notifications ─────────────────────────────────────────────────────
   console.log("[seed] Seeding notifications...");
 
-  // Guard: use "stale_article" type as sentinel — if one already exists, skip all notification seeding.
+  // Guard: use "stale_articles_digest" type as sentinel — if one already exists, skip all notification seeding.
   // The article_forked notification was already inserted in section 21 above.
-  const existingStaleNotif = await db
+  const existingDigestNotif = await db
     .select({ id: notifications.id })
     .from(notifications)
-    .where(sql`${notifications.type} = 'stale_article'`)
+    .where(sql`${notifications.type} = 'stale_articles_digest'`)
     .limit(1);
 
-  if (existingStaleNotif.length === 0) {
-    const now = new Date();
-
-    // ── Notifications for admin user ──
+  if (existingDigestNotif.length === 0) {
     const staleThermodynamicsArt = artBySlug["article-thermodynamics-laws"];
     const staleSpecialRelArt     = artBySlug["article-special-relativity"];
     const staleAetherArt         = artBySlug["article-aether-theory"];
     const secretArtForNotif      = artBySlug["article-secret-formula"];
-    const feynmanPathArt         = feynmanRow
+
+    const feynmanPathArt = feynmanRow
       ? (await db.select().from(articles).where(
           and(
             eq(articles.ownerType, "user"),
@@ -2108,53 +2110,52 @@ $$`;
         ))[0]
       : null;
 
-    // stale_article notifications (unread — no readAt)
-    if (staleThermodynamicsArt) {
-      await db.insert(notifications).values({
-        userId:    adminRow.id,
-        type:      "stale_article",
-        payload:   {
-          articleId:     staleThermodynamicsArt.id,
-          slug:          "article-thermodynamics-laws",
-          publisherSlug: "principia-official",
-          title:         "Laws of Thermodynamics",
-        } satisfies Record<string, unknown>,
-        readAt:    null,
-        createdAt: daysAgo(5),
-      });
-    }
+    const feynmanQedArt = feynmanRow
+      ? (await db.select().from(articles).where(
+          and(
+            eq(articles.ownerType, "user"),
+            eq(articles.ownerId, feynmanRow.id),
+            eq(articles.slug, "article-qed-overview")
+          )
+        ))[0]
+      : null;
 
-    if (staleSpecialRelArt) {
+    // ── Admin: one stale_articles_digest (unread) with 3 stale articles ──
+    const adminStaleItems = [
+      staleThermodynamicsArt && {
+        articleId:     staleThermodynamicsArt.id,
+        slug:          "article-thermodynamics-laws",
+        publisherSlug: "principia-official",
+        title:         "Laws of Thermodynamics",
+      },
+      staleSpecialRelArt && {
+        articleId:     staleSpecialRelArt.id,
+        slug:          "article-special-relativity",
+        publisherSlug: "principia-official",
+        title:         "Special Relativity",
+      },
+      staleAetherArt && {
+        articleId:     staleAetherArt.id,
+        slug:          "article-aether-theory",
+        publisherSlug: "principia-official",
+        title:         "Luminiferous Aether (Archived)",
+      },
+    ].filter(Boolean);
+
+    if (adminStaleItems.length > 0) {
       await db.insert(notifications).values({
         userId:    adminRow.id,
-        type:      "stale_article",
+        type:      "stale_articles_digest",
         payload:   {
-          articleId:     staleSpecialRelArt.id,
-          slug:          "article-special-relativity",
-          publisherSlug: "principia-official",
-          title:         "Special Relativity",
+          articles: adminStaleItems,
+          count:    adminStaleItems.length,
         } satisfies Record<string, unknown>,
         readAt:    null,
         createdAt: daysAgo(3),
       });
     }
 
-    if (staleAetherArt) {
-      await db.insert(notifications).values({
-        userId:    adminRow.id,
-        type:      "stale_article",
-        payload:   {
-          articleId:     staleAetherArt.id,
-          slug:          "article-aether-theory",
-          publisherSlug: "principia-official",
-          title:         "Luminiferous Aether (Archived)",
-        } satisfies Record<string, unknown>,
-        readAt:    null,
-        createdAt: daysAgo(1),
-      });
-    }
-
-    // article_cited notification (read — has readAt)
+    // Admin: article_cited notification (read — exercises "read" state)
     if (staleSpecialRelArt && secretArtForNotif) {
       await db.insert(notifications).values({
         userId:    adminRow.id,
@@ -2166,39 +2167,42 @@ $$`;
           citingTitle:         "Secret Formula",
           citedSlug:           "article-special-relativity",
         } satisfies Record<string, unknown>,
-        readAt:    daysAgo(1), // read — exercises "read" state
+        readAt:    daysAgo(1),
         createdAt: daysAgo(2),
       });
     }
 
-    // ── Notifications for feynman user ──
+    // ── Feynman: one stale_articles_digest (unread) + article_cited (read) ──
     if (feynmanRow) {
-      const feynmanQedArt = (await db.select().from(articles).where(
-        and(
-          eq(articles.ownerType, "user"),
-          eq(articles.ownerId, feynmanRow.id),
-          eq(articles.slug, "article-qed-overview")
-        )
-      ))[0];
+      const feynmanStaleItems = [
+        feynmanPathArt && {
+          articleId:     feynmanPathArt.id,
+          slug:          "article-feynman-path-integral",
+          publisherSlug: "dr-feynman",
+          title:         "Feynman Path Integrals",
+        },
+        feynmanQedArt && {
+          articleId:     feynmanQedArt.id,
+          slug:          "article-qed-overview",
+          publisherSlug: "dr-feynman",
+          title:         "Quantum Electrodynamics",
+        },
+      ].filter(Boolean);
 
-      // 3 unread notifications for feynman
-      // (1) stale_article — path-integral article
-      if (feynmanPathArt) {
+      if (feynmanStaleItems.length > 0) {
         await db.insert(notifications).values({
           userId:    feynmanRow.id,
-          type:      "stale_article",
+          type:      "stale_articles_digest",
           payload:   {
-            articleId:     feynmanPathArt.id,
-            slug:          "article-feynman-path-integral",
-            publisherSlug: "dr-feynman",
-            title:         "Feynman Path Integrals",
+            articles: feynmanStaleItems,
+            count:    feynmanStaleItems.length,
           } satisfies Record<string, unknown>,
           readAt:    null,
           createdAt: daysAgo(10),
         });
       }
 
-      // (2) article_cited — someone cited QED overview
+      // article_cited — someone cited QED overview (unread)
       if (feynmanQedArt && secretArtForNotif) {
         await db.insert(notifications).values({
           userId:    feynmanRow.id,
@@ -2215,21 +2219,7 @@ $$`;
         });
       }
 
-      // (3) article_forked — the fork notification for feynman (admin forked their article — hypothetical reverse)
-      await db.insert(notifications).values({
-        userId:    feynmanRow.id,
-        type:      "stale_article",
-        payload:   {
-          articleId:     feynmanQedArt?.id ?? 0,
-          slug:          "article-qed-overview",
-          publisherSlug: "dr-feynman",
-          title:         "Quantum Electrodynamics",
-        } satisfies Record<string, unknown>,
-        readAt:    null,
-        createdAt: daysAgo(2),
-      });
-
-      // (1 read notification for feynman, for variety)
+      // article_cited — read (for variety)
       if (feynmanQedArt) {
         await db.insert(notifications).values({
           userId:    feynmanRow.id,
@@ -2247,7 +2237,7 @@ $$`;
       }
     }
 
-    console.log("  stale_article and article_cited notifications seeded (read + unread mix)");
+    console.log("  stale_articles_digest and article_cited notifications seeded (read + unread mix)");
   } else {
     console.log("  notifications already seeded — skipped");
   }

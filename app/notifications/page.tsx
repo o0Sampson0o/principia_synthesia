@@ -12,7 +12,7 @@ function notificationHref(n: Notification): string {
   const p = n.payload as Record<string, unknown>;
   if (n.type === "stale_articles_digest") return "/notifications";
   if (n.type === "article_forked") {
-    return `/${p.forkerPublisherSlug}/articles/${p.forkedArticleId}`;
+    return `/${p.forkerPublisherSlug}/articles/${p.originalSlug}`;
   }
   if (n.type === "article_cited") {
     return `/${p.citingPublisherSlug}/articles/${p.citingSlug}`;

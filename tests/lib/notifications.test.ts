@@ -27,7 +27,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   };
 });
 
-import { notify, notifyWithDedupe, type StaleArticlePayload } from "@/lib/notifications";
+import { notify, notifyWithDedupe, type StaleArticlesDigestPayload } from "@/lib/notifications";
 
 describe("notify", () => {
   beforeEach(() => {
@@ -37,20 +37,18 @@ describe("notify", () => {
   });
 
   it("inserts a notification row", async () => {
-    const payload: StaleArticlePayload = {
-      articleId: 42,
-      slug: "article-test",
-      publisherSlug: "alice",
-      title: "Test Article",
+    const payload: StaleArticlesDigestPayload = {
+      articles: [{ articleId: 42, slug: "article-test", publisherSlug: "alice", title: "Test Article" }],
+      count: 1,
     };
 
-    await notify(1, "stale_article", payload);
+    await notify(1, "stale_articles_digest", payload);
 
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockInsertValues).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 1,
-        type: "stale_article",
+        type: "stale_articles_digest",
         payload,
       })
     );
@@ -64,35 +62,30 @@ describe("notifyWithDedupe", () => {
     mockInsert.mockReturnValue({ values: mockInsertValues });
   });
 
-  const payload: StaleArticlePayload = {
-    articleId: 99,
-    slug: "article-stale",
-    publisherSlug: "bob",
-    title: "Stale Article",
+  const payload: StaleArticlesDigestPayload = {
+    articles: [{ articleId: 99, slug: "article-stale", publisherSlug: "bob", title: "Stale Article" }],
+    count: 1,
   };
 
   it("inserts when no existing unread notification matches the dedupe key", async () => {
-    // Select returns no existing notifications
-    // db.select().from().where() resolves directly (Drizzle promise)
     mockSelectFromWhere.mockResolvedValue([]);
     mockSelectFrom.mockReturnValue({ where: mockSelectFromWhere });
     mockSelect.mockReturnValue({ from: mockSelectFrom });
 
     await notifyWithDedupe(
       1,
-      "stale_article",
+      "stale_articles_digest",
       payload,
-      (p) => `articleId:${(p as StaleArticlePayload).articleId}`
+      (p) => `digest:${(p as StaleArticlesDigestPayload).count}`
     );
 
     expect(mockInsert).toHaveBeenCalledTimes(1);
   });
 
   it("skips insert when matching unread notification already exists", async () => {
-    // Select returns an existing unread notification with same dedupe key
     const existingRow = {
       id: 5,
-      payload: { articleId: 99, slug: "article-stale", publisherSlug: "bob", title: "Stale Article" },
+      payload: { articles: [{ articleId: 99, slug: "article-stale", publisherSlug: "bob", title: "Stale Article" }], count: 1 },
     };
     mockSelectFromWhere.mockResolvedValue([existingRow]);
     mockSelectFrom.mockReturnValue({ where: mockSelectFromWhere });
@@ -100,9 +93,9 @@ describe("notifyWithDedupe", () => {
 
     await notifyWithDedupe(
       1,
-      "stale_article",
+      "stale_articles_digest",
       payload,
-      (p) => `articleId:${(p as StaleArticlePayload).articleId}`
+      (p) => `digest:${(p as StaleArticlesDigestPayload).count}`
     );
 
     expect(mockInsert).not.toHaveBeenCalled();
