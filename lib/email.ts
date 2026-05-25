@@ -14,29 +14,24 @@ function escapeHtml(s: string): string {
 }
 
 export async function sendEmail({ to, subject, html }: SendEmailOptions): Promise<void> {
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpFrom = process.env.SMTP_FROM ?? smtpUser;
+  const apiKey = process.env.RESEND_API_KEY;
 
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    console.log(`[email] Would send to ${to}: ${subject}`);
+  if (!apiKey) {
+    console.log(`[email] RESEND_API_KEY not set — would send to ${to}: ${subject}`);
     console.log(`[email] HTML preview: ${html.slice(0, 200)}…`);
     return;
   }
 
-  const nodemailer = await import("nodemailer");
-  const transport = nodemailer.createTransport({
-    host: smtpHost,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
+  const { Resend } = await import("resend");
+  const resend = new Resend(apiKey);
 
-  await transport.sendMail({ from: smtpFrom, to, subject, html });
+  const from = process.env.RESEND_FROM ?? "onboarding@resend.dev";
+
+  const { error } = await resend.emails.send({ from, to, subject, html });
+  if (error) {
+    console.error("[email] Resend error:", error);
+    throw new Error(`Failed to send email: ${error.message}`);
+  }
 }
 
 export function buildInvitationEmailHtml(opts: {
