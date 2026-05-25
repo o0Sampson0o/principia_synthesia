@@ -16,6 +16,9 @@ import DynamicAnimation from "@/components/DynamicAnimation";
 import ArticleImage from "@/components/ArticleImage";
 import MdxParagraph from "@/components/MdxParagraph";
 import { parseFrontmatter } from "@/lib/frontmatter";
+import { headers } from "next/headers";
+import { classifyReferrer } from "@/lib/analytics-source";
+import { getOrCreateSessionId } from "@/lib/analytics-session";
 
 export default async function ChapterPage({
   params,
@@ -55,8 +58,23 @@ export default async function ChapterPage({
   // Internal article: must belong to this book
   if (article.isInternal && article.parentBookId !== bookRow.id) notFound();
 
-  // Record view
-  db.insert(articleViews).values({ articleId: article.id }).catch(() => {});
+  // Record view with referrer + anonymous session ID (fire-and-forget; ignore errors)
+  {
+    const siteHost = new URL(
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://principia-synthesia.com"
+    ).host;
+    const [hdrs, sessionId] = await Promise.all([
+      headers(),
+      getOrCreateSessionId(),
+    ]);
+    const referrer = hdrs.get("referer");
+    db.insert(articleViews).values({
+      articleId: article.id,
+      referrer: referrer?.slice(0, 2000) ?? null,
+      referrerSource: classifyReferrer(referrer, siteHost),
+      sessionId,
+    }).catch(() => {});
+  }
 
   // Resolve the article's own publisher slug — it may differ from the book's
   // publisher when a cross-publisher article is added to the curriculum.
