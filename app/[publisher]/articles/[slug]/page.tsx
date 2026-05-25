@@ -418,7 +418,7 @@ export default async function ArticlePage({
 
       <BibliographySection orderedSlugs={orderedSlugs} resolved={resolvedCitations} />
 
-      <RelatedEvents articleId={article.id} publisherSlug={publisherSlug} />
+      <RelatedEvents articleId={article.id} />
 
       <ForksList forks={forksWithPublisher} totalCount={forksCount} />
     </main>

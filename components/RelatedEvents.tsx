@@ -1,14 +1,13 @@
 import { db } from "@/db";
-import { events, eventArticles } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { events, eventArticles, publishers } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import Link from "next/link";
 
 export default async function RelatedEvents({
   articleId,
-  publisherSlug,
 }: {
   articleId: number;
-  publisherSlug: string;
+  publisherSlug?: string;
 }) {
   const rows = await db
     .select({
@@ -17,9 +16,18 @@ export default async function RelatedEvents({
       title: events.title,
       eventDate: events.eventDate,
       category: events.category,
+      publisherSlug: publishers.slug,
     })
     .from(events)
     .innerJoin(eventArticles, eq(eventArticles.eventId, events.id))
+    .innerJoin(
+      publishers,
+      sql`(
+        (${events.ownerType} = 'user' AND ${publishers.userId} = ${events.ownerId} AND ${publishers.kind} = 'user')
+        OR
+        (${events.ownerType} = 'org' AND ${publishers.orgId} = ${events.ownerId} AND ${publishers.kind} = 'org')
+      )`
+    )
     .where(eq(eventArticles.articleId, articleId))
     .orderBy(events.eventDate)
     .limit(5);
@@ -33,7 +41,7 @@ export default async function RelatedEvents({
         {rows.map((e) => (
           <li key={e.id} className="space-y-0.5">
             <Link
-              href={`/${publisherSlug}/events/${e.slug}`}
+              href={`/${e.publisherSlug}/events/${e.slug}`}
               className="themed-link font-medium block"
             >
               {e.title}
