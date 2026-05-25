@@ -51,6 +51,9 @@ db/*seed*.ts
 /public/workbox-*.js.map
 /public/swe-worker-*.js
 
+# session logs
+docs/session-logs/
+
 # local config and tooling files
 CLAUDE.md
 AGENTS.md
