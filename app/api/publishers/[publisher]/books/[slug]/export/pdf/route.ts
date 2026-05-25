@@ -105,7 +105,7 @@ export async function GET(
   }
 
   const sortedEventSnapshot = [...publisherEvents]
-    .sort((a, b) => a.id - b.id)
+    .sort((a, b) => Number(a.id) - Number(b.id))
     .map((e) => ({ id: e.id, updatedAt: e.updatedAt?.toISOString() ?? null }));
 
   const contentHash = createHash("sha256")

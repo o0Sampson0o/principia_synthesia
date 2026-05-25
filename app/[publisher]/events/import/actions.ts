@@ -137,7 +137,7 @@ export async function confirmImport(
     isEraEnd: e.isEraEnd,
     eraName: e.eraName ?? null,
     recurrenceRule: e.recurrenceFrequency && e.recurrenceFrequency !== "none"
-      ? buildRruleString(e.recurrenceFrequency, e.recurrenceCount, e.recurrenceUntil)
+      ? buildRruleString(e.recurrenceFrequency, e.recurrenceCount, e.recurrenceUntil ? new Date(e.recurrenceUntil) : undefined)
       : null,
     ownerType,
     ownerId,

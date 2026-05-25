@@ -117,7 +117,7 @@ export function parseCsv(content: string): ParseResult {
 
 // ─── JSON parser ──────────────────────────────────────────────────────────────
 
-const jsonInputSchema = z.array(z.record(z.unknown())).max(5000);
+const jsonInputSchema = z.array(z.record(z.string(), z.unknown())).max(5000);
 
 export function parseJson(content: string): ParseResult {
   let parsed: unknown;

@@ -117,9 +117,9 @@ export default async function MembersPage({
     await updateOrgMemberRole(formData);
   }
 
-  async function sendInvite(_prevState: unknown, formData: FormData) {
+  async function sendInvite(formData: FormData) {
     "use server";
-    return inviteMember(publisherSlug, _prevState, formData);
+    await inviteMember(publisherSlug, null, formData);
   }
 
   async function cancelInvite(formData: FormData) {

@@ -169,7 +169,7 @@ export async function updateEra(
   }
 
   revalidateAll(publisherSlug);
-  return { success: true };
+  return { success: true } as const;
 }
 
 export async function deleteEra(

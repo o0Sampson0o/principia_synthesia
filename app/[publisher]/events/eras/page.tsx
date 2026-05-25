@@ -36,7 +36,6 @@ export default async function ErasPage({
       eraName: events.eraName,
       category: events.category,
       description: events.description,
-      publisherSlug: pub.slug,
     })
     .from(events)
     .where(and(eq(events.ownerType, ownerType), eq(events.ownerId, ownerId)));

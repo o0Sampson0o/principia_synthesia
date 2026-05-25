@@ -22,9 +22,7 @@ export async function loginAction(formData: FormData) {
   });
 
   const redirectRaw = formData.get("redirect");
-  const safeRedirect = isSafeRedirect(typeof redirectRaw === "string" ? redirectRaw : null)
-    ? redirectRaw
-    : null;
+  const safeRedirect = typeof redirectRaw === "string" && isSafeRedirect(redirectRaw) ? redirectRaw : null;
 
   const [row] = await db
     .select({
