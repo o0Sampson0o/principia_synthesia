@@ -3,13 +3,17 @@ import { signupAction } from "./actions";
 
 async function ErrorMessage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const params = await searchParams;
-  if (params.error === "email_taken") {
-    return <p className="text-sm text-red-500 mb-4">That email address is already in use.</p>;
-  }
-  if (params.error === "slug_taken") {
-    return <p className="text-sm text-red-500 mb-4">That publisher slug is already taken.</p>;
-  }
-  return null;
+  const messages: Record<string, string> = {
+    email_taken:    "That email address is already in use.",
+    slug_taken:     "That publisher slug is already taken.",
+    invalid_email:  "Please enter a valid email address.",
+    invalid_password: "Password must be at least 8 characters.",
+    invalid_displayName: "Display name is required.",
+    invalid_publisherSlug: "Slug must be 3–40 lowercase letters, numbers, or hyphens.",
+  };
+  const message = params.error ? messages[params.error] : null;
+  if (!message) return null;
+  return <p className="text-sm text-red-500 mb-4">{message}</p>;
 }
 
 export default async function SignupPage({

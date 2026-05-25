@@ -8,16 +8,28 @@ import { sendEmail, buildVerificationEmailHtml } from "@/lib/email";
 import { redirect } from "next/navigation";
 import { signupSchema } from "@/lib/validations";
 import { headers } from "next/headers";
+import { ZodError } from "zod";
 
 export async function signupAction(formData: FormData) {
-  const validated = signupSchema.parse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-    displayName: formData.get("displayName"),
-    publisherSlug: formData.get("publisherSlug"),
-  });
+  const rawEmail = (formData.get("email") as string | null)?.trim().toLowerCase() ?? "";
+  let validated: ReturnType<typeof signupSchema.parse>;
+  try {
+    validated = signupSchema.parse({
+      email: rawEmail,
+      password: formData.get("password"),
+      displayName: formData.get("displayName"),
+      publisherSlug: formData.get("publisherSlug"),
+    });
+  } catch (err) {
+    if (err instanceof ZodError) {
+      const first = err.issues[0];
+      const field = String(first?.path[0] ?? "input");
+      redirect(`/signup?error=invalid_${field}`);
+    }
+    throw err;
+  }
 
-  const emailNormalized = validated.email.toLowerCase().trim();
+  const emailNormalized = validated.email;
 
   // Check email uniqueness
   const existingUser = await db

@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { verifyPassword, setSessionCookie } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { loginSchema } from "@/lib/validations";
+import { ZodError } from "zod";
 
 function isSafeRedirect(path: string | null): path is string {
   if (!path) return false;
@@ -16,10 +17,16 @@ function isSafeRedirect(path: string | null): path is string {
 }
 
 export async function loginAction(formData: FormData) {
-  const validated = loginSchema.parse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
+  let validated: ReturnType<typeof loginSchema.parse>;
+  try {
+    validated = loginSchema.parse({
+      email: (formData.get("email") as string | null)?.trim().toLowerCase() ?? "",
+      password: formData.get("password"),
+    });
+  } catch (err) {
+    if (err instanceof ZodError) redirect("/login?error=invalid");
+    throw err;
+  }
 
   const redirectRaw = formData.get("redirect");
   const safeRedirect = typeof redirectRaw === "string" && isSafeRedirect(redirectRaw) ? redirectRaw : null;
@@ -33,7 +40,7 @@ export async function loginAction(formData: FormData) {
       userSlug: users.publisherSlug,
     })
     .from(users)
-    .where(eq(users.email, validated.email.toLowerCase().trim()))
+    .where(eq(users.email, validated.email))
     .limit(1);
 
   if (!row) {
