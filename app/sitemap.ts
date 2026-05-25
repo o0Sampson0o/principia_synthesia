@@ -28,7 +28,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       and(
         eq(articles.isInternal, false),
         sql`${articles.metadata}->>'status' = 'published'`,
-        or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
+        or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public")),
+        isNull(articles.deletedAt)
       )
     )
 

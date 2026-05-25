@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { articles, articleCitations, publishers } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import { extractCitationSlugs } from "@/lib/citations-extract";
 
 export interface SyncResult {
@@ -38,7 +38,8 @@ async function resolveSlug(slug: string): Promise<number | null> {
       and(
         eq(articles.ownerType, ownerType),
         eq(articles.ownerId, ownerId),
-        eq(articles.slug, articleSlug)
+        eq(articles.slug, articleSlug),
+        isNull(articles.deletedAt)
       )
     )
     .limit(1);

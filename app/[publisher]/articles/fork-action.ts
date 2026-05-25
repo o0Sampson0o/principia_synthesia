@@ -1,31 +1,15 @@
 "use server";
 
 import { db } from "@/db";
-import { articles, orgMemberships } from "@/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { articles } from "@/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 import { requireSession } from "@/lib/auth";
 import { resolvePublisher } from "@/lib/publisher";
 import { canView } from "@/lib/access";
-import { notify, type ArticleForkedPayload } from "@/lib/notifications";
+import { notify, resolveArticleAuthors, type ArticleForkedPayload } from "@/lib/notifications";
 import { forkArticleSchema } from "@/lib/validations";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
-/**
- * Resolves the notification recipients for an article's owner.
- * User-owned article → [ownerUserId].
- * Org-owned article  → [super_admin and admin userIds of that org].
- */
-async function resolveAuthors(ownerType: string, ownerId: number): Promise<number[]> {
-  if (ownerType === "user") return [ownerId];
-  const members = await db
-    .select({ userId: orgMemberships.userId })
-    .from(orgMemberships)
-    .where(
-      sql`${orgMemberships.orgId} = ${ownerId} AND ${orgMemberships.role} IN ('super_admin', 'admin')`
-    );
-  return members.map((m) => m.userId);
-}
 
 /**
  * Generate a slug for the forked article that is unique within the forker's publisher.
@@ -86,7 +70,7 @@ export async function forkArticle(formData: FormData) {
   const sourceOwnerType = sourcePub.kind;
   const sourceOwnerId = (sourcePub.kind === "user" ? sourcePub.userId : sourcePub.orgId)!;
 
-  // Fetch source article
+  // Fetch source article (must not be soft-deleted)
   const [sourceArticle] = await db
     .select()
     .from(articles)
@@ -94,7 +78,8 @@ export async function forkArticle(formData: FormData) {
       and(
         eq(articles.ownerType, sourceOwnerType),
         eq(articles.ownerId, sourceOwnerId),
-        eq(articles.slug, sourceArticleSlug)
+        eq(articles.slug, sourceArticleSlug),
+        isNull(articles.deletedAt)
       )
     )
     .limit(1);
@@ -145,7 +130,7 @@ export async function forkArticle(formData: FormData) {
     .returning({ id: articles.id, slug: articles.slug });
 
   // Notify the source article's author(s)
-  const recipients = await resolveAuthors(sourceOwnerType, sourceOwnerId);
+  const recipients = await resolveArticleAuthors(sourceOwnerType, sourceOwnerId);
   const payload: ArticleForkedPayload = {
     forkedArticleId: forked.id,
     forkerPublisherSlug: forkerSlug,

@@ -56,7 +56,7 @@ export async function GET(
       content: articles.content,
     })
     .from(curriculumEntries)
-    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 

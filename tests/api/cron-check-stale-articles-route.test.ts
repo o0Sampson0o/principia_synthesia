@@ -18,9 +18,11 @@ vi.mock("@/db", () => ({
 // ─── notifications mock ───────────────────────────────────────────────────────
 
 const mockNotifyDigest = vi.hoisted(() => vi.fn());
+const mockResolveArticleAuthors = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/notifications", () => ({
   notifyDigest: mockNotifyDigest,
+  resolveArticleAuthors: mockResolveArticleAuthors,
 }));
 
 // ─── Drizzle-orm pass-through ─────────────────────────────────────────────────
@@ -75,10 +77,8 @@ describe("GET /api/admin/cron/check-stale-articles", () => {
       ],
     });
 
-    // db.select for resolveAuthors (org branch not hit for user owner)
-    mockSelectFromWhere.mockResolvedValue([]);
-    mockSelectFrom.mockReturnValue({ where: mockSelectFromWhere });
-    mockSelect.mockReturnValue({ from: mockSelectFrom });
+    // resolveArticleAuthors: user owner → returns [owner_id]
+    mockResolveArticleAuthors.mockResolvedValue([42]);
 
     mockNotifyDigest.mockResolvedValue(undefined);
 

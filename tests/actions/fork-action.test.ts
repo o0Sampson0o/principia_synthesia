@@ -43,9 +43,11 @@ vi.mock("@/lib/access", () => ({
 // ─── Notifications mock ───────────────────────────────────────────────────────
 
 const mockNotify = vi.hoisted(() => vi.fn());
+const mockResolveArticleAuthors = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/notifications", () => ({
   notify: mockNotify,
+  resolveArticleAuthors: mockResolveArticleAuthors,
 }));
 
 // ─── next/cache mock ──────────────────────────────────────────────────────────
@@ -146,6 +148,7 @@ describe("forkArticle", () => {
     setupSourcePublisher();
     mockCanView.mockResolvedValue(true);
     mockNotify.mockResolvedValue(undefined);
+    mockResolveArticleAuthors.mockResolvedValue([1]);
 
     // Calls in order:
     // 1. fetch source article → found
@@ -194,6 +197,7 @@ describe("forkArticle", () => {
     setupSourcePublisher();
     mockCanView.mockResolvedValue(true);
     mockNotify.mockResolvedValue(undefined);
+    mockResolveArticleAuthors.mockResolvedValue([1]);
 
     setupSelectQueue(
       // source article

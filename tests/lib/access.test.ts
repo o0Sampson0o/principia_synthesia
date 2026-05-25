@@ -116,6 +116,18 @@ describe("canView", () => {
     expect(result).toBe(false);
   });
 
+  it("private + session IS the content owner → true without checking grants", async () => {
+    // getVisibility returns private; ownership check short-circuits before getUserOrgIds
+    setupSelectQueue(mockSelect,[
+      { result: [{ visibility: "private" }], withLimit: true },
+    ]);
+    // userId: 10 matches ownerId: 10 in makeRef()
+    const result = await canView(makeRef(), makeUserSession(10));
+    expect(result).toBe(true);
+    // Only one DB query should have been issued (getVisibility); no grant queries
+    expect(mockSelect).toHaveBeenCalledTimes(1);
+  });
+
   it("org visibility + org-owned content + user is member → true", async () => {
     // 1. getVisibility → org
     // 2. getUserOrgIds → [{ orgId: 10 }]  (matches ownerId=10)
@@ -197,6 +209,39 @@ describe("filterVisible", () => {
 
     const result = await filterVisible(refs, null);
     expect(result).toHaveLength(2);
+  });
+
+  it("private ref owned by the session user → included without a grant row", async () => {
+    const refs = [
+      makeRef({ slug: "article-a" }),              // public
+      makeRef({ slug: "article-b", ownerId: 2 }), // private, owned by session user
+    ];
+
+    // Visibility query: article-b is private
+    mockSelect.mockImplementationOnce(() => {
+      const whereFn = vi.fn().mockResolvedValue([
+        {
+          resourceType: "article",
+          ownerType: "user",
+          ownerId: 2,
+          resourceKey: "article-b",
+          visibility: "private",
+        },
+      ]);
+      const fromFn = vi.fn().mockReturnValue({ where: whereFn });
+      return { from: fromFn };
+    });
+    // getUserOrgIds → [] (no org memberships)
+    mockSelect.mockImplementationOnce(() => {
+      const whereFn = vi.fn().mockResolvedValue([]);
+      const fromFn = vi.fn().mockReturnValue({ where: whereFn });
+      return { from: fromFn };
+    });
+
+    // session.userId = 2 matches article-b's ownerId = 2
+    const result = await filterVisible(refs, makeUserSession(2));
+    expect(result).toHaveLength(2);
+    expect(result.map((r) => r.slug)).toContain("article-b");
   });
 
   it("mix of public and private → only public returned when no session", async () => {

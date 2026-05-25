@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
 import { books, articles, curriculumEntries, articleViews, publishers } from "@/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, isNull } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
@@ -48,7 +48,7 @@ export default async function ChapterPage({
   const [entryRow] = await db
     .select({ article: articles })
     .from(curriculumEntries)
-    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
     .where(and(eq(curriculumEntries.bookId, bookRow.id), eq(articles.slug, chapterSlug)))
     .limit(1);
 
@@ -97,7 +97,7 @@ export default async function ChapterPage({
   const allEntries = await db
     .select({ articleSlug: articles.slug, position: curriculumEntries.position })
     .from(curriculumEntries)
-    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 

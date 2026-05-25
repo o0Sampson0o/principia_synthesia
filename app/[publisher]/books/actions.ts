@@ -9,14 +9,12 @@ import {
   bookSnapshotEntries,
   publishers,
 } from "@/db/schema";
-import { eq, asc, and } from "drizzle-orm";
+import { eq, asc, and, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth";
-import { canEditContent } from "@/lib/roles";
-import { resolvePublisher } from "@/lib/publisher";
 import { parseFrontmatter } from "@/lib/frontmatter";
 import { canView } from "@/lib/access";
+import { assertEditRights } from "@/app/[publisher]/articles/actions";
 import {
   createBookSchema,
   deleteBookSchema,
@@ -26,20 +24,7 @@ import {
   createInternalArticleSchema,
   addExternalArticleSchema,
 } from "@/lib/validations";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-async function assertEditRights(publisherSlug: string) {
-  const session = await requireSession();
-  const pub = await resolvePublisher(publisherSlug);
-  if (!pub) throw new Error("Publisher not found");
-  const ownerType = pub.kind === "user" ? "user" : "org";
-  const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
-  if (!(await canEditContent(session, ownerType, ownerId))) throw new Error("Forbidden");
-  return { session, pub, ownerType: ownerType as "user" | "org", ownerId };
-}
+import { resolvePublisher } from "@/lib/publisher";
 
 // ---------------------------------------------------------------------------
 // Book CRUD
@@ -123,7 +108,7 @@ export async function upsertCurriculumEntry(publisherSlug: string, formData: For
   const [art] = await db
     .select({ ownerType: articles.ownerType, ownerId: articles.ownerId })
     .from(articles)
-    .where(eq(articles.id, validated.articleId))
+    .where(and(eq(articles.id, validated.articleId), isNull(articles.deletedAt)))
     .limit(1);
   if (!art) throw new Error("Article not found");
   if (art.ownerType !== ownerType || art.ownerId !== ownerId) {
@@ -188,7 +173,7 @@ export async function addExternalArticle(
   const articleOwnerId =
     (targetPub.kind === "user" ? targetPub.userId : targetPub.orgId)!;
 
-  // 5. Find the article (non-internal only).
+  // 5. Find the article (non-internal, non-deleted only).
   const [article] = await db
     .select({ id: articles.id })
     .from(articles)
@@ -197,7 +182,8 @@ export async function addExternalArticle(
         eq(articles.ownerType, articleOwnerType),
         eq(articles.ownerId, articleOwnerId),
         eq(articles.slug, validated.articleSlug),
-        eq(articles.isInternal, false)
+        eq(articles.isInternal, false),
+        isNull(articles.deletedAt)
       )
     )
     .limit(1);
@@ -383,7 +369,7 @@ export async function snapshotBook(publisherSlug: string, bookId: number, note?:
       content: articles.content,
     })
     .from(curriculumEntries)
-    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
     .where(eq(curriculumEntries.bookId, bookId))
     .orderBy(asc(curriculumEntries.position));
 

@@ -40,7 +40,8 @@ export default async function HomePage() {
         eq(articles.isInternal, false),
         sql`${articles.metadata}->>'status' = 'published'`,
         sql`${articleViews.viewedAt} > NOW() - INTERVAL '30 days'`,
-        or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
+        or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public")),
+        isNull(articles.deletedAt)
       )
     )
     .groupBy(articles.id, articles.slug, articles.title, articles.summary)

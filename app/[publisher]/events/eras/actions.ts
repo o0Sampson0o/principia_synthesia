@@ -5,9 +5,7 @@ import { events } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth";
-import { canEditContent } from "@/lib/roles";
-import { resolvePublisher } from "@/lib/publisher";
+import { assertEditRights } from "@/app/[publisher]/articles/actions";
 import { eraToSlug } from "@/lib/timeline-utils";
 import {
   createEraSchema,
@@ -15,16 +13,6 @@ import {
   updateEraSchema,
   deleteEraSchema,
 } from "@/lib/validations";
-
-async function assertEditRights(publisherSlug: string) {
-  const session = await requireSession();
-  const pub = await resolvePublisher(publisherSlug);
-  if (!pub) throw new Error("Publisher not found");
-  const ownerType = pub.kind === "user" ? "user" : "org";
-  const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
-  if (!(await canEditContent(session, ownerType, ownerId))) throw new Error("Forbidden");
-  return { session, pub, ownerType: ownerType as "user" | "org", ownerId };
-}
 
 function revalidateAll(publisherSlug: string) {
   revalidatePath("/timeline");

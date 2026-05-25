@@ -4,23 +4,11 @@ import { db } from "@/db";
 import { events } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { requireSession } from "@/lib/auth";
-import { canEditContent } from "@/lib/roles";
-import { resolvePublisher } from "@/lib/publisher";
+import { assertEditRights } from "@/app/[publisher]/articles/actions";
 import { parseCsv, parseJson, fetchWikidata } from "@/lib/event-import";
 import { mergeEvents } from "@/lib/event-import-merge";
 import { bulkImportSourceSchema } from "@/lib/validations";
 import { buildRruleString } from "@/lib/recurrence";
-
-async function assertEditRights(publisherSlug: string) {
-  const session = await requireSession();
-  const pub = await resolvePublisher(publisherSlug);
-  if (!pub) throw new Error("Publisher not found");
-  const ownerType = pub.kind === "user" ? "user" : "org";
-  const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
-  if (!(await canEditContent(session, ownerType, ownerId))) throw new Error("Forbidden");
-  return { session, pub, ownerType: ownerType as "user" | "org", ownerId };
-}
 
 export interface ImportPreview {
   toInsert: number;

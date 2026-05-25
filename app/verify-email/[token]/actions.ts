@@ -1,6 +1,7 @@
 "use server";
 
 import { consumeVerificationToken } from "@/lib/auth";
+import { seedOnboardingArticle } from "@/lib/onboarding-seed";
 import { redirect } from "next/navigation";
 
 export async function confirmVerification(formData: FormData) {
@@ -13,6 +14,13 @@ export async function confirmVerification(formData: FormData) {
 
   if (!userId) {
     redirect("/login?verified=error");
+  }
+
+  // Best-effort seed — never block verification on a seed failure.
+  try {
+    await seedOnboardingArticle(userId);
+  } catch (err) {
+    console.error("[onboarding] seed failed for user", userId, err);
   }
 
   redirect("/login?verified=1");

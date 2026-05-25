@@ -611,3 +611,13 @@ export const citationSlugSchema = z.string().regex(
   /^[a-z0-9-]+\/article-[a-z0-9]+(?:-[a-z0-9]+)*$/,
   "Citation slug must be 'publisher/article-slug'"
 );
+
+// ---------------------------------------------------------------------------
+// Onboarding
+// ---------------------------------------------------------------------------
+
+export const completeOnboardingSchema = z.object({
+  outcome: z.enum(["completed", "skipped"]),
+});
+
+export const resetOnboardingSchema = z.object({}).optional();

@@ -55,6 +55,7 @@ export const users = pgTable("users", {
   emailVerifiedAt: timestamp("email_verified_at"),
   verificationTokenHash: text("verification_token_hash"),
   verificationTokenExpiresAt: timestamp("verification_token_expires_at"),
+  onboardingCompletedAt: timestamp("onboarding_completed_at"),
 });
 
 // ---------------------------------------------------------------------------
@@ -160,6 +161,7 @@ export const articles = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
     lastVerifiedAt: timestamp("last_verified_at").defaultNow(),
+    deletedAt: timestamp("deleted_at"),
     forkedFromId: integer("forked_from_id").references((): AnyPgColumn => articles.id, {
       onDelete: "set null",
     }),

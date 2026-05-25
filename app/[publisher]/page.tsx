@@ -4,7 +4,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { articles, books, objects, orgMemberships, events } from "@/db/schema";
-import { eq, and, desc, lt, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, lt, sql } from "drizzle-orm";
 import { filterVisible } from "@/lib/access";
 import MarkVerifiedForm from "@/components/MarkVerifiedForm";
 
@@ -58,7 +58,8 @@ export default async function PublisherProfilePage({
         and(
           eq(articles.ownerType, ownerType),
           eq(articles.ownerId, ownerId),
-          eq(articles.isInternal, false)
+          eq(articles.isInternal, false),
+          isNull(articles.deletedAt)
         )
       ),
     db
@@ -88,7 +89,8 @@ export default async function PublisherProfilePage({
           lt(
             articles.lastVerifiedAt,
             sql`NOW() - (${STALE_DAYS}::int * INTERVAL '1 day')`
-          )
+          ),
+          isNull(articles.deletedAt)
         )
       );
   }
@@ -138,7 +140,7 @@ export default async function PublisherProfilePage({
       {/* Action buttons for owner */}
       {isOwner && (
         <div className="flex flex-wrap gap-2 mb-8">
-          <Link href={`/${publisherSlug}/articles/new`} className="themed-btn-primary text-sm px-4 py-2">
+          <Link href={`/${publisherSlug}/articles/new`} data-tour="new-article-button" className="themed-btn-primary text-sm px-4 py-2">
             New article
           </Link>
           <Link href={`/${publisherSlug}/books/new`} className="themed-btn-primary text-sm px-4 py-2">
@@ -152,6 +154,9 @@ export default async function PublisherProfilePage({
           </Link>
           <Link href={`/${publisherSlug}/images`} className="themed-btn-ghost text-sm px-4 py-2">
             Images
+          </Link>
+          <Link href={`/${publisherSlug}/bin`} className="themed-btn-ghost text-sm px-4 py-2">
+            Bin
           </Link>
           {pub.kind === "org" && (
             <Link href={`/${publisherSlug}/members`} className="themed-btn-ghost text-sm px-4 py-2">

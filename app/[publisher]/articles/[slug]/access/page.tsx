@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
 import { articles, resourceVisibility, accessGrants, users, organizations } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { setArticleVisibility, addArticleGrant, removeArticleGrant } from "./actions";
 
@@ -29,7 +29,7 @@ export default async function ArticleAccessPage({
   const [article] = await db
     .select({ id: articles.id, title: articles.title })
     .from(articles)
-    .where(and(eq(articles.slug, slug), eq(articles.ownerType, ownerType), eq(articles.ownerId, ownerId)))
+    .where(and(eq(articles.slug, slug), eq(articles.ownerType, ownerType), eq(articles.ownerId, ownerId), isNull(articles.deletedAt)))
     .limit(1);
 
   if (!article) notFound();

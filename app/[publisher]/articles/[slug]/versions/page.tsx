@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -32,7 +32,8 @@ export default async function ArticleVersionsPage({
         and(
           eq(articles.slug, slug),
           eq(articles.ownerType, ownerType),
-          eq(articles.ownerId, ownerId)
+          eq(articles.ownerId, ownerId),
+          isNull(articles.deletedAt)
         )
       )
       .limit(1),

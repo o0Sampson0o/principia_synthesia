@@ -71,6 +71,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
         and(
           eq(articles.isInternal, false),
           ilike(articles.title, q),
+          isNull(articles.deletedAt),
           session?.isRootAdmin
             ? undefined
             : sql`${articles.metadata}->>'status' = 'published'`,

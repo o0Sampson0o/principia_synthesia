@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
 import { books, curriculumEntries, articles, publishers } from "@/db/schema";
-import { eq, and, asc, or, sql } from "drizzle-orm";
+import { eq, and, asc, isNull, or, sql } from "drizzle-orm";
 import Link from "next/link";
 import {
   updateBook,
@@ -80,7 +80,7 @@ export default async function EditBookPage({
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 
-  // Articles available to add (non-internal, owned by this publisher)
+  // Articles available to add (non-internal, non-deleted, owned by this publisher)
   const availableArticles = await db
     .select({ id: articles.id, slug: articles.slug, title: articles.title })
     .from(articles)
@@ -88,7 +88,8 @@ export default async function EditBookPage({
       and(
         eq(articles.ownerType, ownerType),
         eq(articles.ownerId, ownerId),
-        eq(articles.isInternal, false)
+        eq(articles.isInternal, false),
+        isNull(articles.deletedAt)
       )
     )
     .orderBy(asc(articles.title));

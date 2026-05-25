@@ -4,20 +4,8 @@ import { db } from "@/db";
 import { resourceVisibility, accessGrants } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { requireSession } from "@/lib/auth";
-import { canEditContent } from "@/lib/roles";
-import { resolvePublisher } from "@/lib/publisher";
+import { assertEditRights } from "@/app/[publisher]/articles/actions";
 import { z } from "zod";
-
-async function assertEditRights(publisherSlug: string) {
-  const session = await requireSession();
-  const pub = await resolvePublisher(publisherSlug);
-  if (!pub) throw new Error("Publisher not found");
-  const ownerType = pub.kind === "user" ? "user" : "org";
-  const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
-  if (!(await canEditContent(session, ownerType, ownerId))) throw new Error("Forbidden");
-  return { session, ownerType: ownerType as "user" | "org", ownerId };
-}
 
 export async function setEventVisibility(
   publisherSlug: string,

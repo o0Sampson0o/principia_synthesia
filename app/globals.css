@@ -408,3 +408,13 @@ body:has(dialog[open]) {
     align-items: center;
   }
 }
+
+/* Onboarding tour: target highlight ring + above-overlay z-index */
+.tour-highlight {
+  position: relative;
+  z-index: 50;
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 0.6),
+              0 0 0 9999px rgb(0 0 0 / 0.4);
+  border-radius: 6px;
+  transition: box-shadow 0.15s ease-out;
+}

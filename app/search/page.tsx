@@ -20,6 +20,7 @@ export default async function SearchPage({
 
   const conditions: ReturnType<typeof eq>[] = [
     eq(articles.isInternal, false) as unknown as ReturnType<typeof eq>,
+    isNull(articles.deletedAt) as unknown as ReturnType<typeof eq>,
   ];
 
   if (query) {

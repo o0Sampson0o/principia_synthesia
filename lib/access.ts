@@ -127,7 +127,8 @@ export async function canView(
     return orgIds.includes(ref.ownerId);
   }
 
-  // 'private'
+  // 'private' — owner can always view their own content
+  if (ref.ownerType === "user" && ref.ownerId === session.userId) return true;
   const orgIds = await getUserOrgIds(session.userId);
   return hasGrant(ref.type, ref.ownerType, ref.ownerId, ref.slug, session.userId, orgIds);
 }
@@ -242,6 +243,10 @@ export async function filterVisible<T extends ContentRef>(
     }
 
     for (const ref of privateRefs) {
+      if (ref.ownerType === "user" && ref.ownerId === session.userId) {
+        visible.push(ref);
+        continue;
+      }
       const grantKey = `${ref.ownerId}:${ref.slug}`;
       if (userGrantSet.has(grantKey) || orgGrantSet.has(grantKey)) {
         visible.push(ref);

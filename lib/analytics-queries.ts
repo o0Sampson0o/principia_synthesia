@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { articles, articleViews } from "@/db/schema";
-import { eq, and, gte, count, countDistinct, sql } from "drizzle-orm";
+import { eq, and, gte, count, countDistinct, isNull, sql } from "drizzle-orm";
 import type { ReferrerSource } from "@/lib/analytics-source";
 
 export interface ArticleStats {
@@ -29,7 +29,7 @@ export async function getPerArticleStats(
     .select({ id: articles.id, slug: articles.slug, title: articles.title })
     .from(articles)
     .where(
-      and(eq(articles.ownerType, ownerType), eq(articles.ownerId, ownerId))
+      and(eq(articles.ownerType, ownerType), eq(articles.ownerId, ownerId), isNull(articles.deletedAt))
     );
 
   if (articleRows.length === 0) return [];

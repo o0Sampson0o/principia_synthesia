@@ -3,7 +3,7 @@ import Link from "next/link";
 import { resolvePublisher } from "@/lib/publisher";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { filterVisible } from "@/lib/access";
@@ -30,7 +30,8 @@ export default async function PublisherArticlesPage({
       and(
         eq(articles.ownerType, ownerType),
         eq(articles.ownerId, ownerId),
-        eq(articles.isInternal, false)
+        eq(articles.isInternal, false),
+        isNull(articles.deletedAt)
       )
     );
 

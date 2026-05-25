@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { articles, books, curriculumEntries, publishers } from "@/db/schema";
-import { eq, asc, and } from "drizzle-orm";
+import { eq, asc, and, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { buildSyncBundle } from "@/lib/sync/build-sync-bundle";
 import { getSession } from "@/lib/auth";
@@ -48,7 +48,7 @@ export async function GET(
       updatedAt: articles.updatedAt,
     })
     .from(curriculumEntries)
-    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 

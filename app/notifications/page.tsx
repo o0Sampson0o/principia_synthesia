@@ -17,6 +17,9 @@ function notificationHref(n: Notification): string {
   if (n.type === "article_cited") {
     return `/${p.citingPublisherSlug}/articles/${p.citingSlug}`;
   }
+  if (n.type === "onboarding_example_article") {
+    return `/${p.publisherSlug}/articles/${p.slug}`;
+  }
   return "/";
 }
 
@@ -31,6 +34,9 @@ function notificationLabel(n: Notification): string {
   }
   if (n.type === "article_cited") {
     return `Your article "${p.citedSlug}" was cited in "${p.citingTitle}"`;
+  }
+  if (n.type === "onboarding_example_article") {
+    return `Welcome! Your example article "${p.title}" is ready.`;
   }
   return n.type;
 }

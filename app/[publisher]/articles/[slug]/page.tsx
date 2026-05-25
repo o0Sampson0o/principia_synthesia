@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { articles, categories, articleCategories, articleViews, publishers, users } from "@/db/schema";
-import { eq, and, count, desc } from "drizzle-orm";
+import { eq, and, count, desc, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { MDXRemote } from "next-mdx-remote/rsc";
@@ -63,7 +63,8 @@ export default async function ArticlePage({
         and(
           eq(articles.slug, slug),
           eq(articles.ownerType, ownerType),
-          eq(articles.ownerId, ownerId)
+          eq(articles.ownerId, ownerId),
+          isNull(articles.deletedAt)
         )
       )
       .limit(1),
@@ -160,7 +161,7 @@ export default async function ArticlePage({
         ownerId: articles.ownerId,
       })
       .from(articles)
-      .where(eq(articles.id, article.forkedFromId))
+      .where(and(eq(articles.id, article.forkedFromId), isNull(articles.deletedAt)))
       .limit(1);
 
     if (sourceRow) {
@@ -196,7 +197,7 @@ export default async function ArticlePage({
     db
       .select({ total: count(articles.id) })
       .from(articles)
-      .where(eq(articles.forkedFromId, article.id)),
+      .where(and(eq(articles.forkedFromId, article.id), isNull(articles.deletedAt))),
     db
       .select({
         id: articles.id,
@@ -206,7 +207,7 @@ export default async function ArticlePage({
         ownerId: articles.ownerId,
       })
       .from(articles)
-      .where(eq(articles.forkedFromId, article.id))
+      .where(and(eq(articles.forkedFromId, article.id), isNull(articles.deletedAt)))
       .orderBy(desc(articles.createdAt))
       .limit(FORKS_LIMIT),
   ]);
@@ -271,7 +272,8 @@ export default async function ArticlePage({
           and(
             eq(articles.ownerType, citeOwnerType),
             eq(articles.ownerId, citeOwnerId),
-            eq(articles.slug, citeArticleSlug)
+            eq(articles.slug, citeArticleSlug),
+            isNull(articles.deletedAt)
           )
         )
         .limit(1);

@@ -6,10 +6,8 @@ import {
   revisions,
   categories,
   articleCategories,
-  orgMemberships,
-  publishers,
 } from "@/db/schema";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
@@ -25,7 +23,7 @@ import {
 } from "@/lib/validations";
 import { createSnapshotIfPublished } from "@/lib/article-snapshots";
 import { syncArticleCitations } from "@/lib/citations-sync";
-import { notify, type ArticleCitedPayload } from "@/lib/notifications";
+import { notify, resolveArticleAuthors, type ArticleCitedPayload } from "@/lib/notifications";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkMath from "remark-math";
@@ -63,28 +61,13 @@ export async function previewMdx(
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Resolve notification recipients for an article owner.
- * User-owned → [ownerUserId]. Org-owned → super_admin + admin userIds.
- */
-async function resolveArticleAuthors(ownerType: string, ownerId: number): Promise<number[]> {
-  if (ownerType === "user") return [ownerId];
-  const members = await db
-    .select({ userId: orgMemberships.userId })
-    .from(orgMemberships)
-    .where(
-      sql`${orgMemberships.orgId} = ${ownerId} AND ${orgMemberships.role} IN ('super_admin', 'admin')`
-    );
-  return members.map((m) => m.userId);
-}
-
 async function resolvePublisherOrThrow(publisherSlug: string) {
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) throw new Error("Publisher not found");
   return pub;
 }
 
-async function assertEditRights(publisherSlug: string) {
+export async function assertEditRights(publisherSlug: string) {
   const session = await requireSession();
   const pub = await resolvePublisherOrThrow(publisherSlug);
   const ownerType = pub.kind === "user" ? "user" : "org";
@@ -163,7 +146,7 @@ export async function createArticle(publisherSlug: string, formData: FormData) {
     const syncResult = await syncArticleCitations(article.id, validated.content ?? "");
     if (syncResult.added.length > 0) {
       for (const citedId of syncResult.added) {
-        const [citedRow] = await db.select({ ownerType: articles.ownerType, ownerId: articles.ownerId, slug: articles.slug }).from(articles).where(eq(articles.id, citedId)).limit(1);
+        const [citedRow] = await db.select({ ownerType: articles.ownerType, ownerId: articles.ownerId, slug: articles.slug }).from(articles).where(and(eq(articles.id, citedId), isNull(articles.deletedAt))).limit(1);
         if (!citedRow) continue;
         const recipients = await resolveArticleAuthors(citedRow.ownerType, citedRow.ownerId);
         const payload: ArticleCitedPayload = {
@@ -188,7 +171,7 @@ export async function updateArticle(
   prevState: unknown,
   formData: FormData
 ) {
-  const { session } = await assertEditRights(publisherSlug);
+  const { session, ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   let validated: ReturnType<typeof updateArticleSchema.parse>;
   try {
@@ -220,7 +203,13 @@ export async function updateArticle(
   const [current] = await db
     .select()
     .from(articles)
-    .where(eq(articles.id, validated.id))
+    .where(
+      and(
+        eq(articles.id, validated.id),
+        eq(articles.ownerType, ownerType),
+        eq(articles.ownerId, ownerId)
+      )
+    )
     .limit(1);
 
   if (current?.content) {
@@ -244,7 +233,13 @@ export async function updateArticle(
       updatedAt: new Date(),
       ...(isPublishedUpdate ? { lastVerifiedAt: new Date() } : {}),
     })
-    .where(eq(articles.id, validated.id));
+    .where(
+      and(
+        eq(articles.id, validated.id),
+        eq(articles.ownerType, ownerType),
+        eq(articles.ownerId, ownerId)
+      )
+    );
 
   await setArticleCategories(validated.id, categorySlugs, session.userId);
 
@@ -260,7 +255,7 @@ export async function updateArticle(
     const syncResult = await syncArticleCitations(validated.id, validated.content ?? "");
     if (syncResult.added.length > 0) {
       for (const citedId of syncResult.added) {
-        const [citedRow] = await db.select({ ownerType: articles.ownerType, ownerId: articles.ownerId, slug: articles.slug }).from(articles).where(eq(articles.id, citedId)).limit(1);
+        const [citedRow] = await db.select({ ownerType: articles.ownerType, ownerId: articles.ownerId, slug: articles.slug }).from(articles).where(and(eq(articles.id, citedId), isNull(articles.deletedAt))).limit(1);
         if (!citedRow) continue;
         const recipients = await resolveArticleAuthors(citedRow.ownerType, citedRow.ownerId);
         const payload: ArticleCitedPayload = {
@@ -295,18 +290,27 @@ export async function updateArticle(
 }
 
 export async function deleteArticle(publisherSlug: string, formData: FormData) {
-  await assertEditRights(publisherSlug);
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = deleteArticleSchema.parse({
     id: formData.get("id"),
     slug: formData.get("slug"),
   });
 
-  await db.delete(articles).where(eq(articles.id, validated.id));
+  await db
+    .update(articles)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(
+        eq(articles.id, validated.id),
+        eq(articles.ownerType, ownerType),
+        eq(articles.ownerId, ownerId)
+      )
+    );
 
   revalidatePath("/");
   revalidatePath(`/${publisherSlug}`);
-  redirect(`/${publisherSlug}`);
+  redirect(`/${publisherSlug}/bin`);
 }
 
 export async function restoreRevision(formData: FormData) {
@@ -316,21 +320,28 @@ export async function restoreRevision(formData: FormData) {
     publisherSlug: formData.get("publisherSlug"),
   });
 
-  await assertEditRights(validated.publisherSlug);
-
-  const [revision] = await db
-    .select()
-    .from(revisions)
-    .where(eq(revisions.id, validated.revisionId))
-    .limit(1);
-  if (!revision) throw new Error("Revision not found");
+  const { ownerType: restoreOwnerType, ownerId: restoreOwnerId } = await assertEditRights(validated.publisherSlug);
 
   const [article] = await db
     .select()
     .from(articles)
-    .where(eq(articles.id, validated.articleId))
+    .where(
+      and(
+        eq(articles.id, validated.articleId),
+        eq(articles.ownerType, restoreOwnerType),
+        eq(articles.ownerId, restoreOwnerId),
+        isNull(articles.deletedAt)
+      )
+    )
     .limit(1);
   if (!article) throw new Error("Article not found");
+
+  const [revision] = await db
+    .select()
+    .from(revisions)
+    .where(and(eq(revisions.id, validated.revisionId), eq(revisions.articleId, validated.articleId)))
+    .limit(1);
+  if (!revision) throw new Error("Revision not found");
 
   await db.insert(revisions).values({
     articleId: validated.articleId,
@@ -348,7 +359,13 @@ export async function restoreRevision(formData: FormData) {
       updatedAt: new Date(),
       ...(isRestoredPublished ? { lastVerifiedAt: new Date() } : {}),
     })
-    .where(eq(articles.id, validated.articleId));
+    .where(
+      and(
+        eq(articles.id, validated.articleId),
+        eq(articles.ownerType, restoreOwnerType),
+        eq(articles.ownerId, restoreOwnerId)
+      )
+    );
 
   await createSnapshotIfPublished(validated.articleId, {
     title: article.title,
@@ -380,14 +397,21 @@ export async function updateArticleContent(
   slug: string,
   content: string
 ): Promise<{ ok: true }> {
-  await assertEditRights(publisherSlug);
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const parsed = parseFrontmatter(content);
 
   await db
     .update(articles)
     .set({ content, metadata: parsed.metadata, updatedAt: new Date() })
-    .where(eq(articles.slug, slug));
+    .where(
+      and(
+        eq(articles.slug, slug),
+        eq(articles.ownerType, ownerType),
+        eq(articles.ownerId, ownerId),
+        isNull(articles.deletedAt)
+      )
+    );
 
   revalidatePath(`/${publisherSlug}/articles/${slug}`);
   revalidatePath(`/${publisherSlug}/articles/${slug}/edit`);
@@ -413,7 +437,7 @@ export async function markArticleVerified(
   await db
     .update(articles)
     .set({ lastVerifiedAt: new Date() })
-    .where(eq(articles.id, validated.articleId));
+    .where(and(eq(articles.id, validated.articleId), isNull(articles.deletedAt)));
 
   revalidatePath(`/${publisherSlug}`);
 }

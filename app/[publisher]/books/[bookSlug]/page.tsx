@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
 import { books, articles, curriculumEntries, publishers } from "@/db/schema";
-import { eq, and, asc, or, sql } from "drizzle-orm";
+import { eq, and, asc, or, sql, isNull } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
@@ -44,7 +44,7 @@ export default async function BookPage({
       articlePublisherSlug: publishers.slug,
     })
     .from(curriculumEntries)
-    .innerJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
     .leftJoin(
       publishers,
       or(
