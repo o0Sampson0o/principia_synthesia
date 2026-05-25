@@ -8,7 +8,9 @@ Article content is stored as raw MDX and rendered server-side with `next-mdx-rem
 - `remark-gfm` — GitHub-flavored Markdown
 - `remarkWikilinks` (`lib/remark-wikilinks.ts`) — `[[publisher:type:slug]]` → `/:publisher/:type/:slug`. Supported types: `articles`, `books`, `objects`. Optional label: `[[publisher:type:slug|Display text]]`. Unrecognised patterns are left as literal text.
 
-The only MDX component available in articles is `<DynamicAnimation slug="..." />`.
+MDX components available in articles:
+- `<DynamicAnimation slug="..." />` — embeds a KAO animation iframe.
+- `<Cite slug="publisher/article-slug" />` — inline citation reference; see the Internal Citation Linking section below.
 
 **remark-math@6 display math:** Requires multi-line delimiters:
 ```
@@ -92,6 +94,44 @@ Internal articles belong exclusively to one book and are not discoverable outsid
 - `updateArticle()` and `restoreRevision()` redirect to `/:publisher/books/[bookSlug]/[slug]` after saving.
 
 **Cross-publisher entries:** The chapter page resolves the article via `curriculumEntries JOIN articles` filtered by `bookId` and slug — not by the book owner's publisher. This allows a book to include articles from a different publisher.
+
+## Article version snapshots
+
+Every time an article is saved with `status: "published"`, `lib/article-snapshots.ts` computes a SHA-256 hash of the content and inserts a row into `articleSnapshots` (deduped on `(articleId, contentHash)`, so saving identical content twice is a no-op). The `shortHash` (first 7 hex chars) is stored as a denormalised column for URL use.
+
+**Serving a snapshot:** Visiting `/:publisher/articles/:slug?v=<shortHash>` causes the article page to resolve the matching snapshot and render its frozen content instead of the live article. The `SnapshotBanner` component is shown at the top of the page, indicating this is an archived version and linking back to the live article.
+
+**Versions index:** `/:publisher/articles/:slug/versions` lists all snapshots for the article in chronological order. Each entry links to the `?v=<shortHash>` URL.
+
+**Hash resolution:** `getSnapshotByShortHash(articleId, shortHash)` matches using a `LIKE` prefix query. If zero or more than one snapshot matches the prefix, it returns `null` (safer to 404 than guess on ambiguity).
+
+## Citation generator (cite-this-article)
+
+Every public article page shows a "Cite this article" button (`CiteButton.tsx`), which opens `CitationModal.tsx`. The modal offers four formats — APA 7th edition, MLA 9th edition, Chicago 17th edition, and BibTeX — with a copy-to-clipboard button for each.
+
+Formatters live in `lib/citations.ts` (pure functions, no DB or server dependencies). The `CitationInput` type carries:
+- `authorDisplayName`, `authorPublisherSlug`
+- `title`
+- `publishedAt` — `updatedAt` of the live article, or `snapshot.publishedAt` when on a versioned URL
+- `url` — full canonical URL including `?v=…` when viewing a snapshot
+- `versionHash` — the short hash, or `null` for the live article
+- `accessedAt` — the request time
+
+The BibTeX key is derived as `<authorLastName><firstSlugWord><year>` (all lowercased, non-alphanumeric chars stripped).
+
+## Internal citation linking
+
+The `<Cite slug="publisher/article-slug" />` MDX component creates a numbered, hyperlinked footnote reference to another article on the platform.
+
+**Pipeline:**
+
+1. `lib/citations-extract.ts` — regex extraction of all `<Cite slug="…" />` occurrences from raw MDX.
+2. `lib/citations-sync.ts` — `syncArticleCitations(citingArticleId, mdx)` runs on every article save. It resolves each slug to an `articleId`, diffs the result against existing `articleCitations` rows, deletes removed rows, inserts added rows with a sequential `position` value, and returns `{ added, removed }` so the caller can send `"article_cited"` notifications for newly added citations. Unresolvable slugs and self-references are silently skipped. Duplicate `<Cite>` calls to the same target are deduplicated.
+3. `lib/remark-cite-numbering.ts` — a remark plugin (`remarkCiteNumbering`) that runs during MDX compilation. It walks the AST for `<Cite>` JSX elements and injects `number`, `resolvedTitle`, and `resolvedHref` props derived from the `slugToNumber` and `resolved` maps passed as options. This keeps `Cite.tsx` a pure presentational component with no runtime DB calls.
+4. `components/Cite.tsx` — renders the injected props as a superscript link (e.g., `[1]`).
+5. `components/BibliographySection.tsx` — renders the full bibliography list at the bottom of the article, aggregating all `<Cite>` references in document order.
+
+**Notification:** When `syncArticleCitations` returns newly added cited IDs, the article save action calls `notify(userId, "article_cited", payload)` for each cited article's author(s).
 
 ## Command palette
 

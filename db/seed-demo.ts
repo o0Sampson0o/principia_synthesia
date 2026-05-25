@@ -30,6 +30,7 @@
  *                  [[publisher:objects:slug]] (three-segment, publisher-scoped)
  */
 
+import { createHash } from "crypto";
 import { db } from "./index";
 import {
   users,
@@ -51,9 +52,12 @@ import {
   bookSnapshotEntries,
   events,
   eventArticles,
+  articleSnapshots,
+  notifications,
+  articleCitations,
 } from "./schema";
 import type { ArticleMetadataShape } from "./schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNotNull, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { PRESETS } from "../lib/theme";
 
@@ -553,7 +557,10 @@ $$
 
 See also: [[principia-official:articles:article-general-relativity]] for the relativistic extension.
 
-The Newtonian causal chain is visualised in [[principia-official:objects:object-newtonian-flow]].`,
+The Newtonian causal chain is visualised in [[principia-official:objects:object-newtonian-flow]].
+
+<Cite slug="principia-official/article-general-relativity" />
+<Cite slug="principia-official/article-maxwells-equations" />`,
     },
     {
       slug:    "article-general-relativity",
@@ -1764,6 +1771,534 @@ $$`,
       visibility:   "private",
     }).onConflictDoNothing();
     console.log("  event-principia-synthesia-launch-2025 → private (no grant — access denied path)");
+  }
+
+  // ── 18. Article Snapshots ─────────────────────────────────────────────────────
+  console.log("[seed] Seeding article snapshots...");
+
+  // Helper: create a snapshot row idempotently (onConflictDoNothing on articleId+contentHash)
+  async function seedSnapshot(
+    art: { id: number; title: string; summary: string | null; content: string | null; metadata: ArticleMetadataShape },
+    overrideContent?: string,
+    overridePublishedAt?: Date
+  ) {
+    const content = overrideContent ?? art.content ?? "";
+    const contentHash = createHash("sha256").update(content).digest("hex");
+    const shortHash = contentHash.slice(0, 7);
+    await db.insert(articleSnapshots).values({
+      articleId: art.id,
+      contentHash,
+      shortHash,
+      title: art.title,
+      summary: art.summary ?? null,
+      content,
+      metadata: art.metadata,
+      publishedAt: overridePublishedAt ?? new Date(),
+    }).onConflictDoNothing();
+    return shortHash;
+  }
+
+  // article-newtons-laws: 2 snapshots (one earlier version, one current)
+  const newtonsArtSnap = artBySlug["article-newtons-laws"];
+  if (newtonsArtSnap) {
+    const earlierContent = `---
+status: published
+tags: ["mechanics","classical-physics"]
+description: "Newton's three laws — first edition."
+canvas: null
+---
+
+# Newton's Laws of Motion
+
+## First Law
+
+An object at rest remains at rest unless acted upon by a net external force.
+
+## Second Law
+
+$$
+\\vec{F} = m\\vec{a}
+$$
+
+## Third Law
+
+Every action has an equal and opposite reaction.`;
+
+    const sh1 = await seedSnapshot(
+      { ...newtonsArtSnap, metadata: newtonsArtSnap.metadata as ArticleMetadataShape },
+      earlierContent,
+      daysAgo(30)
+    );
+    const sh2 = await seedSnapshot(
+      { ...newtonsArtSnap, metadata: newtonsArtSnap.metadata as ArticleMetadataShape },
+      undefined, // current content
+      daysAgo(2)
+    );
+    console.log(`  article-newtons-laws: 2 snapshots (${sh1}, ${sh2})`);
+  }
+
+  // Single snapshot for each of these published articles
+  const snapshotTargets = [
+    "article-general-relativity",
+    "article-maxwells-equations",
+    "article-thermodynamics-laws",
+    "article-special-relativity",
+  ];
+
+  for (const slug of snapshotTargets) {
+    const art = artBySlug[slug];
+    if (art) {
+      const sh = await seedSnapshot(
+        { ...art, metadata: art.metadata as ArticleMetadataShape },
+        undefined,
+        daysAgo(Math.floor(Math.random() * 20 + 1))
+      );
+      console.log(`  ${slug}: 1 snapshot (${sh})`);
+    }
+  }
+
+  // ── 19. Article Staleness (last_verified_at) ───────────────────────────────
+  console.log("[seed] Seeding article staleness dates...");
+
+  // Recent verifications (within 30 days) — stale banner should NOT show
+  const recentlyVerified = [
+    "article-newtons-laws",
+    "article-general-relativity",
+    "article-maxwells-equations",
+  ];
+
+  for (const slug of recentlyVerified) {
+    const art = artBySlug[slug];
+    if (art) {
+      await db
+        .update(articles)
+        .set({ lastVerifiedAt: daysAgo(Math.floor(Math.random() * 25 + 1)) })
+        .where(eq(articles.id, art.id));
+    }
+  }
+
+  // Old verifications (over 180 days ago) — stale banner SHOULD show
+  const staleArticles = [
+    "article-thermodynamics-laws",
+    "article-special-relativity",
+    "article-aether-theory",
+  ];
+
+  for (const slug of staleArticles) {
+    const art = artBySlug[slug];
+    if (art) {
+      await db
+        .update(articles)
+        .set({ lastVerifiedAt: daysAgo(Math.floor(Math.random() * 60 + 180)) })
+        .where(eq(articles.id, art.id));
+    }
+  }
+
+  // Null last_verified_at (never verified explicitly) for draft and review articles
+  for (const slug of ["article-quantum-mechanics-draft", "article-statistical-mechanics"]) {
+    const art = artBySlug[slug];
+    if (art) {
+      await db
+        .update(articles)
+        .set({ lastVerifiedAt: null })
+        .where(eq(articles.id, art.id));
+    }
+  }
+
+  console.log(
+    `  3 recently verified, 3 stale (>180 days), 2 never verified (null)`
+  );
+
+  // ── 20. Analytics — views with referrer columns ───────────────────────────
+  console.log("[seed] Seeding article views with referrer data...");
+
+  // Guard: only insert if no row already has a referrerSource set
+  const existingReferrerViews = await db
+    .select({ id: articleViews.id })
+    .from(articleViews)
+    .where(isNotNull(articleViews.referrerSource))
+    .limit(1);
+
+  if (existingReferrerViews.length === 0) {
+    // Deterministic fake session IDs (32 hex chars each)
+    const sessions = {
+      alice:   "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+      bob:     "b2c3d4e5f60718293a4b5c6d7e8f90a1",
+      carol:   "c3d4e5f60718293a4b5c6d7e8f90a1b2",
+      dave:    "d4e5f60718293a4b5c6d7e8f90a1b2c3",
+      eve:     "e5f60718293a4b5c6d7e8f90a1b2c3d4",
+    };
+
+    type ReferrerSource = "direct" | "search" | "social" | "internal" | "external";
+
+    const referrerViewConfig: Array<{
+      artSlug: string;
+      source: ReferrerSource;
+      referrer: string | null;
+      session: string;
+      daysBackMin: number;
+      daysBackMax: number;
+      count: number;
+    }> = [
+      // direct traffic
+      { artSlug: "article-newtons-laws",       source: "direct",   referrer: null,                                    session: sessions.alice, daysBackMin: 1,  daysBackMax: 7,  count: 4 },
+      { artSlug: "article-general-relativity", source: "direct",   referrer: null,                                    session: sessions.bob,   daysBackMin: 2,  daysBackMax: 10, count: 3 },
+      // search engine traffic
+      { artSlug: "article-newtons-laws",       source: "search",   referrer: "https://google.com/search?q=newton+laws",   session: sessions.carol, daysBackMin: 1,  daysBackMax: 14, count: 5 },
+      { artSlug: "article-special-relativity", source: "search",   referrer: "https://bing.com/search?q=special+relativity", session: sessions.dave,  daysBackMin: 3,  daysBackMax: 20, count: 3 },
+      { artSlug: "article-maxwells-equations", source: "search",   referrer: "https://duckduckgo.com/?q=maxwell+equations",  session: sessions.eve,   daysBackMin: 5,  daysBackMax: 25, count: 2 },
+      // social media traffic
+      { artSlug: "article-general-relativity", source: "social",   referrer: "https://twitter.com",                   session: sessions.alice, daysBackMin: 2,  daysBackMax: 15, count: 4 },
+      { artSlug: "article-thermodynamics-laws",source: "social",   referrer: "https://reddit.com/r/Physics",           session: sessions.bob,   daysBackMin: 1,  daysBackMax: 12, count: 3 },
+      { artSlug: "article-newtons-laws",       source: "social",   referrer: "https://linkedin.com",                  session: sessions.carol, daysBackMin: 4,  daysBackMax: 18, count: 2 },
+      // internal cross-link traffic
+      { artSlug: "article-general-relativity", source: "internal", referrer: "https://principia.dev/principia-official/articles/article-newtons-laws", session: sessions.dave,  daysBackMin: 1,  daysBackMax: 8,  count: 6 },
+      { artSlug: "article-maxwells-equations", source: "internal", referrer: "https://principia.dev/principia-official/books/book-classical-physics",  session: sessions.eve,   daysBackMin: 2,  daysBackMax: 10, count: 4 },
+      // external site referrals
+      { artSlug: "article-special-relativity", source: "external", referrer: "https://en.wikipedia.org/wiki/Special_relativity",  session: sessions.alice, daysBackMin: 3,  daysBackMax: 20, count: 3 },
+      { artSlug: "article-newtons-laws",       source: "external", referrer: "https://physicsclassroom.com/class/newtlaws", session: sessions.bob,   daysBackMin: 5,  daysBackMax: 25, count: 2 },
+    ];
+
+    const referrerViewRows: Array<{
+      articleId: number;
+      viewedAt: Date;
+      referrer: string | null;
+      referrerSource: string;
+      sessionId: string;
+    }> = [];
+
+    for (const cfg of referrerViewConfig) {
+      const art = allArtBySlug[cfg.artSlug];
+      if (!art) continue;
+      for (let i = 0; i < cfg.count; i++) {
+        const daysBack = cfg.daysBackMin + Math.floor(Math.random() * (cfg.daysBackMax - cfg.daysBackMin + 1));
+        referrerViewRows.push({
+          articleId:      art.id,
+          viewedAt:       daysAgo(daysBack),
+          referrer:       cfg.referrer,
+          referrerSource: cfg.source,
+          sessionId:      cfg.session,
+        });
+      }
+    }
+
+    if (referrerViewRows.length > 0) {
+      await db.insert(articleViews).values(referrerViewRows);
+      console.log(`  ${referrerViewRows.length} referrer-tagged view events inserted (covering all 5 sources)`);
+    }
+  } else {
+    console.log("  referrer-tagged article views already exist — skipped");
+  }
+
+  // ── 21. Article Forking ────────────────────────────────────────────────────
+  console.log("[seed] Seeding forked articles...");
+
+  const originalArtForFork = artBySlug["article-maxwells-equations"];
+
+  if (feynmanRow && originalArtForFork) {
+    // Build forked content: copy of original but mark as a fork
+    const forkedContent = `---
+status: draft
+tags: ["electromagnetism","waves","fork"]
+description: "Feynman's annotated fork of Maxwell's Equations — adds intuition notes."
+canvas: null
+---
+
+# Maxwell's Equations (Feynman's Notes)
+
+> This is a fork of [[principia-official:articles:article-maxwells-equations]] with added physical intuition.
+
+## Differential Form
+
+| Equation | Expression |
+|----------|------------|
+| Gauss (electric) | $\\nabla \\cdot \\mathbf{E} = \\rho/\\varepsilon_0$ |
+| Gauss (magnetic) | $\\nabla \\cdot \\mathbf{B} = 0$ |
+| Faraday | $\\nabla \\times \\mathbf{E} = -\\partial\\mathbf{B}/\\partial t$ |
+| Ampere-Maxwell | $\\nabla \\times \\mathbf{B} = \\mu_0\\mathbf{J} + \\mu_0\\varepsilon_0\\,\\partial\\mathbf{E}/\\partial t$ |
+
+## Physical Intuition (Feynman's Gloss)
+
+Gauss's law is about sources — charges create diverging electric field lines. Faraday's law is the heart of induction: a changing magnetic field *creates* an electric field. The Ampere-Maxwell correction ($\\mu_0\\varepsilon_0\\,\\partial\\mathbf{E}/\\partial t$) is what predicts electromagnetic waves even in vacuum.
+
+$$
+c = \\frac{1}{\\sqrt{\\mu_0\\varepsilon_0}}
+$$`;
+
+    await db.insert(articles).values({
+      slug:         "article-maxwells-equations",
+      title:        "Maxwell's Equations (Feynman's Notes)",
+      summary:      "Feynman's annotated fork of Maxwell's Equations with physical intuition.",
+      content:      forkedContent,
+      ownerType:    "user" as const,
+      ownerId:      feynmanRow.id,
+      isInternal:   false,
+      parentBookId: null,
+      forkedFromId: originalArtForFork.id,
+      metadata: {
+        status: "draft",
+        tags: ["electromagnetism", "waves", "fork"],
+        description: "Feynman's annotated fork of Maxwell's Equations — adds intuition notes.",
+        canvas: null,
+      } satisfies ArticleMetadataShape,
+      createdAt:      new Date(),
+      updatedAt:      new Date(),
+      lastVerifiedAt: null,
+    }).onConflictDoNothing();
+
+    const [forkedArt] = await db
+      .select()
+      .from(articles)
+      .where(
+        and(
+          eq(articles.ownerType, "user"),
+          eq(articles.ownerId, feynmanRow.id),
+          eq(articles.slug, "article-maxwells-equations")
+        )
+      );
+
+    if (forkedArt) {
+      console.log(
+        `  forked: dr-feynman/article-maxwells-equations (forkedFromId=${originalArtForFork.id})`
+      );
+
+      // Notification for the original author (admin) that their article was forked
+      if (adminRow) {
+        await db.insert(notifications).values({
+          userId:    adminRow.id,
+          type:      "article_forked",
+          payload:   {
+            forkedArticleId:     forkedArt.id,
+            forkerPublisherSlug: "dr-feynman",
+            originalSlug:        "article-maxwells-equations",
+            originalTitle:       "Maxwell's Equations",
+          } satisfies Record<string, unknown>,
+          createdAt: new Date(),
+        });
+      }
+    }
+  }
+
+  // ── 22. Notifications ─────────────────────────────────────────────────────
+  console.log("[seed] Seeding notifications...");
+
+  // Guard: use "stale_article" type as sentinel — if one already exists, skip all notification seeding.
+  // The article_forked notification was already inserted in section 21 above.
+  const existingStaleNotif = await db
+    .select({ id: notifications.id })
+    .from(notifications)
+    .where(sql`${notifications.type} = 'stale_article'`)
+    .limit(1);
+
+  if (existingStaleNotif.length === 0) {
+    const now = new Date();
+
+    // ── Notifications for admin user ──
+    const staleThermodynamicsArt = artBySlug["article-thermodynamics-laws"];
+    const staleSpecialRelArt     = artBySlug["article-special-relativity"];
+    const staleAetherArt         = artBySlug["article-aether-theory"];
+    const secretArtForNotif      = artBySlug["article-secret-formula"];
+    const feynmanPathArt         = feynmanRow
+      ? (await db.select().from(articles).where(
+          and(
+            eq(articles.ownerType, "user"),
+            eq(articles.ownerId, feynmanRow.id),
+            eq(articles.slug, "article-feynman-path-integral")
+          )
+        ))[0]
+      : null;
+
+    // stale_article notifications (unread — no readAt)
+    if (staleThermodynamicsArt) {
+      await db.insert(notifications).values({
+        userId:    adminRow.id,
+        type:      "stale_article",
+        payload:   {
+          articleId:     staleThermodynamicsArt.id,
+          slug:          "article-thermodynamics-laws",
+          publisherSlug: "principia-official",
+          title:         "Laws of Thermodynamics",
+        } satisfies Record<string, unknown>,
+        readAt:    null,
+        createdAt: daysAgo(5),
+      });
+    }
+
+    if (staleSpecialRelArt) {
+      await db.insert(notifications).values({
+        userId:    adminRow.id,
+        type:      "stale_article",
+        payload:   {
+          articleId:     staleSpecialRelArt.id,
+          slug:          "article-special-relativity",
+          publisherSlug: "principia-official",
+          title:         "Special Relativity",
+        } satisfies Record<string, unknown>,
+        readAt:    null,
+        createdAt: daysAgo(3),
+      });
+    }
+
+    if (staleAetherArt) {
+      await db.insert(notifications).values({
+        userId:    adminRow.id,
+        type:      "stale_article",
+        payload:   {
+          articleId:     staleAetherArt.id,
+          slug:          "article-aether-theory",
+          publisherSlug: "principia-official",
+          title:         "Luminiferous Aether (Archived)",
+        } satisfies Record<string, unknown>,
+        readAt:    null,
+        createdAt: daysAgo(1),
+      });
+    }
+
+    // article_cited notification (read — has readAt)
+    if (staleSpecialRelArt && secretArtForNotif) {
+      await db.insert(notifications).values({
+        userId:    adminRow.id,
+        type:      "article_cited",
+        payload:   {
+          citingArticleId:     secretArtForNotif.id,
+          citingPublisherSlug: "principia-official",
+          citingSlug:          "article-secret-formula",
+          citingTitle:         "Secret Formula",
+          citedSlug:           "article-special-relativity",
+        } satisfies Record<string, unknown>,
+        readAt:    daysAgo(1), // read — exercises "read" state
+        createdAt: daysAgo(2),
+      });
+    }
+
+    // ── Notifications for feynman user ──
+    if (feynmanRow) {
+      const feynmanQedArt = (await db.select().from(articles).where(
+        and(
+          eq(articles.ownerType, "user"),
+          eq(articles.ownerId, feynmanRow.id),
+          eq(articles.slug, "article-qed-overview")
+        )
+      ))[0];
+
+      // 3 unread notifications for feynman
+      // (1) stale_article — path-integral article
+      if (feynmanPathArt) {
+        await db.insert(notifications).values({
+          userId:    feynmanRow.id,
+          type:      "stale_article",
+          payload:   {
+            articleId:     feynmanPathArt.id,
+            slug:          "article-feynman-path-integral",
+            publisherSlug: "dr-feynman",
+            title:         "Feynman Path Integrals",
+          } satisfies Record<string, unknown>,
+          readAt:    null,
+          createdAt: daysAgo(10),
+        });
+      }
+
+      // (2) article_cited — someone cited QED overview
+      if (feynmanQedArt && secretArtForNotif) {
+        await db.insert(notifications).values({
+          userId:    feynmanRow.id,
+          type:      "article_cited",
+          payload:   {
+            citingArticleId:     secretArtForNotif.id,
+            citingPublisherSlug: "principia-official",
+            citingSlug:          "article-secret-formula",
+            citingTitle:         "Secret Formula",
+            citedSlug:           "article-qed-overview",
+          } satisfies Record<string, unknown>,
+          readAt:    null,
+          createdAt: daysAgo(4),
+        });
+      }
+
+      // (3) article_forked — the fork notification for feynman (admin forked their article — hypothetical reverse)
+      await db.insert(notifications).values({
+        userId:    feynmanRow.id,
+        type:      "stale_article",
+        payload:   {
+          articleId:     feynmanQedArt?.id ?? 0,
+          slug:          "article-qed-overview",
+          publisherSlug: "dr-feynman",
+          title:         "Quantum Electrodynamics",
+        } satisfies Record<string, unknown>,
+        readAt:    null,
+        createdAt: daysAgo(2),
+      });
+
+      // (1 read notification for feynman, for variety)
+      if (feynmanQedArt) {
+        await db.insert(notifications).values({
+          userId:    feynmanRow.id,
+          type:      "article_cited",
+          payload:   {
+            citingArticleId:     feynmanQedArt.id,
+            citingPublisherSlug: "dr-feynman",
+            citingSlug:          "article-qed-overview",
+            citingTitle:         "Quantum Electrodynamics",
+            citedSlug:           "article-feynman-path-integral",
+          } satisfies Record<string, unknown>,
+          readAt:    daysAgo(3),
+          createdAt: daysAgo(7),
+        });
+      }
+    }
+
+    console.log("  stale_article and article_cited notifications seeded (read + unread mix)");
+  } else {
+    console.log("  notifications already seeded — skipped");
+  }
+
+  // ── 23. Article Citations (articleCitations table) ────────────────────────
+  console.log("[seed] Seeding article citations...");
+
+  // Refresh the full article map now that the forked article has been inserted
+  const allArticlesRefreshed = await db.select().from(articles);
+  const allArtBySlugFinal = Object.fromEntries(allArticlesRefreshed.map((a) => [a.slug + "|" + a.ownerId, a]));
+
+  // Helper: get article by slug + ownerId
+  function getArt(slug: string, ownerId: number) {
+    return allArtBySlugFinal[slug + "|" + ownerId];
+  }
+
+  // Citation 1: article-newtons-laws cites article-general-relativity
+  //   (matches the <Cite slug="principia-official/article-general-relativity" /> added above)
+  const newtonsArtFinal = getArt("article-newtons-laws", adminRow.id);
+  const generalRelArtFinal = getArt("article-general-relativity", adminRow.id);
+  const maxwellsArtFinal = getArt("article-maxwells-equations", adminRow.id);
+
+  if (newtonsArtFinal && generalRelArtFinal) {
+    await db.insert(articleCitations).values({
+      citingArticleId: newtonsArtFinal.id,
+      citedArticleId:  generalRelArtFinal.id,
+      position:        0,
+    }).onConflictDoNothing();
+    console.log("  citation: article-newtons-laws → article-general-relativity (pos 0)");
+  }
+
+  // Citation 2: article-newtons-laws cites article-maxwells-equations
+  //   (matches the <Cite slug="principia-official/article-maxwells-equations" /> added above)
+  if (newtonsArtFinal && maxwellsArtFinal) {
+    await db.insert(articleCitations).values({
+      citingArticleId: newtonsArtFinal.id,
+      citedArticleId:  maxwellsArtFinal.id,
+      position:        1,
+    }).onConflictDoNothing();
+    console.log("  citation: article-newtons-laws → article-maxwells-equations (pos 1)");
+  }
+
+  // Citation 3: article-general-relativity cites article-special-relativity
+  const specialRelArtFinal = getArt("article-special-relativity", adminRow.id);
+  if (generalRelArtFinal && specialRelArtFinal) {
+    await db.insert(articleCitations).values({
+      citingArticleId: generalRelArtFinal.id,
+      citedArticleId:  specialRelArtFinal.id,
+      position:        0,
+    }).onConflictDoNothing();
+    console.log("  citation: article-general-relativity → article-special-relativity (pos 0)");
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────────

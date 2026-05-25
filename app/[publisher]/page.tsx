@@ -4,8 +4,11 @@ import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { articles, books, objects, orgMemberships, events } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, lt, sql } from "drizzle-orm";
 import { filterVisible } from "@/lib/access";
+import MarkVerifiedForm from "@/components/MarkVerifiedForm";
+
+const STALE_DAYS = Number(process.env.STALE_ARTICLE_DAYS ?? "180");
 
 export default async function PublisherProfilePage({
   params,
@@ -69,6 +72,26 @@ export default async function PublisherProfilePage({
       .orderBy(desc(events.eventDate))
       .limit(5),
   ]);
+
+  // Stale articles (only for the owner, for the sidebar nudge)
+  let staleArticles: Array<{ id: number; slug: string; title: string }> = [];
+  if (isOwner) {
+    staleArticles = await db
+      .select({ id: articles.id, slug: articles.slug, title: articles.title })
+      .from(articles)
+      .where(
+        and(
+          eq(articles.ownerType, ownerType),
+          eq(articles.ownerId, ownerId),
+          eq(articles.isInternal, false),
+          sql`${articles.metadata}->>'status' = 'published'`,
+          lt(
+            articles.lastVerifiedAt,
+            sql`NOW() - (${STALE_DAYS}::int * INTERVAL '1 day')`
+          )
+        )
+      );
+  }
 
   // Filter private resources for non-owner sessions.
   // Owners (including org members with edit rights and root admin) see everything.
@@ -234,6 +257,30 @@ export default async function PublisherProfilePage({
           </ul>
         )}
       </section>
+
+      {/* Stale articles nudge — visible only to the owner */}
+      {isOwner && staleArticles.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-xl font-semibold themed-heading mb-4">Stale Articles</h2>
+          <p className="text-sm themed-muted mb-4">
+            The following published articles have not been verified in over{" "}
+            {Math.round(STALE_DAYS / 30)} months. Consider reviewing and marking them as verified.
+          </p>
+          <ul className="space-y-3">
+            {staleArticles.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Link
+                  href={`/${publisherSlug}/articles/${a.slug}`}
+                  className="themed-link"
+                >
+                  {a.title}
+                </Link>
+                <MarkVerifiedForm publisherSlug={publisherSlug} articleId={a.id} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

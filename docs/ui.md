@@ -72,9 +72,21 @@ On drag end: `arrayMove` computes new order → local state updates immediately 
 
 `NavClient.tsx` renders a hamburger button (`aria-expanded`) on small viewports. The mobile menu panel closes automatically when the route changes — it calls `usePathname()` and resets the open state in a `useEffect` whenever `pathname` changes. This handles both link clicks and browser back/forward navigation.
 
+`NotificationsBell.tsx` is a client component rendered inside `NavClient.tsx` for authenticated users. It polls `GET /api/notifications/unread-count` on mount and displays an unread badge when `count > 0`. Clicking navigates to `/notifications`.
+
 ## Dialog CSS ownership
 
 All visual properties of native `<dialog>` elements (backdrop, border-radius, background, padding, shadow) are owned by `app/globals.css`, not Tailwind utilities. Tailwind classes on a `<dialog>` element are overridden by the browser's unlayered UA stylesheet, which outranks Tailwind's layered `@layer base` rules. The `.dialog-close-btn` class is also defined in `globals.css` for the same reason. Any new dialog styles must be added in `globals.css`.
+
+## Analytics dashboard
+
+The author analytics dashboard lives at `/:publisher/analytics/` (overview) and `/:publisher/analytics/[slug]/` (per-article drill-down). Access is gated to editors of the publisher via `canEditContent()`.
+
+Charts are rendered as inline SVG — no charting library dependency. DB queries are in `lib/analytics-queries.ts`.
+
+The dashboard consumes the `referrer`, `referrer_source`, and `session_id` columns on `articleViews`. Referrer classification uses `lib/analytics-source.ts` (`classifyReferrer(referrer, siteHost)`), which returns one of `"direct"` | `"search"` | `"social"` | `"internal"` | `"external"`. The anonymous session ID is minted by `lib/analytics-session.ts` (`getOrCreateSessionId()`), which sets or reads the `aview_sid` httpOnly, sameSite=lax cookie (30-day TTL, 32 hex chars).
+
+**`STALE_ARTICLE_DAYS` env var:** Controls how many days must pass since `last_verified_at` before an article is considered stale by the cron job. Defaults to `180` when unset. This is read exclusively by `GET /api/admin/cron/check-stale-articles`.
 
 ## Footer & Pricing page
 

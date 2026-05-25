@@ -2,7 +2,7 @@
 
 ## Public routes
 
-`/`, `/category`, `/category/:slug`, `/search`, `/organizations`, `/pricing`, `/login`, `/signup`, `/timeline`
+`/`, `/category`, `/category/:slug`, `/search`, `/organizations`, `/pricing`, `/login`, `/signup`, `/timeline`, `/notifications`
 
 ## Publisher routes (`/:publisher/`)
 
@@ -31,8 +31,27 @@ All content management is publisher-scoped. There is no `/admin/**` route struct
 | `/:publisher/events/[eventSlug]` | Event detail |
 | `/:publisher/events/[eventSlug]/edit` | Edit event |
 | `/:publisher/events/[eventSlug]/access` | Per-event visibility & grants |
+| `/:publisher/analytics` | Author analytics dashboard — overview across all articles |
+| `/:publisher/analytics/[slug]` | Per-article analytics drill-down with inline SVG charts |
+| `/:publisher/articles/[slug]/versions` | Version history index — lists all snapshots with `?v=<shortHash>` links |
 
 Root-admin-only logic is enforced inside server actions and pages via `requireRootAdmin()`.
+
+## Notification routes
+
+| Route | Purpose |
+|---|---|
+| `/notifications` | In-app notification inbox; requires authentication |
+| `/api/notifications/unread-count` | `GET` — returns `{ count: number }` for the current session (0 if unauthenticated). Used by `NotificationsBell` to poll the badge count. |
+
+## Cron routes
+
+| Route | Schedule | Auth |
+|---|---|---|
+| `GET /api/admin/cron/prune-views` | (pre-existing) | `Authorization: Bearer <CRON_SECRET>` |
+| `GET /api/admin/cron/check-stale-articles` | Weekly, Monday 04:00 UTC (`0 4 * * 1`) | `Authorization: Bearer <CRON_SECRET>` |
+
+`/api/admin/cron/check-stale-articles` finds published, non-internal articles whose `last_verified_at` is older than `STALE_ARTICLE_DAYS` days (default 180) and inserts `"stale_article"` notifications for their authors. For org-owned articles, `super_admin` and `admin` members are notified. Deduplication via `notifyWithDedupe` prevents re-sending while a prior unread stale notification exists.
 
 ## Middleware (`middleware.ts`)
 
