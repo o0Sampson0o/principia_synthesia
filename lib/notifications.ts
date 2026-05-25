@@ -1,7 +1,6 @@
 import { db } from "@/db";
-import { notifications } from "@/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
-import { sql } from "drizzle-orm";
+import { notifications, orgMemberships } from "@/db/schema";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -10,7 +9,8 @@ import { sql } from "drizzle-orm";
 export type NotificationType =
   | "stale_articles_digest"
   | "article_forked"
-  | "article_cited";
+  | "article_cited"
+  | "onboarding_example_article";
 
 export type StaleArticleItem = {
   articleId: number;
@@ -39,14 +39,41 @@ export type ArticleCitedPayload = {
   citedSlug: string;
 };
 
+export type OnboardingExampleArticlePayload = {
+  articleId: number;
+  publisherSlug: string;
+  slug: string;
+  title: string;
+};
+
 export type NotificationPayload =
   | StaleArticlesDigestPayload
   | ArticleForkedPayload
-  | ArticleCitedPayload;
+  | ArticleCitedPayload
+  | OnboardingExampleArticlePayload;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Resolve notification recipients for an article owner.
+ * User-owned article → [ownerUserId].
+ * Org-owned article  → super_admin + admin userIds of that org.
+ */
+export async function resolveArticleAuthors(
+  ownerType: string,
+  ownerId: number
+): Promise<number[]> {
+  if (ownerType === "user") return [ownerId];
+  const members = await db
+    .select({ userId: orgMemberships.userId })
+    .from(orgMemberships)
+    .where(
+      sql`${orgMemberships.orgId} = ${ownerId} AND ${orgMemberships.role} IN ('super_admin', 'admin')`
+    );
+  return members.map((m) => m.userId);
+}
 
 /**
  * Insert a notification row for `userId`. No deduplication.

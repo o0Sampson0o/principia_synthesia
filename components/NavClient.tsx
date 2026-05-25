@@ -39,6 +39,9 @@ export default function NavClient({ session }: { session: SessionPayload | null 
               <Link href="/settings/theme" className="themed-nav-link">
                 Theme
               </Link>
+              <Link href="/settings/onboarding" className="themed-nav-link">
+                Onboarding
+              </Link>
               <Link href={`/${session.userSlug}`} className="themed-nav-link font-medium">
                 {session.userSlug}
               </Link>
@@ -136,6 +139,9 @@ export default function NavClient({ session }: { session: SessionPayload | null 
             <>
               <Link href="/settings/theme" className="themed-nav-link block py-3 border-b themed-border text-sm">
                 Theme
+              </Link>
+              <Link href="/settings/onboarding" className="themed-nav-link block py-3 border-b themed-border text-sm">
+                Onboarding
               </Link>
               <Link
                 href={`/${session.userSlug}`}

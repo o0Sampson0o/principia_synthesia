@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import CommandPalette from "@/components/CommandPalette";
 import OfflineGuard from "@/components/OfflineGuard";
 import EmailVerificationBannerGate from "@/components/EmailVerificationBannerGate";
+import OnboardingTourGate from "@/components/OnboardingTourGate";
 import "./globals.css";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
@@ -74,6 +75,7 @@ export default async function RootLayout({
           <EmailVerificationBannerGate email={session.email} />
         )}
         {children}
+        <OnboardingTourGate />
         <Footer />
         <Analytics />
       </body>

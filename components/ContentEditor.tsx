@@ -121,7 +121,7 @@ export default forwardRef<ContentEditorRef, {
   }));
 
   return (
-    <>
+    <div data-tour="editor-content">
       <input type="hidden" name="content" id="content-field" />
       {altFindings.length > 0 && (
         <div className="mb-2 flex items-center gap-2">
@@ -179,6 +179,6 @@ export default forwardRef<ContentEditorRef, {
           />
         </div>
       </div>
-    </>
+    </div>
   );
 });
