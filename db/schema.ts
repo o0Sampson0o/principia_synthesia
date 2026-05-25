@@ -184,6 +184,8 @@ export const categories = pgTable("categories", {
   slug: text("slug").unique().notNull(),
   name: text("name").notNull(),
   parentId: integer("parent_id"),
+  // null = created by root admin / system seed; non-null = created by a regular user
+  createdByUserId: integer("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
 });
 
 /** Many-to-many join between articles and categories. Both sides cascade-delete. */
@@ -191,6 +193,17 @@ export const articleCategories = pgTable("article_categories", {
   articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
   categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
 });
+
+/** User-bookmarked categories — appear by default in the category picker. */
+export const categoryBookmarks = pgTable(
+  "category_bookmarks",
+  {
+    userId:     integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
+    createdAt:  timestamp("created_at").defaultNow(),
+  },
+  (t) => [unique().on(t.userId, t.categoryId)]
+);
 
 // ---------------------------------------------------------------------------
 // Revisions (unchanged structure, FK still → articles)

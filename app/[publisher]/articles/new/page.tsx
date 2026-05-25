@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { createArticle } from "../actions";
 import ArticleEditorPanel from "@/components/ArticleEditorPanel";
+import CategoryPicker from "@/components/CategoryPicker";
 import { DEFAULT_ARTICLE_METADATA } from "@/lib/frontmatter";
 
 export default async function NewArticlePage({
@@ -68,10 +69,10 @@ export default async function NewArticlePage({
         </div>
         <ArticleEditorPanel publisherSlug={publisherSlug} initialMetadata={DEFAULT_ARTICLE_METADATA} />
         <div>
-          <label htmlFor="categories" className="block text-sm font-medium themed-secondary mb-1">
-            Categories (comma-separated slugs)
+          <label className="block text-sm font-medium themed-secondary mb-1">
+            Categories
           </label>
-          <input id="categories" name="categories" type="text" className="themed-input" />
+          <CategoryPicker />
         </div>
         <button type="submit" className="themed-btn-primary">
           Publish article

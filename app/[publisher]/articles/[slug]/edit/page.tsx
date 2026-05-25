@@ -7,6 +7,7 @@ import { articles, articleCategories, categories, revisions } from "@/db/schema"
 import { eq, and, desc } from "drizzle-orm";
 import { updateArticle } from "../../actions";
 import ArticleEditorPanel from "@/components/ArticleEditorPanel";
+import CategoryPicker from "@/components/CategoryPicker";
 import RevisionHistory from "@/components/RevisionHistory";
 import { parseFrontmatter } from "@/lib/frontmatter";
 import Link from "next/link";
@@ -130,16 +131,10 @@ export default async function EditArticlePage({
           />
         </div>
         <div>
-          <label htmlFor="categories" className="block text-sm font-medium themed-secondary mb-1">
-            Categories (comma-separated slugs)
+          <label className="block text-sm font-medium themed-secondary mb-1">
+            Categories
           </label>
-          <input
-            id="categories"
-            name="categories"
-            type="text"
-            defaultValue={currentCategories}
-            className="themed-input"
-          />
+          <CategoryPicker initialSelected={currentCategories ? currentCategories.split(",").filter(Boolean) : []} />
         </div>
         <ArticleEditorPanel publisherSlug={publisherSlug} initial={article.content ?? ""} initialMetadata={initialMetadata} />
         <RevisionHistory

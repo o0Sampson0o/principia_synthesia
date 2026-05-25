@@ -95,30 +95,23 @@ async function assertEditRights(publisherSlug: string) {
   return { session, pub, ownerType: ownerType as "user" | "org", ownerId };
 }
 
-async function setArticleCategories(articleId: number, slugs: string[]) {
-  if (slugs.length > 0) {
-    for (const slug of slugs) {
-      const existing = await db
-        .select({ id: categories.id })
-        .from(categories)
-        .where(eq(categories.slug, slug))
-        .limit(1);
-      if (!existing[0]) {
-        await db.insert(categories).values({ slug, name: slug });
-      }
-    }
-  }
+async function setArticleCategories(articleId: number, slugs: string[], createdByUserId: number) {
   await db.delete(articleCategories).where(eq(articleCategories.articleId, articleId));
-  if (slugs.length > 0) {
-    const cats = await db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(inArray(categories.slug, slugs));
-    if (cats.length > 0) {
-      await db.insert(articleCategories).values(
-        cats.map((c) => ({ articleId, categoryId: c.id }))
-      );
-    }
+  if (slugs.length === 0) return;
+
+  // Upsert any unknown slugs as user-created categories
+  for (const slug of slugs) {
+    await db.insert(categories).values({ slug, name: slug, createdByUserId }).onConflictDoNothing();
+  }
+
+  const cats = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(inArray(categories.slug, slugs));
+  if (cats.length > 0) {
+    await db.insert(articleCategories).values(
+      cats.map((c) => ({ articleId, categoryId: c.id }))
+    );
   }
 }
 
@@ -127,7 +120,7 @@ async function setArticleCategories(articleId: number, slugs: string[]) {
 // ---------------------------------------------------------------------------
 
 export async function createArticle(publisherSlug: string, formData: FormData) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+  const { session, ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = createArticleSchema.parse({
     title: formData.get("title"),
@@ -156,7 +149,7 @@ export async function createArticle(publisherSlug: string, formData: FormData) {
     })
     .returning({ id: articles.id });
 
-  await setArticleCategories(article.id, categorySlugs);
+  await setArticleCategories(article.id, categorySlugs, session.userId);
 
   await createSnapshotIfPublished(article.id, {
     title: validated.title,
@@ -195,7 +188,7 @@ export async function updateArticle(
   prevState: unknown,
   formData: FormData
 ) {
-  await assertEditRights(publisherSlug);
+  const { session } = await assertEditRights(publisherSlug);
 
   let validated: ReturnType<typeof updateArticleSchema.parse>;
   try {
@@ -253,7 +246,7 @@ export async function updateArticle(
     })
     .where(eq(articles.id, validated.id));
 
-  await setArticleCategories(validated.id, categorySlugs);
+  await setArticleCategories(validated.id, categorySlugs, session.userId);
 
   await createSnapshotIfPublished(validated.id, {
     title: validated.title,
