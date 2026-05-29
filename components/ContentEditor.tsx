@@ -145,7 +145,7 @@ export default forwardRef<ContentEditorRef, {
           )}
         </div>
       )}
-      <div className="grid grid-cols-2 gap-4 h-[760px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100svh-12rem)] lg:h-[760px]">
         <div className="flex flex-col">
           {toolbar && (
             <div className="flex items-center justify-between px-2 py-1 mb-1 border themed-border rounded-t themed-surface border-b-0">
@@ -155,7 +155,7 @@ export default forwardRef<ContentEditorRef, {
           )}
           <CodeMirror
             value={initial}
-            height={toolbar ? "728px" : "760px"}
+            height="100%"
             theme={theme}
             extensions={extensions}
             onChange={handleChange}

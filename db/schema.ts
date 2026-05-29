@@ -578,6 +578,35 @@ export const notifications = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Article comments (threaded, with soft-delete)
+// ---------------------------------------------------------------------------
+
+/**
+ * Top-level comments and threaded replies on articles.
+ * `parentId` is null for root comments; replies point to their parent.
+ * Soft-deletes via `deletedAt` preserve thread structure: deleted rows are
+ * displayed as "Comment removed" rather than breaking reply chains.
+ */
+export const articleComments = pgTable(
+  "article_comments",
+  {
+    id: serial("id").primaryKey(),
+    articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+    authorId: integer("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    parentId: integer("parent_id").references((): AnyPgColumn => articleComments.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (t) => [
+    index("article_comments_article_idx").on(t.articleId),
+    index("article_comments_author_idx").on(t.authorId),
+    index("article_comments_parent_idx").on(t.parentId),
+  ]
+);
+
+// ---------------------------------------------------------------------------
 // Article citations (internal cross-article citation tracking)
 // ---------------------------------------------------------------------------
 

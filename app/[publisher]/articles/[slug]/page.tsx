@@ -423,6 +423,8 @@ export default async function ArticlePage({
       <RelatedEvents articleId={article.id} />
 
       <ForksList forks={forksWithPublisher} totalCount={forksCount} />
+
+
     </main>
   );
 }

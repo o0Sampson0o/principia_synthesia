@@ -613,6 +613,27 @@ export const citationSlugSchema = z.string().regex(
 );
 
 // ---------------------------------------------------------------------------
+// Comment schemas
+// ---------------------------------------------------------------------------
+
+export const createCommentSchema = z.object({
+  articleId: z.coerce.number().int().positive(),
+  parentId: z.coerce.number().int().positive().optional(),
+  body: z.string().min(1).max(10_000),
+});
+
+export const deleteCommentSchema = z.object({
+  commentId: z.coerce.number().int().positive(),
+  articleId: z.coerce.number().int().positive(),
+});
+
+export const editCommentSchema = z.object({
+  commentId: z.coerce.number().int().positive(),
+  articleId: z.coerce.number().int().positive(),
+  body: z.string().min(1).max(10_000),
+});
+
+// ---------------------------------------------------------------------------
 // Onboarding
 // ---------------------------------------------------------------------------
 

@@ -78,6 +78,13 @@
       "when": 1748566800000,
       "tag": "0010_article_citations",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1748653200000,
+      "tag": "0014_article_comments",
+      "breakpoints": true
     }
   ]
 }
