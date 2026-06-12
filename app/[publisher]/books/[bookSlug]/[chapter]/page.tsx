@@ -15,7 +15,10 @@ import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import DynamicAnimation from "@/components/DynamicAnimation";
 import ArticleImage from "@/components/ArticleImage";
 import MdxParagraph from "@/components/MdxParagraph";
+import Cite from "@/components/Cite";
 import { parseFrontmatter } from "@/lib/frontmatter";
+import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
+import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-numbering";
 import { headers } from "next/headers";
 import { classifyReferrer } from "@/lib/analytics-source";
 import { getOrCreateSessionId } from "@/lib/analytics-session";
@@ -106,6 +109,44 @@ export default async function ChapterPage({
   const nextSlug = currentIdx < allEntries.length - 1 ? allEntries[currentIdx + 1].articleSlug : null;
 
   const { metadata, body } = parseFrontmatter(article.content ?? "");
+
+  const { slugToNumber, orderedSlugs } = buildCitationIndex(body);
+  const resolvedCitations = new Map<string, ResolvedCitation>();
+  if (orderedSlugs.length > 0) {
+    for (const citeSlug of orderedSlugs) {
+      const slashIdx = citeSlug.indexOf("/");
+      if (slashIdx === -1) continue;
+      const citePublisherSlug = citeSlug.slice(0, slashIdx);
+      const citeArticleSlug = citeSlug.slice(slashIdx + 1);
+      const [citePubRow] = await db
+        .select({ kind: publishers.kind, userId: publishers.userId, orgId: publishers.orgId })
+        .from(publishers)
+        .where(eq(publishers.slug, citePublisherSlug))
+        .limit(1);
+      if (!citePubRow) continue;
+      const citeOwnerId = citePubRow.kind === "user" ? citePubRow.userId : citePubRow.orgId;
+      if (citeOwnerId === null) continue;
+      const [citeArticleRow] = await db
+        .select({ title: articles.title })
+        .from(articles)
+        .where(
+          and(
+            eq(articles.ownerType, citePubRow.kind),
+            eq(articles.ownerId, citeOwnerId),
+            eq(articles.slug, citeArticleSlug),
+            isNull(articles.deletedAt)
+          )
+        )
+        .limit(1);
+      if (!citeArticleRow) continue;
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://principia-synthesia.com";
+      resolvedCitations.set(citeSlug, {
+        title: citeArticleRow.title,
+        href: `${siteUrl}/${citePublisherSlug}/articles/${citeArticleSlug}`,
+      });
+    }
+  }
+
   const safeCanvas =
     metadata.canvas && /^anim-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(metadata.canvas)
       ? metadata.canvas
@@ -149,11 +190,11 @@ export default async function ChapterPage({
           source={renderedBody}
           options={{
             mdxOptions: {
-              remarkPlugins: [remarkMath, remarkGfm, remarkWikilinks],
+              remarkPlugins: [remarkMath, remarkGfm, remarkWikilinks, [remarkCiteNumbering, { slugToNumber, resolved: resolvedCitations }]],
               rehypePlugins: [rehypeKatex],
             },
           }}
-          components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph }}
+          components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite }}
         />
       </div>
 

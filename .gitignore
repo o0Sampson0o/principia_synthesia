@@ -63,3 +63,6 @@ COPILOT.md
 .claude/
 .cursor/
 .aider*
+
+# Image ?
+*.png

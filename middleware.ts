@@ -43,8 +43,12 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
 
-  // Rate-limit login and signup attempts
-  if (pathname === "/login" || pathname === "/signup") {
+  // Rate-limit login and signup attempts.
+  // Disabled in E2E test environments so that repeated test runs do not
+  // exhaust the in-memory bucket (the bucket resets on server restart, but
+  // reuseExistingServer keeps the same process across runs).
+  const isE2E = process.env.E2E_TEST === "1";
+  if (!isE2E && (pathname === "/login" || pathname === "/signup")) {
     const allowed = rateLimit(`auth:${ip}`, 10, 60_000);
     if (!allowed) {
       return new NextResponse("Too Many Requests", { status: 429 });
