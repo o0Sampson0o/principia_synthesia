@@ -3,7 +3,7 @@ import { useRef, useEffect, useState, useCallback, useMemo, forwardRef, useImper
 import dynamic from "next/dynamic";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import type { EditorView } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 import Preview from "./Preview";
 import { findMissingAlt } from "@/lib/alt-text-lint";
 import type { AltTextFinding } from "@/lib/alt-text-lint";
@@ -35,6 +35,16 @@ export default forwardRef<ContentEditorRef, {
   const extensions = useMemo(() => [
     markdown({
       base: markdownLanguage,
+    }),
+    EditorView.updateListener.of((update) => {
+      if (!update.docChanged) return;
+      const { head } = update.state.selection.main;
+      const line = update.state.doc.lineAt(head);
+      if (line.length === 0) {
+        requestAnimationFrame(() => {
+          update.view.scrollDOM.scrollLeft = 0;
+        });
+      }
     }),
   ], []);
 
@@ -146,7 +156,7 @@ export default forwardRef<ContentEditorRef, {
         </div>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100svh-12rem)] lg:h-[760px]">
-        <div className="flex flex-col">
+        <div className="flex flex-col min-h-0 overflow-hidden">
           {toolbar && (
             <div className="flex items-center justify-between px-2 py-1 mb-1 border themed-border rounded-t themed-surface border-b-0">
               <span className="text-xs themed-muted">MDX</span>
