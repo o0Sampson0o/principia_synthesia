@@ -36,16 +36,7 @@ export default forwardRef<ContentEditorRef, {
     markdown({
       base: markdownLanguage,
     }),
-    EditorView.updateListener.of((update) => {
-      if (!update.docChanged) return;
-      const { head } = update.state.selection.main;
-      const line = update.state.doc.lineAt(head);
-      if (line.length === 0) {
-        requestAnimationFrame(() => {
-          update.view.scrollDOM.scrollLeft = 0;
-        });
-      }
-    }),
+    EditorView.lineWrapping,
   ], []);
 
   const theme = useMemo(() => isDark ? vscodeDark : "light", [isDark]);

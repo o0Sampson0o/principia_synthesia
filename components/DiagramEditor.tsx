@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
+import { EditorView } from "@codemirror/view";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 const DiagramRenderer = dynamic(() => import("./DiagramRenderer"), { ssr: false });
@@ -97,6 +98,7 @@ export default function DiagramEditor({
               height="320px"
               theme={isDark ? "dark" : "light"}
               basicSetup={{ lineNumbers: true, foldGutter: false }}
+              extensions={[EditorView.lineWrapping]}
             />
           </div>
           {!source && (
