@@ -10,6 +10,7 @@ export interface SearchArticleResult {
   title: string;
   slug: string;
   publisherSlug: string;
+  summary?: string | null;
 }
 
 export interface SearchBookResult {
@@ -25,6 +26,7 @@ export interface SearchObjectResult {
   slug: string;
   type: string;
   publisherSlug: string;
+  description?: string | null;
 }
 
 export interface SearchAllResult {
@@ -34,7 +36,7 @@ export interface SearchAllResult {
 }
 
 /**
- * Searches articles, books, and objects by title/name. Returns up to 8 results
+ * Searches articles, books, and objects by title/name. Returns up to 20 results
  * per category. Internal articles are excluded. Private resources are excluded
  * for non-admin sessions (simplified: checks resourceVisibility for public only).
  */
@@ -49,6 +51,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
         title: articles.title,
         slug: articles.slug,
         publisherSlug: publishers.slug,
+        summary: articles.summary,
       })
       .from(articles)
       .leftJoin(
@@ -80,7 +83,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
             : or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
         )
       )
-      .limit(8),
+      .limit(20),
 
     db
       .select({
@@ -114,7 +117,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
             : or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
         )
       )
-      .limit(8),
+      .limit(20),
 
     db
       .select({
@@ -123,6 +126,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
         slug: objects.slug,
         type: objects.type,
         publisherSlug: publishers.slug,
+        description: objects.description,
       })
       .from(objects)
       .leftJoin(
@@ -133,7 +137,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
         )
       )
       .where(ilike(objects.name, q))
-      .limit(8),
+      .limit(20),
   ]);
 
   return {
