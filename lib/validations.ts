@@ -112,6 +112,7 @@ export const restoreRevisionSchema = z.object({
 export const createBookSchema = z.object({
   slug: bookSlugSchema,
   title: z.string().min(1, "Title is required").max(200, "Title too long"),
+  summary: z.string().max(500, "Summary too long").optional(),
   ownerType: z.enum(["user", "org"]),
   ownerId: z.coerce.number().int().positive("Invalid owner ID"),
 });
@@ -126,6 +127,8 @@ export const updateBookSchema = z.object({
   id: z.coerce.number().int().positive("Invalid book ID"),
   slug: bookSlugSchema,
   title: z.string().min(1, "Title is required").max(200, "Title too long"),
+  summary: z.string().max(500, "Summary too long").optional(),
+  categories: z.string().optional(),
 });
 
 /**

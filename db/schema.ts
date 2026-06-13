@@ -98,6 +98,15 @@ export const orgMemberships = pgTable(
 // ---------------------------------------------------------------------------
 
 /**
+ * Typed shape for the JSONB `metadata` column on books.
+ */
+export type BookMetadataShape = {
+  status: "draft" | "review" | "published" | "archived";
+  tags: string[];
+  description: string;
+};
+
+/**
  * A book is an ordered collection of articles (curriculum).
  * Slugs are unique only within a publisher (ownerType + ownerId).
  * The old implicit book model (shared bookSlug on curriculumEntries) is replaced
@@ -109,8 +118,13 @@ export const books = pgTable(
     id: serial("id").primaryKey(),
     slug: text("slug").notNull(),
     title: text("title").notNull(),
+    summary: text("summary"),
     ownerType: text("owner_type").notNull(), // 'user' | 'org'
     ownerId: integer("owner_id").notNull(),
+    metadata: jsonb("metadata")
+      .$type<BookMetadataShape>()
+      .default({ status: "published", tags: [], description: "" })
+      .notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -193,6 +207,12 @@ export const categories = pgTable("categories", {
 /** Many-to-many join between articles and categories. Both sides cascade-delete. */
 export const articleCategories = pgTable("article_categories", {
   articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+  categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
+});
+
+/** Many-to-many join between books and categories. Both sides cascade-delete. */
+export const bookCategories = pgTable("book_categories", {
+  bookId: integer("book_id").notNull().references(() => books.id, { onDelete: "cascade" }),
   categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
 });
 

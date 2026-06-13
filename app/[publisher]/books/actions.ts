@@ -8,8 +8,10 @@ import {
   bookSnapshots,
   bookSnapshotEntries,
   publishers,
+  categories,
+  bookCategories,
 } from "@/db/schema";
-import { eq, asc, and, isNull } from "drizzle-orm";
+import { eq, asc, and, isNull, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseFrontmatter } from "@/lib/frontmatter";
@@ -27,25 +29,54 @@ import {
 import { resolvePublisher } from "@/lib/publisher";
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function setBookCategories(bookId: number, slugs: string[], createdByUserId: number) {
+  await db.delete(bookCategories).where(eq(bookCategories.bookId, bookId));
+  if (slugs.length === 0) return;
+
+  // Upsert any unknown slugs as user-created categories
+  for (const slug of slugs) {
+    await db.insert(categories).values({ slug, name: slug, createdByUserId }).onConflictDoNothing();
+  }
+
+  const cats = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(inArray(categories.slug, slugs));
+  if (cats.length > 0) {
+    await db.insert(bookCategories).values(
+      cats.map((c) => ({ bookId, categoryId: c.id }))
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Book CRUD
 // ---------------------------------------------------------------------------
 
 export async function createBook(publisherSlug: string, formData: FormData) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+  const { session, ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = createBookSchema.parse({
     slug: formData.get("slug"),
     title: formData.get("title"),
+    summary: formData.get("summary"),
     ownerType,
     ownerId,
   });
 
-  await db.insert(books).values({
+  const [book] = await db.insert(books).values({
     slug: validated.slug,
     title: validated.title,
+    summary: validated.summary,
     ownerType: validated.ownerType,
     ownerId: validated.ownerId,
-  });
+  }).returning({ id: books.id });
+
+  const categorySlugs = (formData.get("categories") as string)?.split(",").filter(Boolean) ?? [];
+  await setBookCategories(book.id, categorySlugs, session.userId);
 
   revalidatePath(`/${publisherSlug}`);
   redirect(`/${publisherSlug}/books/${validated.slug}`);
@@ -64,13 +95,17 @@ export async function deleteBook(publisherSlug: string, formData: FormData) {
 }
 
 export async function updateBook(publisherSlug: string, formData: FormData) {
-  await assertEditRights(publisherSlug);
+  const { session } = await assertEditRights(publisherSlug);
 
   const validated = updateBookSchema.parse({
     id: formData.get("id"),
     slug: formData.get("slug"),
     title: formData.get("title"),
+    summary: formData.get("summary"),
+    categories: formData.get("categories"),
   });
+
+  const categorySlugs = validated.categories?.split(",").filter(Boolean) ?? [];
 
   const [current] = await db
     .select({ slug: books.slug })
@@ -80,11 +115,19 @@ export async function updateBook(publisherSlug: string, formData: FormData) {
 
   await db
     .update(books)
-    .set({ slug: validated.slug, title: validated.title, updatedAt: new Date() })
+    .set({
+      slug: validated.slug,
+      title: validated.title,
+      summary: validated.summary,
+      updatedAt: new Date()
+    })
     .where(eq(books.id, validated.id));
+
+  await setBookCategories(validated.id, categorySlugs, session.userId);
 
   if (current) revalidatePath(`/${publisherSlug}/books/${current.slug}`);
   revalidatePath(`/${publisherSlug}/books/${validated.slug}`);
+  revalidatePath(`/${publisherSlug}/books/${validated.slug}/edit`);
   redirect(`/${publisherSlug}/books/${validated.slug}`);
 }
 

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
+import CategoryPicker from "@/components/CategoryPicker";
 import { createBook } from "../actions";
 
 export default async function NewBookPage({
@@ -51,6 +52,25 @@ export default async function NewBookPage({
             />
           </div>
           <p className="text-xs themed-muted mt-1">Must start with &ldquo;book-&rdquo;.</p>
+        </div>
+        <div>
+          <label htmlFor="summary" className="block text-sm font-medium themed-secondary mb-1">
+            Summary
+          </label>
+          <textarea
+            id="summary"
+            name="summary"
+            rows={3}
+            maxLength={500}
+            placeholder="Brief overview of this book..."
+            className="themed-input"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium themed-secondary mb-1">
+            Categories
+          </label>
+          <CategoryPicker />
         </div>
         <button type="submit" className="themed-btn-primary">
           Create book

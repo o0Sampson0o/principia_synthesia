@@ -3,9 +3,10 @@ import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
-import { books, curriculumEntries, articles, publishers } from "@/db/schema";
+import { books, curriculumEntries, articles, publishers, bookCategories, categories } from "@/db/schema";
 import { eq, and, asc, isNull, or, sql } from "drizzle-orm";
 import Link from "next/link";
+import CategoryPicker from "@/components/CategoryPicker";
 import {
   updateBook,
   deleteBook,
@@ -47,6 +48,13 @@ export default async function EditBookPage({
     .limit(1);
 
   if (!bookRow) notFound();
+
+  // Current categories
+  const bookCats = await db
+    .select({ slug: categories.slug })
+    .from(bookCategories)
+    .innerJoin(categories, eq(bookCategories.categoryId, categories.id))
+    .where(eq(bookCategories.bookId, bookRow.id));
 
   // Current chapters
   const chapters = await db
@@ -163,6 +171,26 @@ export default async function EditBookPage({
             defaultValue={bookRow.slug}
             className="themed-input"
           />
+        </div>
+        <div>
+          <label htmlFor="summary" className="block text-sm font-medium themed-secondary mb-1">
+            Summary
+          </label>
+          <textarea
+            id="summary"
+            name="summary"
+            rows={3}
+            maxLength={500}
+            defaultValue={bookRow.summary ?? ""}
+            placeholder="Brief overview of this book..."
+            className="themed-input"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium themed-secondary mb-1">
+            Categories
+          </label>
+          <CategoryPicker initialSelected={bookCats.map(c => c.slug)} />
         </div>
         <button type="submit" className="themed-btn-primary">
           Save changes

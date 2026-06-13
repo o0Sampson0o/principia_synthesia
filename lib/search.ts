@@ -18,6 +18,7 @@ export interface SearchBookResult {
   title: string;
   slug: string;
   publisherSlug: string;
+  summary?: string | null;
 }
 
 export interface SearchObjectResult {
@@ -91,6 +92,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
         title: books.title,
         slug: books.slug,
         publisherSlug: publishers.slug,
+        summary: books.summary,
       })
       .from(books)
       .leftJoin(

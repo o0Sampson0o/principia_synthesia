@@ -155,6 +155,7 @@ export default async function SearchPage({
                   publisherSlug={b.publisherSlug}
                   slug={b.slug}
                   title={b.title}
+                  description={b.summary}
                 />
               ))}
             </div>

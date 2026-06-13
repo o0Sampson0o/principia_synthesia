@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
-import { books, articles, curriculumEntries, publishers } from "@/db/schema";
+import { books, articles, curriculumEntries, publishers, bookCategories, categories } from "@/db/schema";
 import { eq, and, asc, or, sql, isNull } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
@@ -32,6 +32,13 @@ export default async function BookPage({
   if (!(await canView({ type: "book", ownerType, ownerId, slug: bookSlug }, session))) notFound();
 
   const isEditor = await canEditContent(session, ownerType, ownerId);
+
+  // Categories
+  const bookCats = await db
+    .select({ slug: categories.slug })
+    .from(bookCategories)
+    .innerJoin(categories, eq(bookCategories.categoryId, categories.id))
+    .where(eq(bookCategories.bookId, bookRow.id));
 
   const entries = await db
     .select({
@@ -70,6 +77,24 @@ export default async function BookPage({
           </Link>
         </p>
         <h1 className="text-4xl font-bold themed-heading">{bookRow.title}</h1>
+        {bookRow.summary && (
+          <p className="mt-3 text-lg themed-muted leading-relaxed max-w-3xl">
+            {bookRow.summary}
+          </p>
+        )}
+        {bookCats.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-4">
+            {bookCats.map((c) => (
+              <Link
+                key={c.slug}
+                href={`/category/${c.slug}`}
+                className="px-2 py-0.5 rounded-full text-xs font-medium themed-surface border themed-border hover:themed-surface-hover transition-colors"
+              >
+                #{c.slug}
+              </Link>
+            ))}
+          </div>
+        )}
         {isEditor && (
           <div className="flex gap-3 mt-4">
             <Link href={`/${publisherSlug}/books/${bookSlug}/edit`} className="text-sm themed-link">
