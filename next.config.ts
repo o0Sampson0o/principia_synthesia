@@ -68,7 +68,15 @@ const nextConfig: NextConfig = {
     "playwright-core",
     "@sparticuz/chromium",
     "epub-gen-memory",
+    // Reads its own index.dic/index.aff via import.meta.url at load time; keep
+    // it external so the path isn't rewritten and the data files are traced.
+    "dictionary-en",
   ],
+  // Belt-and-suspenders: force the ~550KB Hunspell dictionary data into the
+  // grammar function's bundle so spell checking works on Vercel.
+  outputFileTracingIncludes: {
+    "/api/grammar": ["./node_modules/dictionary-en/index.{dic,aff}"],
+  },
   images: {
     remotePatterns: [
       {

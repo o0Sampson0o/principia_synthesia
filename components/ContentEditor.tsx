@@ -4,7 +4,9 @@ import dynamic from "next/dynamic";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorView } from "@codemirror/view";
+import { Compartment } from "@codemirror/state";
 import { MarkdownMath } from "@/lib/codemirror-math";
+import { grammarChecker } from "@/lib/codemirror-grammar";
 import Preview from "./Preview";
 import { findMissingAlt } from "@/lib/alt-text-lint";
 import type { AltTextFinding } from "@/lib/alt-text-lint";
@@ -32,6 +34,11 @@ export default forwardRef<ContentEditorRef, {
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const altLintTimer = useRef<NodeJS.Timeout | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
+  const [grammarOn, setGrammarOn] = useState(false);
+
+  // Grammar checking is reconfigured in place (rather than re-rendering the
+  // editor) so toggling it never disturbs the document or cursor.
+  const grammarCompartment = useMemo(() => new Compartment(), []);
 
   const extensions = useMemo(() => [
     markdown({
@@ -39,7 +46,18 @@ export default forwardRef<ContentEditorRef, {
       extensions: MarkdownMath,
     }),
     EditorView.lineWrapping,
-  ], []);
+    grammarCompartment.of([]),
+  ], [grammarCompartment]);
+
+  const toggleGrammar = useCallback(() => {
+    setGrammarOn((on) => {
+      const next = !on;
+      editorViewRef.current?.dispatch({
+        effects: grammarCompartment.reconfigure(next ? grammarChecker() : []),
+      });
+      return next;
+    });
+  }, [grammarCompartment]);
 
   const theme = useMemo(() => isDark ? vscodeDark : "light", [isDark]);
 
@@ -152,7 +170,22 @@ export default forwardRef<ContentEditorRef, {
         <div className="flex flex-col min-h-0 overflow-hidden">
           {toolbar && (
             <div className="flex items-center justify-between px-2 py-1 mb-1 border themed-border rounded-t themed-surface border-b-0">
-              <span className="text-xs themed-muted">MDX</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs themed-muted">MDX</span>
+                <button
+                  type="button"
+                  onClick={toggleGrammar}
+                  aria-pressed={grammarOn}
+                  title="Grammar & spell check"
+                  className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                    grammarOn
+                      ? "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-600 dark:bg-blue-900/40 dark:text-blue-300"
+                      : "themed-border themed-muted themed-hover-foreground"
+                  }`}
+                >
+                  Grammar {grammarOn ? "on" : "off"}
+                </button>
+              </div>
               <div className="flex items-center gap-2">{toolbar}</div>
             </div>
           )}
