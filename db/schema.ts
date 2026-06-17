@@ -163,6 +163,11 @@ export const articles = pgTable(
     slug: text("slug").notNull(),
     title: text("title").notNull(),
     content: text("content"),
+    // Unsaved work-in-progress copy. When set, the editor loads this instead of
+    // `content`, but visitors always see the published `content`. Cleared the
+    // moment the author does a real save (the draft becomes the live version).
+    draftContent: text("draft_content"),
+    draftSavedAt: timestamp("draft_saved_at"),
     summary: text("summary"),
     ownerType: text("owner_type").notNull(), // 'user' | 'org'
     ownerId: integer("owner_id").notNull(),

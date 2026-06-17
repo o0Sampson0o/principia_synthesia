@@ -231,6 +231,10 @@ export async function updateArticle(
       content: validated.content,
       metadata: parsedFm.metadata,
       updatedAt: new Date(),
+      // A real save promotes the working copy to the live version, so any
+      // pending draft is now obsolete.
+      draftContent: null,
+      draftSavedAt: null,
       ...(isPublishedUpdate ? { lastVerifiedAt: new Date() } : {}),
     })
     .where(
@@ -357,6 +361,8 @@ export async function restoreRevision(formData: FormData) {
       content: revision.content,
       metadata: restoredFm.metadata,
       updatedAt: new Date(),
+      draftContent: null,
+      draftSavedAt: null,
       ...(isRestoredPublished ? { lastVerifiedAt: new Date() } : {}),
     })
     .where(
@@ -392,18 +398,25 @@ export async function restoreRevision(formData: FormData) {
   redirect(`/${validated.publisherSlug}/articles/${article.slug}`);
 }
 
-export async function updateArticleContent(
+/**
+ * Save the editor's current content as an unsaved draft copy.
+ *
+ * The draft is stored alongside the live article (in `draftContent`) and is
+ * NOT promoted to the published `content` — visitors keep seeing the last real
+ * save. The editor loads the draft on its next open. Intentionally performs no
+ * redirect and creates no revision, so the author stays in the editor.
+ */
+export async function saveArticleDraft(
   publisherSlug: string,
   slug: string,
   content: string
-): Promise<{ ok: true }> {
+): Promise<{ ok: true; savedAt: string }> {
   const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
-  const parsed = parseFrontmatter(content);
-
+  const savedAt = new Date();
   await db
     .update(articles)
-    .set({ content, metadata: parsed.metadata, updatedAt: new Date() })
+    .set({ draftContent: content, draftSavedAt: savedAt })
     .where(
       and(
         eq(articles.slug, slug),
@@ -413,10 +426,35 @@ export async function updateArticleContent(
       )
     );
 
-  revalidatePath(`/${publisherSlug}/articles/${slug}`);
+  // Refresh the edit page so a reload reflects the saved draft, but leave the
+  // public article page untouched (its content has not changed).
   revalidatePath(`/${publisherSlug}/articles/${slug}/edit`);
 
-  return { ok: true };
+  return { ok: true, savedAt: savedAt.toISOString() };
+}
+
+/**
+ * Discard the unsaved draft copy and revert the editor to the published version.
+ */
+export async function discardArticleDraft(
+  publisherSlug: string,
+  slug: string
+): Promise<void> {
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  await db
+    .update(articles)
+    .set({ draftContent: null, draftSavedAt: null })
+    .where(
+      and(
+        eq(articles.slug, slug),
+        eq(articles.ownerType, ownerType),
+        eq(articles.ownerId, ownerId),
+        isNull(articles.deletedAt)
+      )
+    );
+
+  revalidatePath(`/${publisherSlug}/articles/${slug}/edit`);
 }
 
 /**

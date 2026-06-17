@@ -5,7 +5,7 @@ import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
 import { articles, articleCategories, categories, revisions } from "@/db/schema";
 import { eq, and, desc, isNull } from "drizzle-orm";
-import { updateArticle } from "../../actions";
+import { updateArticle, saveArticleDraft, discardArticleDraft } from "../../actions";
 import DeleteArticleButton from "@/components/DeleteArticleButton";
 import ArticleEditorPanel from "@/components/ArticleEditorPanel";
 import CategoryPicker from "@/components/CategoryPicker";
@@ -46,7 +46,11 @@ export default async function EditArticlePage({
 
   if (!article) notFound();
 
-  const { metadata: initialMetadata } = parseFrontmatter(article.content ?? "");
+  // When an unsaved draft exists, the editor opens on it; visitors still see
+  // the published `content`.
+  const hasDraft = article.draftContent != null;
+  const editorInitial = article.draftContent ?? article.content ?? "";
+  const { metadata: initialMetadata } = parseFrontmatter(editorInitial);
 
   const articleCats = await db
     .select({ slug: categories.slug })
@@ -58,6 +62,16 @@ export default async function EditArticlePage({
   async function action(formData: FormData): Promise<void> {
     "use server";
     await updateArticle(publisherSlug, null, formData);
+  }
+
+  async function saveDraftAction(content: string): Promise<{ ok: true; savedAt: string }> {
+    "use server";
+    return saveArticleDraft(publisherSlug, slug, content);
+  }
+
+  async function discardDraftAction(): Promise<void> {
+    "use server";
+    await discardArticleDraft(publisherSlug, slug);
   }
 
   const articleRevisions = await db
@@ -79,6 +93,19 @@ export default async function EditArticlePage({
           Access &amp; visibility
         </Link>
       </div>
+      {hasDraft && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/30 px-4 py-3 text-sm">
+          <span className="themed-secondary">
+            You&rsquo;re editing an <strong>unsaved draft</strong>
+            {article.draftSavedAt ? ` (saved ${article.draftSavedAt.toLocaleString()})` : ""}. Visitors still see the published version until you save changes.
+          </span>
+          <form action={discardDraftAction}>
+            <button type="submit" className="themed-btn-ghost text-xs px-2 py-1">
+              Discard draft
+            </button>
+          </form>
+        </div>
+      )}
       <form action={action} className="space-y-4">
         <input type="hidden" name="id" value={article.id} />
         <div>
@@ -139,7 +166,14 @@ export default async function EditArticlePage({
           </label>
           <CategoryPicker initialSelected={currentCategories ? currentCategories.split(",").filter(Boolean) : []} />
         </div>
-        <ArticleEditorPanel publisherSlug={publisherSlug} draftKey={`${publisherSlug}:article-${article.id}`} initial={article.content ?? ""} initialMetadata={initialMetadata} />
+        <ArticleEditorPanel
+          publisherSlug={publisherSlug}
+          draftKey={`${publisherSlug}:article-${article.id}`}
+          initial={editorInitial}
+          initialMetadata={initialMetadata}
+          saveDraftAction={saveDraftAction}
+          initialDraftSavedAt={article.draftSavedAt?.toISOString() ?? null}
+        />
         <RevisionHistory
           publisherSlug={publisherSlug}
           articleId={article.id}

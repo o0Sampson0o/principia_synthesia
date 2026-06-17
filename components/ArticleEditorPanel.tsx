@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, useState, useTransition } from "react";
 import ContentEditor, { type ContentEditorRef } from "./ContentEditor";
 import InsertImageButton from "./InsertImageButton";
 import FrontmatterPanel, { type FrontmatterPanelRef } from "./FrontmatterPanel";
@@ -17,16 +17,29 @@ export default function ArticleEditorPanel({
   draftKey,
   initial = "",
   initialMetadata,
+  saveDraftAction,
+  initialDraftSavedAt = null,
 }: {
   publisherSlug: string;
   /** Stable per-article key for the localStorage draft (e.g. `slug:article-12`). */
   draftKey: string;
   initial?: string;
   initialMetadata: ArticleMetadata;
+  /**
+   * Persists the current content as a server-side draft and returns when it was
+   * saved. Omitted on the new-article page (no record exists yet), which hides
+   * the button and relies on the localStorage autosave instead.
+   */
+  saveDraftAction?: (content: string) => Promise<{ ok: true; savedAt: string }>;
+  /** ISO timestamp of the existing server draft, if any. */
+  initialDraftSavedAt?: string | null;
 }) {
   const editorRef = useRef<ContentEditorRef>(null);
   const frontmatterRef = useRef<FrontmatterPanelRef>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(initialDraftSavedAt);
+  const [isSaving, startSaving] = useTransition();
 
   const getForm = useCallback(
     () => rootRef.current?.closest("form") ?? null,
@@ -48,11 +61,11 @@ export default function ArticleEditorPanel({
     return data;
   }, [getForm, initial]);
 
-  const { schedule, clear, restorable, dismissRestorable, lastSavedAt } =
+  const { schedule, clear, restorable, dismissRestorable } =
     useDraftAutosave({ storageKey: draftKey, getSnapshot });
 
   // Autosave on form-field edits (title/slug/summary/editNote) and drop the
-  // draft once the form is submitted — by then the server has the content.
+  // local draft once the form is submitted — by then the server has the content.
   useEffect(() => {
     const form = getForm();
     if (!form) return;
@@ -66,7 +79,7 @@ export default function ArticleEditorPanel({
     };
   }, [getForm, schedule, clear]);
 
-  // Only prompt to recover when the draft actually diverges from what the
+  // Only prompt to recover when the local draft actually diverges from what the
   // server loaded (a draft equal to `initial` was already saved).
   const showRestore =
     restorable !== null && restorable.data.content.trim() !== initial.trim();
@@ -90,12 +103,17 @@ export default function ArticleEditorPanel({
     dismissRestorable();
   }, [restorable, getForm, dismissRestorable]);
 
-  const handleSaveAsDraft = useCallback(() => {
-    // setStatus rewrites the editor content (and the hidden #content-field)
-    // synchronously, so the form submits with `status: draft`.
-    frontmatterRef.current?.setStatus("draft");
-    getForm()?.requestSubmit();
-  }, [getForm]);
+  // Save the current content as a server-side draft, staying in the editor.
+  // The published article is untouched until a real save.
+  const handleSaveDraft = useCallback(() => {
+    if (!saveDraftAction) return;
+    const content = editorRef.current?.getValue() ?? initial;
+    startSaving(async () => {
+      const res = await saveDraftAction(content);
+      setDraftSavedAt(res.savedAt);
+      clear(); // server now holds the draft — drop the local copy
+    });
+  }, [saveDraftAction, initial, clear]);
 
   return (
     <div ref={rootRef} className="space-y-3">
@@ -137,18 +155,23 @@ export default function ArticleEditorPanel({
         }}
         toolbar={
           <>
-            {lastSavedAt && (
-              <span className="text-xs themed-muted">
-                Saved {new Date(lastSavedAt).toLocaleTimeString()}
-              </span>
+            {saveDraftAction && (
+              <>
+                {draftSavedAt && !isSaving && (
+                  <span className="text-xs themed-muted">
+                    Draft saved {new Date(draftSavedAt).toLocaleTimeString()}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={isSaving}
+                  className="themed-btn-ghost text-xs px-2 py-1 disabled:opacity-50"
+                >
+                  {isSaving ? "Saving…" : "Save as draft"}
+                </button>
+              </>
             )}
-            <button
-              type="button"
-              onClick={handleSaveAsDraft}
-              className="themed-btn-ghost text-xs px-2 py-1"
-            >
-              Save as draft
-            </button>
             <InsertImageButton publisherSlug={publisherSlug} editorRef={editorRef} />
           </>
         }
