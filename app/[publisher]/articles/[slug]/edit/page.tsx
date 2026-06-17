@@ -139,7 +139,7 @@ export default async function EditArticlePage({
           </label>
           <CategoryPicker initialSelected={currentCategories ? currentCategories.split(",").filter(Boolean) : []} />
         </div>
-        <ArticleEditorPanel publisherSlug={publisherSlug} initial={article.content ?? ""} initialMetadata={initialMetadata} />
+        <ArticleEditorPanel publisherSlug={publisherSlug} draftKey={`${publisherSlug}:article-${article.id}`} initial={article.content ?? ""} initialMetadata={initialMetadata} />
         <RevisionHistory
           publisherSlug={publisherSlug}
           articleId={article.id}

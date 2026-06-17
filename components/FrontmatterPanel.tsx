@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, forwardRef, useImperativeHandle, type RefObject } from "react";
+import { useState, useRef, useCallback, forwardRef, useImperativeHandle, type RefObject } from "react";
 import type { ContentEditorRef } from "./ContentEditor";
 import type { ArticleMetadata } from "@/lib/validations";
 
 export interface FrontmatterPanelRef {
   syncFromMdx: (mdx: string) => void;
+  /** Force the article `status` (e.g. to "draft") and rewrite the editor frontmatter. */
+  setStatus: (status: ArticleMetadata["status"]) => void;
 }
 
 const STATUSES = ["published", "draft", "review", "archived"] as const;
@@ -46,6 +48,19 @@ export default forwardRef<FrontmatterPanelRef, {
   initialMetadata: ArticleMetadata;
 }>(function FrontmatterPanel({ editorRef, initialMetadata }, ref) {
   const [meta, setMeta] = useState<ArticleMetadata>(initialMetadata);
+  // Mirror of `meta` so imperative callers (setStatus) read the latest value
+  // without recreating the handle on every change.
+  const metaRef = useRef(meta);
+  metaRef.current = meta;
+
+  const applyChange = useCallback((next: ArticleMetadata) => {
+    setMeta(next);
+    const editor = editorRef.current;
+    if (!editor) return;
+    const current = editor.getValue();
+    const { body } = parseFrontmatterClient(current);
+    editor.setValue(serializeFrontmatterClient(next, body));
+  }, [editorRef]);
 
   useImperativeHandle(ref, () => ({
     syncFromMdx(mdx: string) {
@@ -60,16 +75,10 @@ export default forwardRef<FrontmatterPanelRef, {
         return parsed;
       });
     },
-  }));
-
-  function applyChange(next: ArticleMetadata) {
-    setMeta(next);
-    const editor = editorRef.current;
-    if (!editor) return;
-    const current = editor.getValue();
-    const { body } = parseFrontmatterClient(current);
-    editor.setValue(serializeFrontmatterClient(next, body));
-  }
+    setStatus(status: ArticleMetadata["status"]) {
+      applyChange({ ...metaRef.current, status });
+    },
+  }), [applyChange]);
 
   return (
     <details data-tour="frontmatter-panel" className="border rounded themed-surface">

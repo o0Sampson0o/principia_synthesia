@@ -67,7 +67,7 @@ export default async function NewArticlePage({
             className="themed-input w-full resize-y"
           />
         </div>
-        <ArticleEditorPanel publisherSlug={publisherSlug} initialMetadata={DEFAULT_ARTICLE_METADATA} />
+        <ArticleEditorPanel publisherSlug={publisherSlug} draftKey={`${publisherSlug}:new`} initialMetadata={DEFAULT_ARTICLE_METADATA} />
         <div>
           <label className="block text-sm font-medium themed-secondary mb-1">
             Categories
