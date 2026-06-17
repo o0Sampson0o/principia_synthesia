@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorView } from "@codemirror/view";
+import { MarkdownMath } from "@/lib/codemirror-math";
 import Preview from "./Preview";
 import { findMissingAlt } from "@/lib/alt-text-lint";
 import type { AltTextFinding } from "@/lib/alt-text-lint";
@@ -35,6 +36,7 @@ export default forwardRef<ContentEditorRef, {
   const extensions = useMemo(() => [
     markdown({
       base: markdownLanguage,
+      extensions: MarkdownMath,
     }),
     EditorView.lineWrapping,
   ], []);
