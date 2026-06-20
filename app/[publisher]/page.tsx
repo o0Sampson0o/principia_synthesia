@@ -127,165 +127,203 @@ export default async function PublisherProfilePage({
   }
 
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
-      {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold themed-heading">{pub.displayName}</h1>
-        <p className="text-sm themed-muted mt-1">@{pub.slug}</p>
-        {pub.kind === "org" && (
-          <p className="text-sm themed-muted mt-1">Organization</p>
+    <main className="max-w-5xl mx-auto px-5 py-10 sm:py-14">
+
+      {/* ── Profile header ── */}
+      <div className="flex items-start gap-4 mb-8 flex-wrap">
+        <div className="publisher-avatar text-xl">
+          {pub.displayName.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+            <h1
+              className="text-2xl sm:text-3xl themed-heading"
+              style={{ fontWeight: 600, letterSpacing: "-0.03em" }}
+            >
+              {pub.displayName}
+            </h1>
+            {pub.kind === "org" && (
+              <span className="themed-badge text-xs">Organization</span>
+            )}
+          </div>
+          <p className="text-sm themed-muted mb-3">@{pub.slug}</p>
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="stat-chip">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+              <strong className="themed-heading" style={{ fontWeight: 600 }}>{visibleArticles.length}</strong> articles
+            </span>
+            <span className="stat-chip">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <strong className="themed-heading" style={{ fontWeight: 600 }}>{visibleBooks.length}</strong> books
+            </span>
+            <span className="stat-chip">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+              <strong className="themed-heading" style={{ fontWeight: 600 }}>{visibleEvents.length}</strong> events
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Owner action bar ── */}
+      {isOwner && (
+        <div className="flex flex-wrap gap-2 mb-8 p-3 rounded-xl themed-surface border themed-border">
+          <Link href={`/${publisherSlug}/articles/new`} data-tour="new-article-button" className="themed-btn-accent text-sm px-3 py-1.5 rounded-md">
+            + Article
+          </Link>
+          <Link href={`/${publisherSlug}/books/new`} className="themed-btn-accent text-sm px-3 py-1.5 rounded-md">
+            + Book
+          </Link>
+          <Link href={`/${publisherSlug}/objects/new`} className="themed-btn-accent text-sm px-3 py-1.5 rounded-md">
+            + Object
+          </Link>
+          <Link href={`/${publisherSlug}/events/new`} className="themed-btn-accent text-sm px-3 py-1.5 rounded-md">
+            + Event
+          </Link>
+          <div className="ml-auto flex gap-2">
+            <Link href={`/${publisherSlug}/images`} className="themed-btn-outline text-sm px-3 py-1.5">
+              Images
+            </Link>
+            <Link href={`/${publisherSlug}/bin`} className="themed-btn-outline text-sm px-3 py-1.5">
+              Bin
+            </Link>
+            {pub.kind === "org" && (
+              <Link href={`/${publisherSlug}/members`} className="themed-btn-outline text-sm px-3 py-1.5">
+                Members
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Section anchor nav ── */}
+      <div className="flex gap-1 border-b themed-border mb-8 overflow-x-auto scrollbar-none">
+        {visibleArticles.length > 0 && (
+          <a href="#articles" className="themed-tab pb-2.5 border-b-2 mb-[-1px]" style={{ borderBottomColor: "var(--accent)" }}>
+            Articles
+            <span className="themed-muted text-xs ml-1">({visibleArticles.length})</span>
+          </a>
+        )}
+        {visibleBooks.length > 0 && (
+          <a href="#books" className="themed-tab pb-2.5 border-b-2 border-transparent mb-[-1px]">
+            Books
+            <span className="themed-muted text-xs ml-1">({visibleBooks.length})</span>
+          </a>
+        )}
+        {visibleObjects.length > 0 && (
+          <a href="#objects" className="themed-tab pb-2.5 border-b-2 border-transparent mb-[-1px]">
+            Objects
+            <span className="themed-muted text-xs ml-1">({visibleObjects.length})</span>
+          </a>
+        )}
+        {visibleEvents.length > 0 && (
+          <a href="#events" className="themed-tab pb-2.5 border-b-2 border-transparent mb-[-1px]">
+            Events
+            <span className="themed-muted text-xs ml-1">({visibleEvents.length})</span>
+          </a>
         )}
       </div>
 
-      {/* Action buttons for owner */}
-      {isOwner && (
-        <div className="flex flex-wrap gap-2 mb-8">
-          <Link href={`/${publisherSlug}/articles/new`} data-tour="new-article-button" className="themed-btn-primary text-sm px-4 py-2">
-            New article
-          </Link>
-          <Link href={`/${publisherSlug}/books/new`} className="themed-btn-primary text-sm px-4 py-2">
-            New book
-          </Link>
-          <Link href={`/${publisherSlug}/objects/new`} className="themed-btn-primary text-sm px-4 py-2">
-            New object
-          </Link>
-          <Link href={`/${publisherSlug}/events/new`} className="themed-btn-primary text-sm px-4 py-2">
-            New event
-          </Link>
-          <Link href={`/${publisherSlug}/images`} className="themed-btn-ghost text-sm px-4 py-2">
-            Images
-          </Link>
-          <Link href={`/${publisherSlug}/bin`} className="themed-btn-ghost text-sm px-4 py-2">
-            Bin
-          </Link>
-          {pub.kind === "org" && (
-            <Link href={`/${publisherSlug}/members`} className="themed-btn-ghost text-sm px-4 py-2">
-              Members
-            </Link>
-          )}
-        </div>
-      )}
+      <div className="space-y-10">
 
-      {/* Books */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold themed-heading mb-4">Books</h2>
-        {visibleBooks.length === 0 ? (
-          <p className="themed-muted text-sm">No books yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {visibleBooks.map((b) => (
-              <li key={b.id}>
-                <Link
-                  href={`/${publisherSlug}/books/${b.slug}`}
-                  className="themed-link font-medium"
-                >
-                  {b.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {/* ── Articles ── */}
+        {visibleArticles.length > 0 && (
+          <section id="articles">
+            <p className="themed-section-label mb-4">Articles</p>
+            <div className="themed-card overflow-hidden px-4">
+              {visibleArticles.map((a) => (
+                <div key={a.id} className="py-4 border-b themed-border last:border-b-0">
+                  <Link
+                    href={`/${publisherSlug}/articles/${a.slug}`}
+                    className="article-title-serif text-base block"
+                  >
+                    {a.title}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
-      </section>
 
-      {/* Articles */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold themed-heading mb-4">Articles</h2>
-        {visibleArticles.length === 0 ? (
-          <p className="themed-muted text-sm">No articles yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {visibleArticles.map((a) => (
-              <li key={a.id}>
-                <Link
-                  href={`/${publisherSlug}/articles/${a.slug}`}
-                  className="themed-link"
-                >
-                  {a.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {/* ── Books ── */}
+        {visibleBooks.length > 0 && (
+          <section id="books">
+            <p className="themed-section-label mb-4">Books</p>
+            <div className="themed-card overflow-hidden px-4">
+              {visibleBooks.map((b) => (
+                <div key={b.id} className="py-4 border-b themed-border last:border-b-0 flex items-center gap-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" style={{ color: "var(--muted-foreground)" }} aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                  <Link href={`/${publisherSlug}/books/${b.slug}`} className="themed-link font-medium text-sm">
+                    {b.title}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
-      </section>
 
-      {/* Objects */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold themed-heading mb-4">Objects</h2>
-        {visibleObjects.length === 0 ? (
-          <p className="themed-muted text-sm">No objects yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {visibleObjects.map((o) => (
-              <li key={o.id}>
-                <Link
-                  href={`/${publisherSlug}/objects/${o.slug}`}
-                  className="themed-link"
-                >
-                  {o.name}{" "}
-                  <span className="text-xs themed-muted">({o.type})</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {/* ── Objects ── */}
+        {visibleObjects.length > 0 && (
+          <section id="objects">
+            <p className="themed-section-label mb-4">Objects</p>
+            <div className="themed-card overflow-hidden px-4">
+              {visibleObjects.map((o) => (
+                <div key={o.id} className="py-4 border-b themed-border last:border-b-0 flex items-center justify-between gap-3">
+                  <Link href={`/${publisherSlug}/objects/${o.slug}`} className="themed-link text-sm">
+                    {o.name}
+                  </Link>
+                  <span className="themed-badge capitalize">{o.type}</span>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
-      </section>
 
-      {/* Events */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold themed-heading">Events</h2>
-          <Link href={`/${publisherSlug}/events`} className="text-sm themed-link">
-            View all events →
-          </Link>
-        </div>
-        {visibleEvents.length === 0 ? (
-          <p className="themed-muted text-sm">No events yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {visibleEvents.map((e) => (
-              <li key={e.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                <Link
-                  href={`/${publisherSlug}/events/${e.slug}`}
-                  className="themed-link"
-                >
-                  {e.title}
-                </Link>
-                <span className="text-xs themed-muted">
-                  {new Date(e.eventDate).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              </li>
-            ))}
-          </ul>
+        {/* ── Events ── */}
+        {visibleEvents.length > 0 && (
+          <section id="events">
+            <div className="flex items-center justify-between mb-4">
+              <p className="themed-section-label">Events</p>
+              <Link href={`/${publisherSlug}/events`} className="text-xs themed-nav-link flex items-center gap-1">
+                View all
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </Link>
+            </div>
+            <div className="themed-card overflow-hidden px-4">
+              {visibleEvents.map((e) => (
+                <div key={e.id} className="py-4 border-b themed-border last:border-b-0 flex items-center justify-between gap-3">
+                  <Link href={`/${publisherSlug}/events/${e.slug}`} className="themed-link text-sm">
+                    {e.title}
+                  </Link>
+                  <span className="text-xs themed-muted shrink-0">
+                    {new Date(e.eventDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
-      </section>
 
-      {/* Stale articles nudge — visible only to the owner */}
-      {isOwner && staleArticles.length > 0 && (
-        <section className="mt-10">
-          <h2 className="text-xl font-semibold themed-heading mb-4">Stale Articles</h2>
-          <p className="text-sm themed-muted mb-4">
-            The following published articles have not been verified in over{" "}
-            {Math.round(STALE_DAYS / 30)} months. Consider reviewing and marking them as verified.
-          </p>
-          <ul className="space-y-3">
-            {staleArticles.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <Link
-                  href={`/${publisherSlug}/articles/${a.slug}`}
-                  className="themed-link"
-                >
-                  {a.title}
-                </Link>
-                <MarkVerifiedForm publisherSlug={publisherSlug} articleId={a.id} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+        {/* ── Stale articles (owner only) ── */}
+        {isOwner && staleArticles.length > 0 && (
+          <section>
+            <p className="themed-section-label mb-2">Needs review</p>
+            <p className="text-sm themed-muted mb-4">
+              These published articles haven&apos;t been verified in over {Math.round(STALE_DAYS / 30)} months.
+            </p>
+            <div className="themed-card overflow-hidden px-4">
+              {staleArticles.map((a) => (
+                <div key={a.id} className="py-4 border-b themed-border last:border-b-0 flex flex-wrap items-center gap-3">
+                  <Link href={`/${publisherSlug}/articles/${a.slug}`} className="themed-link text-sm flex-1 min-w-0">
+                    {a.title}
+                  </Link>
+                  <MarkVerifiedForm publisherSlug={publisherSlug} articleId={a.id} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+      </div>
     </main>
   );
 }

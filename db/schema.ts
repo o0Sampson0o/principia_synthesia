@@ -307,7 +307,7 @@ export const objects = pgTable(
 // ---------------------------------------------------------------------------
 
 /**
- * The 15 color tokens that make up one side (light or dark) of the site theme.
+ * The 16 color tokens that make up one side (light or dark) of the site theme.
  */
 export type ThemeTokens = {
   background: string;
@@ -315,6 +315,8 @@ export type ThemeTokens = {
   muted: string;
   mutedForeground: string;
   border: string;
+  accent: string;
+  accentForeground: string;
   link: string;
   linkHover: string;
   codeBackground: string;

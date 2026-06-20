@@ -39,46 +39,58 @@ export default async function LoginPage({
       : undefined;
 
   return (
-    <main className="max-w-md mx-auto px-4 py-20">
-      <h1 className="text-3xl font-bold mb-6 themed-heading">Sign in</h1>
-      <StatusMessage searchParams={searchParams} />
-      <form action={loginAction} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium themed-secondary mb-1">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            className="themed-input"
-          />
+    <main className="flex-1 flex items-center justify-center px-5 py-20">
+      <div className="w-full" style={{ maxWidth: "22rem" }}>
+
+        <div className="text-center mb-8">
+          <h1
+            className="themed-heading mb-1.5"
+            style={{
+              fontFamily: "var(--font-playfair), Georgia, serif",
+              fontWeight: 500,
+              fontSize: "1.875rem",
+              letterSpacing: "-0.03em",
+            }}
+          >
+            Welcome back
+          </h1>
+          <p className="themed-muted" style={{ fontSize: "0.875rem" }}>
+            Sign in to your account to continue
+          </p>
         </div>
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium themed-secondary mb-1">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            autoComplete="current-password"
-            className="themed-input"
-          />
+
+        <div className="themed-auth-card">
+          <StatusMessage searchParams={searchParams} />
+          <form action={loginAction} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block themed-secondary font-medium mb-1.5" style={{ fontSize: "0.75rem" }}>
+                Email
+              </label>
+              <input id="email" name="email" type="email" required autoComplete="email" className="themed-input" />
+            </div>
+            <div>
+              <label htmlFor="password" className="block themed-secondary font-medium mb-1.5" style={{ fontSize: "0.75rem" }}>
+                Password
+              </label>
+              <input id="password" name="password" type="password" required autoComplete="current-password" className="themed-input" />
+            </div>
+            {redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
+            <button
+              type="submit"
+              className="themed-btn-accent w-full rounded-lg justify-center"
+              style={{ paddingTop: "0.625rem", paddingBottom: "0.625rem", fontSize: "0.875rem" }}
+            >
+              Sign in
+            </button>
+          </form>
         </div>
-        {redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
-        <button type="submit" className="themed-btn-primary w-full">
-          Sign in
-        </button>
-      </form>
-      <p className="mt-6 text-sm themed-muted">
-        <Link href="/" className="themed-link">
-          Back to home
-        </Link>
-      </p>
+
+        <p className="mt-5 themed-muted text-center" style={{ fontSize: "0.8125rem" }}>
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="themed-link">Get started</Link>
+        </p>
+
+      </div>
     </main>
   );
 }
