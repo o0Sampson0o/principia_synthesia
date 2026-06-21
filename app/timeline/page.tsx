@@ -249,113 +249,161 @@ export default async function TimelinePage({
   };
 
   return (
-    <main className="max-w-6xl mx-auto px-5 py-12 sm:py-16">
+    <main className="flex-1">
 
-      {/* ── Header ── */}
-      <div className="mb-10">
-        <p className="ps-eyebrow mb-3">Principia Synthesia</p>
-        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}>
-          Timeline
-        </h1>
+      {/* ── Framed masthead ─────────────────────────────────────────── */}
+      <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+        <div className="max-w-6xl mx-auto px-5">
+          <div className="flex items-end justify-between gap-10 py-8 sm:py-11">
+
+            <div>
+              <p className="ps-eyebrow mb-3">Principia Synthesia</p>
+              <h1
+                className="ps-display themed-heading"
+                style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
+              >
+                Timeline
+              </h1>
+              <p
+                className="themed-muted mt-3"
+                style={{ fontSize: "0.875rem", lineHeight: 1.65, maxWidth: "30rem" }}
+              >
+                A chronicle of events in mathematics, science and ideas — across all publishers.
+              </p>
+            </div>
+
+            {total > 0 && (
+              <div className="hidden sm:block shrink-0 text-right">
+                <p
+                  className="themed-heading tabular-nums"
+                  style={{
+                    fontFamily: "ui-monospace, monospace",
+                    fontSize: "clamp(2rem, 4vw, 3rem)",
+                    letterSpacing: "-0.04em",
+                    lineHeight: 1,
+                  }}
+                >
+                  {total.toLocaleString()}
+                </p>
+                <p
+                  className="themed-muted mt-2"
+                  style={{
+                    fontSize: "0.5625rem",
+                    fontFamily: "ui-monospace, monospace",
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Events indexed
+                </p>
+              </div>
+            )}
+
+          </div>
+        </div>
       </div>
 
-      {/* ── Filter form ── */}
-      <form method="GET" action="/timeline" className="mb-10">
-        <div className="ps-action-bar gap-2">
-          <input
-            id="q"
-            type="search"
-            name="q"
-            defaultValue={q ?? ""}
-            placeholder="Search events…"
-            className="themed-input flex-1 min-w-32"
-            style={{ fontSize: "0.875rem" }}
-          />
-          <input
-            id="era"
-            type="text"
-            name="era"
-            defaultValue={era ?? ""}
-            placeholder="Era"
-            className="themed-input w-32"
-            style={{ fontSize: "0.875rem" }}
-          />
-          <input
-            id="category"
-            type="text"
-            name="category"
-            defaultValue={category ?? ""}
-            placeholder="Category"
-            className="themed-input w-32"
-            style={{ fontSize: "0.875rem" }}
-          />
-          <input
-            id="publisher"
-            type="text"
-            name="publisher"
-            defaultValue={pubFilter ?? ""}
-            placeholder="Publisher"
-            className="themed-input w-32"
-            style={{ fontSize: "0.875rem" }}
-          />
-          <input
-            id="from"
-            type="date"
-            name="from"
-            defaultValue={from ?? ""}
-            className="themed-input w-36"
-            style={{ fontSize: "0.875rem" }}
-          />
-          <input
-            id="to"
-            type="date"
-            name="to"
-            defaultValue={to ?? ""}
-            className="themed-input w-36"
-            style={{ fontSize: "0.875rem" }}
-          />
-          {activeView === "list" && (
-            <input type="hidden" name="view" value="list" />
-          )}
-          <button
-            type="submit"
-            className="themed-btn-accent rounded-md shrink-0"
-            style={{ fontSize: "0.8125rem", padding: "0.375rem 0.875rem" }}
-          >
-            Filter
-          </button>
-          {hasFilters && (
-            <Link
-              href="/timeline"
-              className="themed-btn-ghost shrink-0"
-              style={{ fontSize: "0.8125rem" }}
+      {/* ── Content ─────────────────────────────────────────────────── */}
+      <div className="max-w-6xl mx-auto px-5 py-10 sm:py-12">
+
+        {/* Filter form */}
+        <form method="GET" action="/timeline" className="mb-10">
+          <div className="ps-action-bar gap-2 flex-wrap sm:flex-nowrap">
+            <input
+              type="search"
+              name="q"
+              defaultValue={q ?? ""}
+              placeholder="Search events…"
+              className="themed-input flex-1 min-w-40"
+              style={{ fontSize: "0.875rem" }}
+            />
+            <input
+              type="text"
+              name="era"
+              defaultValue={era ?? ""}
+              placeholder="Era"
+              className="themed-input w-28"
+              style={{ fontSize: "0.875rem" }}
+            />
+            <input
+              type="text"
+              name="category"
+              defaultValue={category ?? ""}
+              placeholder="Category"
+              className="themed-input w-28"
+              style={{ fontSize: "0.875rem" }}
+            />
+            <input
+              type="text"
+              name="publisher"
+              defaultValue={pubFilter ?? ""}
+              placeholder="Publisher"
+              className="themed-input w-28"
+              style={{ fontSize: "0.875rem" }}
+            />
+            <input
+              type="date"
+              name="from"
+              defaultValue={from ?? ""}
+              className="themed-input w-36"
+              style={{ fontSize: "0.875rem" }}
+            />
+            <input
+              type="date"
+              name="to"
+              defaultValue={to ?? ""}
+              className="themed-input w-36"
+              style={{ fontSize: "0.875rem" }}
+            />
+            {activeView === "list" && (
+              <input type="hidden" name="view" value="list" />
+            )}
+            <button
+              type="submit"
+              className="themed-btn-accent rounded-md shrink-0"
+              style={{ fontSize: "0.8125rem", padding: "0.375rem 0.875rem" }}
             >
-              Clear
-            </Link>
-          )}
-        </div>
-      </form>
+              Filter
+            </button>
+            {hasFilters && (
+              <Link
+                href="/timeline"
+                className="themed-btn-ghost shrink-0"
+                style={{ fontSize: "0.8125rem" }}
+              >
+                Clear
+              </Link>
+            )}
+          </div>
+        </form>
 
-      {allRows.length === 0 ? (
-        <p className="themed-muted">No events found.</p>
-      ) : (
-        <TimelineClientShell
-          rows={allRows}
-          activeView={activeView}
-          q={q}
-          era={era}
-          category={category}
-          pubFilter={pubFilter}
-          from={from}
-          to={to}
+        {allRows.length === 0 ? (
+          <div className="py-24 text-center">
+            <p className="ps-eyebrow mb-3">No results</p>
+            <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>
+              No events found.
+            </p>
+          </div>
+        ) : (
+          <TimelineClientShell
+            rows={allRows}
+            activeView={activeView}
+            q={q}
+            era={era}
+            category={category}
+            pubFilter={pubFilter}
+            from={from}
+            to={to}
+          />
+        )}
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          basePath={buildFilterHref({ page: undefined })}
         />
-      )}
 
-      <Pagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        basePath={buildFilterHref({ page: undefined })}
-      />
+      </div>
     </main>
   );
 }

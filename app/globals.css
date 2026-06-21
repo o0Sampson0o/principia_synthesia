@@ -696,9 +696,70 @@ body:has(dialog[open]) {
   }
 }
 
+.timeline-event-dialog,
+.timeline-cluster-dialog {
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.16);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  max-height: 80svh;
+}
+.timeline-event-dialog {
+  width: min(90vw, 34rem);
+}
+.timeline-cluster-dialog {
+  width: min(90vw, 32rem);
+}
+.timeline-event-dialog:hover,
+.timeline-cluster-dialog:hover {
+  border-color: var(--border);
+}
+
 /* Scrollbar hiding — completes Tailwind's scrollbar-none (which only sets scrollbar-width: none for Firefox) */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
+}
+
+/* ── Global themed scrollbar ──────────────────────────────────────── */
+
+/* Firefox */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Chromium / Edge / Safari */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* KaTeX math — display (block) and inline */

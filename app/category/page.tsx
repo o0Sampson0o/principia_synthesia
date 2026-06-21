@@ -17,67 +17,117 @@ export default async function CategoriesIndexPage() {
     .orderBy(categories.name);
 
   return (
-    <main className="max-w-5xl mx-auto px-5 sm:px-8 py-10 sm:py-16">
+    <main className="flex-1">
 
-      {/* Header */}
-      <div className="mb-10">
-        <p className="ps-eyebrow mb-3">Principia Synthesia</p>
-        <h1
-          className="ps-display themed-heading mb-8"
-          style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
-        >
-          Categories
-        </h1>
+      {/* ── Framed masthead ─────────────────────────────────────────── */}
+      <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+        <div className="max-w-5xl mx-auto px-5">
+          <div className="flex items-end justify-between gap-10 py-8 sm:py-11">
+
+            <div>
+              <p className="ps-eyebrow mb-3">Principia Synthesia</p>
+              <h1
+                className="ps-display themed-heading"
+                style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
+              >
+                Categories
+              </h1>
+              <p
+                className="themed-muted mt-3"
+                style={{ fontSize: "0.875rem", lineHeight: 1.65 }}
+              >
+                Browse articles and books by subject
+              </p>
+            </div>
+
+            {results.length > 0 && (
+              <div className="hidden sm:block shrink-0 text-right">
+                <p
+                  className="themed-heading tabular-nums"
+                  style={{
+                    fontFamily: "ui-monospace, monospace",
+                    fontSize: "clamp(2rem, 4vw, 3rem)",
+                    letterSpacing: "-0.04em",
+                    lineHeight: 1,
+                  }}
+                >
+                  {results.length}
+                </p>
+                <p
+                  className="themed-muted mt-2"
+                  style={{
+                    fontSize: "0.5625rem",
+                    fontFamily: "ui-monospace, monospace",
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Subjects
+                </p>
+              </div>
+            )}
+
+          </div>
+        </div>
       </div>
 
-      {results.length === 0 ? (
-        <div className="py-20 text-center">
-          <p className="ps-eyebrow mb-3">Empty</p>
-          <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>
-            No categories yet.
-          </p>
-        </div>
-      ) : (
-        <div>
-          {/* Section header */}
-          <div className="flex items-baseline justify-between pb-3 border-b themed-border">
-            <p className="ps-eyebrow-muted">All categories</p>
-            <span
-              className="themed-muted"
-              style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
-            >
-              {results.length}
-            </span>
-          </div>
+      {/* ── Content ─────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-5 py-10 sm:py-12">
 
-          {/* Category rows */}
-          {results.map((c) => (
-            <div
-              key={c.id}
-              className="flex items-baseline justify-between hover:bg-[var(--surface)] transition-colors"
-              style={{
-                borderBottom: "1px solid var(--border)",
-                padding: "0.875rem 0.5rem",
-              }}
-            >
-              <Link
-                href={`/category/${c.slug}`}
-                className="ps-list-link flex-1 min-w-0"
-              >
-                {c.name}
-              </Link>
+        {results.length === 0 ? (
+          <div className="py-24 text-center">
+            <p className="ps-eyebrow mb-3">Empty</p>
+            <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>
+              No categories yet.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Section header */}
+            <div className="flex items-baseline justify-between pb-3 border-b themed-border mb-2">
+              <p className="ps-eyebrow-muted">All subjects</p>
               <span
-                className="themed-muted tabular-nums shrink-0 ml-6"
+                className="themed-muted"
                 style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
               >
-                {c.articleCount}{" "}
-                {c.articleCount === 1 ? "article" : "articles"}
+                {results.length}
               </span>
             </div>
-          ))}
-        </div>
-      )}
 
+            {/* Category rows */}
+            {results.map((c) => (
+              <Link
+                key={c.id}
+                href={`/category/${c.slug}`}
+                className="group flex items-center justify-between hover:bg-[var(--surface)] transition-colors"
+                style={{ borderBottom: "1px solid var(--border)", padding: "1rem 0.5rem" }}
+              >
+                <span
+                  className="article-title-serif group-hover:text-[var(--accent)] transition-colors"
+                  style={{ fontSize: "0.9375rem" }}
+                >
+                  {c.name}
+                </span>
+                <div className="flex items-center gap-3 shrink-0 ml-6">
+                  <span
+                    className="themed-muted tabular-nums"
+                    style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+                  >
+                    {c.articleCount} {c.articleCount === 1 ? "article" : "articles"}
+                  </span>
+                  <span
+                    className="themed-muted opacity-0 group-hover:opacity-50 transition-opacity"
+                    aria-hidden="true"
+                  >
+                    →
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </>
+        )}
+
+      </div>
     </main>
   );
 }
