@@ -192,7 +192,7 @@ export default async function EditBookPage({
         </div>
         <div>
           <label className="block text-sm font-medium themed-secondary mb-1">
-            Categories
+            Tags
           </label>
           <CategoryPicker initialSelected={bookCats.map(c => c.slug)} />
         </div>

@@ -75,7 +75,7 @@ export default async function NewArticlePage({
 
         <div>
           <label className="block font-medium mb-1.5 themed-secondary" style={{ fontSize: "0.75rem" }}>
-            Categories
+            Tags
           </label>
           <CategoryPicker />
         </div>

@@ -9,7 +9,6 @@ const NOTIFICATIONS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_NOTIFICATIONS === "
 
 const NAV_LINKS = [
   { href: "/search",        label: "Search" },
-  { href: "/category",      label: "Categories" },
   { href: "/timeline",      label: "Timeline" },
   { href: "/organizations", label: "Organizations" },
 ] as const;

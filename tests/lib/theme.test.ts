@@ -88,10 +88,10 @@ describe("buildThemeStyle", () => {
     expect(style).toContain("#0000ff");
   });
 
-  it("output has exactly the right number of CSS variable declarations (15 per theme = 30 total)", () => {
+  it("output has exactly the right number of CSS variable declarations (17 per theme = 34 total)", () => {
     const style = buildThemeStyle(defaultLight, defaultDark);
     const matches = style.match(/--[a-z-]+:/g) || [];
-    expect(matches).toHaveLength(30); // 15 light + 15 dark
+    expect(matches).toHaveLength(34); // 17 light + 17 dark
   });
 });
 

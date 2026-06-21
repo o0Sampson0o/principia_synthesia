@@ -46,6 +46,12 @@ vi.mock("@/lib/citations-sync", () => ({
   syncArticleCitations: mockSyncArticleCitations,
 }));
 
+// ─── Content tags mock ────────────────────────────────────────────────────────
+
+vi.mock("@/lib/content-tags", () => ({
+  setContentTags: vi.fn().mockResolvedValue(undefined),
+}));
+
 // ─── Auth mock ────────────────────────────────────────────────────────────────
 
 const mockRequireSession = vi.hoisted(() => vi.fn());

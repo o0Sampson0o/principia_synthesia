@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next"
 import { db } from "@/db"
-import { articles, categories, books, publishers, resourceVisibility } from "@/db/schema"
+import { articles, books, publishers, resourceVisibility } from "@/db/schema"
 import { eq, and, sql, isNull, or } from "drizzle-orm"
 
 const BASE_URL = "https://principia-synthesia.vercel.app"
@@ -54,8 +54,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
     )
 
-  const allCategories = await db.select({ slug: categories.slug }).from(categories)
-
   // Build publisher slug lookup
   const pubRows = await db
     .select({ slug: publishers.slug, kind: publishers.kind, userId: publishers.userId, orgId: publishers.orgId })
@@ -69,7 +67,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE_URL, changeFrequency: "weekly", priority: 1 },
-    { url: `${BASE_URL}/category`, changeFrequency: "weekly", priority: 0.5 },
     { url: `${BASE_URL}/search`, changeFrequency: "monthly", priority: 0.4 },
     { url: `${BASE_URL}/organizations`, changeFrequency: "weekly", priority: 0.4 },
   ]
@@ -95,16 +92,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }]
   })
 
-  const categoryRoutes: MetadataRoute.Sitemap = allCategories.map((c) => ({
-    url: `${BASE_URL}/category/${c.slug}`,
-    changeFrequency: "weekly",
-    priority: 0.5,
-  }))
-
   return [
     ...staticRoutes,
     ...articleRoutes,
     ...bookRoutes,
-    ...categoryRoutes,
   ]
 }

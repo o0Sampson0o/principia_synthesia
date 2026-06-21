@@ -8,10 +8,9 @@ import {
   bookSnapshots,
   bookSnapshotEntries,
   publishers,
-  categories,
-  bookCategories,
 } from "@/db/schema";
-import { eq, asc, and, isNull, inArray } from "drizzle-orm";
+import { eq, asc, and, isNull } from "drizzle-orm";
+import { setContentTags } from "@/lib/content-tags";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseFrontmatter } from "@/lib/frontmatter";
@@ -32,25 +31,6 @@ import { resolvePublisher } from "@/lib/publisher";
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function setBookCategories(bookId: number, slugs: string[], createdByUserId: number) {
-  await db.delete(bookCategories).where(eq(bookCategories.bookId, bookId));
-  if (slugs.length === 0) return;
-
-  // Upsert any unknown slugs as user-created categories
-  for (const slug of slugs) {
-    await db.insert(categories).values({ slug, name: slug, createdByUserId }).onConflictDoNothing();
-  }
-
-  const cats = await db
-    .select({ id: categories.id })
-    .from(categories)
-    .where(inArray(categories.slug, slugs));
-  if (cats.length > 0) {
-    await db.insert(bookCategories).values(
-      cats.map((c) => ({ bookId, categoryId: c.id }))
-    );
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Book CRUD
@@ -76,26 +56,28 @@ export async function createBook(publisherSlug: string, formData: FormData) {
   }).returning({ id: books.id });
 
   const categorySlugs = (formData.get("categories") as string)?.split(",").filter(Boolean) ?? [];
-  await setBookCategories(book.id, categorySlugs, session.userId);
+  await setContentTags("book", book.id, categorySlugs, session.userId);
 
   revalidatePath(`/${publisherSlug}`);
   redirect(`/${publisherSlug}/books/${validated.slug}`);
 }
 
 export async function deleteBook(publisherSlug: string, formData: FormData) {
-  await assertEditRights(publisherSlug);
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = deleteBookSchema.parse({ bookId: formData.get("bookId") });
 
   // Cascade deletes: curriculumEntries, bookSnapshots, pdfCaches, internal articles
-  await db.delete(books).where(eq(books.id, validated.bookId));
+  await db.delete(books).where(
+    and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId))
+  );
 
   revalidatePath(`/${publisherSlug}`);
   redirect(`/${publisherSlug}`);
 }
 
 export async function updateBook(publisherSlug: string, formData: FormData) {
-  const { session } = await assertEditRights(publisherSlug);
+  const { session, ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = updateBookSchema.parse({
     id: formData.get("id"),
@@ -121,9 +103,9 @@ export async function updateBook(publisherSlug: string, formData: FormData) {
       summary: validated.summary,
       updatedAt: new Date()
     })
-    .where(eq(books.id, validated.id));
+    .where(and(eq(books.id, validated.id), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)));
 
-  await setBookCategories(validated.id, categorySlugs, session.userId);
+  await setContentTags("book", validated.id, categorySlugs, session.userId);
 
   if (current) revalidatePath(`/${publisherSlug}/books/${current.slug}`);
   revalidatePath(`/${publisherSlug}/books/${validated.slug}`);
@@ -144,6 +126,11 @@ export async function upsertCurriculumEntry(publisherSlug: string, formData: For
     position: formData.get("position"),
     partTitle: formData.get("partTitle") || null,
   });
+
+  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .limit(1);
+  if (!book) throw new Error("Book not found");
 
   // Security: this entry point is for same-publisher articles only.
   // Cross-publisher articles must go through addExternalArticle, which
@@ -180,9 +167,7 @@ export async function upsertCurriculumEntry(publisherSlug: string, formData: For
     await db.insert(curriculumEntries).values(validated);
   }
 
-  // Find book slug for revalidation
-  const [book] = await db.select({ slug: books.slug }).from(books).where(eq(books.id, validated.bookId)).limit(1);
-  if (book) revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
 }
 
 export async function addExternalArticle(
@@ -190,7 +175,7 @@ export async function addExternalArticle(
   formData: FormData
 ) {
   // 1. Caller must own the book.
-  const { session } = await assertEditRights(publisherSlug);
+  const { session, ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   // 2. Validate input shape.
   const validated = addExternalArticleSchema.parse({
@@ -200,6 +185,12 @@ export async function addExternalArticle(
     position: formData.get("position"),
     partTitle: formData.get("partTitle") || null,
   });
+
+  // 3a. Verify the book belongs to this publisher.
+  const [ownedBook] = await db.select({ id: books.id, slug: books.slug }).from(books)
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .limit(1);
+  if (!ownedBook) throw new Error("Book not found");
 
   // 3. Disallow targeting the same publisher (must use upsertCurriculumEntry).
   if (validated.targetPublisher === publisherSlug) {
@@ -272,24 +263,22 @@ export async function addExternalArticle(
   });
 
   // 9. Revalidate book pages.
-  const [book] = await db
-    .select({ slug: books.slug })
-    .from(books)
-    .where(eq(books.id, validated.bookId))
-    .limit(1);
-  if (book) {
-    revalidatePath(`/${publisherSlug}/books/${book.slug}`);
-    revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-  }
+  revalidatePath(`/${publisherSlug}/books/${ownedBook.slug}`);
+  revalidatePath(`/${publisherSlug}/books/${ownedBook.slug}/edit`);
 }
 
 export async function removeCurriculumEntry(publisherSlug: string, formData: FormData) {
-  await assertEditRights(publisherSlug);
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = removeCurriculumEntrySchema.parse({
     id: formData.get("id"),
     bookId: formData.get("bookId"),
   });
+
+  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .limit(1);
+  if (!book) throw new Error("Book not found");
 
   // Check if article is internal — if so, delete the article itself
   const [entry] = await db
@@ -312,11 +301,8 @@ export async function removeCurriculumEntry(publisherSlug: string, formData: For
     }
   }
 
-  const [book] = await db.select({ slug: books.slug }).from(books).where(eq(books.id, validated.bookId)).limit(1);
-  if (book) {
-    revalidatePath(`/${publisherSlug}/books/${book.slug}`);
-    revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-  }
+  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
 }
 
 export async function reorderCurriculumEntries(
@@ -324,7 +310,12 @@ export async function reorderCurriculumEntries(
   bookId: number,
   orderedIds: number[]
 ) {
-  await assertEditRights(publisherSlug);
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
+    .where(and(eq(books.id, bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .limit(1);
+  if (!book) throw new Error("Book not found");
 
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
@@ -335,8 +326,7 @@ export async function reorderCurriculumEntries(
     }
   });
 
-  const [book] = await db.select({ slug: books.slug }).from(books).where(eq(books.id, bookId)).limit(1);
-  if (book) revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
 }
 
 export async function reorderChapters(publisherSlug: string, formData: FormData) {
@@ -361,6 +351,11 @@ export async function createInternalArticle(publisherSlug: string, formData: For
     position: formData.get("position"),
     partTitle: formData.get("partTitle") || null,
   });
+
+  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .limit(1);
+  if (!book) throw new Error("Book not found");
 
   const defaultContent = `---\nstatus: published\ntags: []\ndescription: ""\ncanvas: null\n---\n\n# ${validated.title}\n`;
   const parsed = parseFrontmatter(defaultContent);
@@ -388,11 +383,8 @@ export async function createInternalArticle(publisherSlug: string, formData: For
     });
   });
 
-  const [book] = await db.select({ slug: books.slug }).from(books).where(eq(books.id, validated.bookId)).limit(1);
-  if (book) {
-    revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-    redirect(`/${publisherSlug}/books/${book.slug}/edit`);
-  }
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+  redirect(`/${publisherSlug}/books/${book.slug}/edit`);
 }
 
 // ---------------------------------------------------------------------------
@@ -400,7 +392,12 @@ export async function createInternalArticle(publisherSlug: string, formData: For
 // ---------------------------------------------------------------------------
 
 export async function snapshotBook(publisherSlug: string, bookId: number, note?: string) {
-  await assertEditRights(publisherSlug);
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
+    .where(and(eq(books.id, bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .limit(1);
+  if (!book) throw new Error("Book not found");
 
   const entries = await db
     .select({
@@ -437,6 +434,5 @@ export async function snapshotBook(publisherSlug: string, bookId: number, note?:
     }
   });
 
-  const [book] = await db.select({ slug: books.slug }).from(books).where(eq(books.id, bookId)).limit(1);
-  if (book) revalidatePath(`/${publisherSlug}/books/${book.slug}/snapshots`);
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/snapshots`);
 }

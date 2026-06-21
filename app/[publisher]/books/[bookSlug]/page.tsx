@@ -88,7 +88,7 @@ export default async function BookPage({
         {bookCats.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-5">
             {bookCats.map((c) => (
-              <Link key={c.slug} href={`/category/${c.slug}`} className="themed-tag">
+              <Link key={c.slug} href={`/search?tags=${encodeURIComponent(c.slug)}`} className="themed-tag">
                 #{c.slug}
               </Link>
             ))}
