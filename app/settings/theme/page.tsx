@@ -20,21 +20,25 @@ export default async function ThemeSettingsPage() {
   const darkTokens = { ...defaultDark, ...existing[0]?.darkTokens };
 
   return (
-    <main className="max-w-2xl mx-auto px-5 py-12 sm:py-16">
+    <main className="flex-1">
 
-      <div className="mb-10">
-        <p className="ps-eyebrow mb-3">Settings</p>
-        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}>
-          Theme
-        </h1>
-        <p className="themed-muted mt-2" style={{ fontSize: "0.875rem", lineHeight: 1.6 }}>
-          Customize your light and dark mode colors. Changes apply immediately as a preview and save on click.
-        </p>
+      {/* ── Framed masthead ─────────────────────────────────────────── */}
+      <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+        <div className="max-w-2xl mx-auto px-5 py-8 sm:py-11">
+          <p className="ps-eyebrow mb-3">Settings</p>
+          <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}>
+            Theme
+          </h1>
+          <p className="themed-muted mt-2" style={{ fontSize: "0.875rem", lineHeight: 1.6 }}>
+            Customize your color palette. Changes preview live.
+          </p>
+        </div>
       </div>
 
-      <hr className="themed-hr mb-10" />
-
-      <ThemeEditor initialLight={lightTokens} initialDark={darkTokens} />
+      {/* ── Editor ──────────────────────────────────────────────────── */}
+      <div className="max-w-2xl mx-auto px-5 py-10 sm:py-12">
+        <ThemeEditor initialLight={lightTokens} initialDark={darkTokens} />
+      </div>
 
     </main>
   );

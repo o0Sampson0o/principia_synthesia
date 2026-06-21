@@ -79,143 +79,196 @@ export default function ThemeEditor({ initialLight, initialDark }: Props) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
 
-      {/* Mode toggle */}
+      {/* ── Mode toggle ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-2">
-        {(["light", "dark"] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`px-4 py-1.5 text-sm rounded-full border transition-colors ${
-              mode === m
-                ? "border-current themed-heading"
-                : "themed-border themed-muted hover:themed-heading"
-            }`}
-          >
-            {m.charAt(0).toUpperCase() + m.slice(1)}
-          </button>
-        ))}
-        <span className="text-xs themed-muted ml-2">Editing {mode} mode</span>
+        {(["light", "dark"] as const).map((m) => {
+          const isActive = mode === m
+          return (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={isActive ? "themed-heading" : "themed-muted"}
+              style={{
+                borderRadius: "9999px",
+                border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                padding: "0.3125rem 0.875rem",
+                fontSize: "0.8125rem",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.375rem",
+                background: "transparent",
+                cursor: "pointer",
+                transition: "border-color 0.15s, color 0.15s",
+              }}
+            >
+              {m === "light" ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="4"/>
+                  <line x1="12" y1="2" x2="12" y2="6"/>
+                  <line x1="12" y1="18" x2="12" y2="22"/>
+                  <line x1="4.22" y1="4.22" x2="7.05" y2="7.05"/>
+                  <line x1="16.95" y1="16.95" x2="19.78" y2="19.78"/>
+                  <line x1="2" y1="12" x2="6" y2="12"/>
+                  <line x1="18" y1="12" x2="22" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="7.05" y2="16.95"/>
+                  <line x1="16.95" y1="7.05" x2="19.78" y2="4.22"/>
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+              )}
+              {m.charAt(0).toUpperCase() + m.slice(1)}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Preset picker */}
+      {/* ── Presets ─────────────────────────────────────────────────── */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest themed-muted mb-3">Presets</p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-baseline justify-between pb-3 border-b themed-border mb-4">
+          <p className="ps-eyebrow-muted">Presets</p>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
           {PRESETS.map((preset) => {
             const t = mode === "light" ? preset.light : preset.dark
             return (
               <button
                 key={preset.name}
                 onClick={() => applyPreset(preset)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg themed-border border themed-secondary hover:themed-heading transition-colors"
+                className="shrink-0 hover:bg-[var(--surface)] transition-colors"
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: "0.5rem",
+                  padding: "0.5rem 0.75rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: "0.375rem",
+                  background: "transparent",
+                  cursor: "pointer",
+                }}
               >
-                {/* Color swatch showing bg + primary + accent of the preset */}
                 <span className="flex gap-0.5">
-                  <span className="w-3 h-3 rounded-full border themed-border" style={{ background: t.background }} />
-                  <span className="w-3 h-3 rounded-full border themed-border" style={{ background: t.primaryBtn }} />
-                  <span className="w-3 h-3 rounded-full border themed-border" style={{ background: t.accent }} />
+                  <span style={{ width: "0.75rem", height: "0.75rem", borderRadius: "9999px", background: t.background, border: "1px solid var(--border)", display: "block" }} />
+                  <span style={{ width: "0.75rem", height: "0.75rem", borderRadius: "9999px", background: t.primaryBtn, border: "1px solid var(--border)", display: "block" }} />
+                  <span style={{ width: "0.75rem", height: "0.75rem", borderRadius: "9999px", background: t.accent, border: "1px solid var(--border)", display: "block" }} />
                 </span>
-                {preset.name}
+                <span className="themed-secondary" style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>
+                  {preset.name}
+                </span>
               </button>
             )
           })}
         </div>
       </div>
 
-      {/* Token grid */}
+      {/* ── Token grid ──────────────────────────────────────────────── */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest themed-muted mb-3">Customize</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="flex items-baseline justify-between pb-3 border-b themed-border mb-4">
+          <p className="ps-eyebrow-muted">Tokens</p>
+          <span className="themed-muted" style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}>
+            {Object.keys(TOKEN_LABELS).length}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
           {(Object.keys(TOKEN_LABELS) as (keyof ThemeTokens)[]).map((key) => (
             <div key={key} className="flex items-center gap-3">
               <input
                 type="color"
                 value={tokens[key]}
                 onChange={(e) => updateToken(key, e.target.value)}
-                className="w-10 h-10 rounded themed-border border cursor-pointer p-0.5 bg-transparent"
+                style={{
+                  width: "2rem",
+                  height: "2rem",
+                  borderRadius: "0.375rem",
+                  border: "1px solid var(--border)",
+                  cursor: "pointer",
+                  background: "transparent",
+                  padding: 0,
+                  flexShrink: 0,
+                }}
               />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium themed-heading">{TOKEN_LABELS[key]}</p>
-                <p className="text-xs themed-muted font-mono">{tokens[key]}</p>
+              <div className="min-w-0">
+                <p className="themed-heading" style={{ fontSize: "0.875rem", lineHeight: 1.3 }}>
+                  {TOKEN_LABELS[key]}
+                </p>
+                <p className="themed-muted" style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}>
+                  {tokens[key]}
+                </p>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Preview */}
+      {/* ── Live preview ────────────────────────────────────────────── */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest themed-muted mb-3">Preview</p>
+        <div className="flex items-baseline justify-between pb-3 border-b themed-border mb-4">
+          <p className="ps-eyebrow-muted">Preview</p>
+        </div>
         <div
-          className="rounded-xl border p-6 space-y-3"
-          style={{ backgroundColor: tokens.background, color: tokens.foreground, borderColor: tokens.border }}
+          style={{
+            borderRadius: "0.75rem",
+            border: `1px solid ${tokens.border}`,
+            background: tokens.background,
+            color: tokens.foreground,
+            padding: "1.25rem",
+          }}
         >
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: tokens.mutedForeground }}>
+          <p style={{ fontSize: "0.625rem", fontFamily: "ui-monospace, monospace", textTransform: "uppercase", letterSpacing: "0.1em", color: tokens.mutedForeground, marginBottom: "0.5rem" }}>
             Article
           </p>
-          <h2 className="text-xl font-bold">General Relativity</h2>
-          <p className="text-sm" style={{ color: tokens.mutedForeground }}>
-            Einstein&apos;s geometric theory of gravitation, describing gravity as curvature of spacetime.
-          </p>
-          <p className="text-sm">
-            See also{" "}
-            <a href="#" style={{ color: tokens.link }} className="underline underline-offset-2">
+          <h2 style={{ fontFamily: "var(--font-playfair, Georgia, serif)", fontSize: "1.125rem", fontWeight: 500, color: tokens.foreground, marginBottom: "0.375rem", letterSpacing: "-0.02em" }}>
+            General Relativity
+          </h2>
+          <p style={{ fontSize: "0.8125rem", color: tokens.mutedForeground, marginBottom: "0.5rem", lineHeight: 1.55 }}>
+            {"Einstein's geometric theory of gravitation. "}
+            <a href="#" style={{ color: tokens.link, textDecoration: "underline", textUnderlineOffset: "2px" }}>
               Special Relativity
-            </a>{" "}
-            and{" "}
-            <a href="#" style={{ color: tokens.link }} className="underline underline-offset-2">
-              Tensor Calculus
-            </a>.
+            </a>
           </p>
-          <code
-            className="text-xs px-2 py-1 rounded"
-            style={{ background: tokens.codeBackground, color: tokens.foreground }}
-          >
+          <code style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace", background: tokens.codeBackground, color: tokens.foreground, padding: "0.25rem 0.5rem", borderRadius: "0.25rem", display: "inline-block", marginBottom: "0.75rem" }}>
             G_μν + Λg_μν = 8πG/c⁴ · T_μν
           </code>
-          <hr style={{ borderColor: tokens.border }} />
-          <div className="flex items-center gap-4 flex-wrap">
-            <button
-              className="text-xs px-3 py-1.5 rounded"
-              style={{ background: tokens.primaryBtn, color: tokens.primaryBtnText }}
-            >
-              Primary button
+          <hr style={{ borderColor: tokens.border, marginBottom: "0.75rem" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <button style={{ fontSize: "0.75rem", padding: "0.25rem 0.75rem", borderRadius: "0.375rem", background: tokens.primaryBtn, color: tokens.primaryBtnText, border: "none", cursor: "default" }}>
+              Primary
             </button>
-            <button
-              className="text-xs px-3 py-1.5 rounded"
-              style={{ background: tokens.accent, color: "#fff" }}
-            >
-              Accent button
-            </button>
+            <span style={{ fontSize: "0.75rem", padding: "0.25rem 0.75rem", borderRadius: "0.375rem", background: tokens.accent, color: "#fff" }}>
+              Accent
+            </span>
             <input
-              placeholder="Input field"
-              className="text-xs px-3 py-1.5 rounded"
-              style={{
-                background: "transparent",
-                color: tokens.foreground,
-                border: `1px solid ${tokens.inputBorder}`,
-              }}
               readOnly
+              placeholder="Input"
+              style={{ fontSize: "0.75rem", padding: "0.25rem 0.625rem", borderRadius: "0.375rem", background: "transparent", color: tokens.foreground, border: `1px solid ${tokens.inputBorder}`, outline: "none" }}
             />
           </div>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-4">
+      {/* ── Actions ─────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-end gap-3 pt-2">
+        <button
+          onClick={handleReset}
+          className="themed-btn-outline rounded-lg"
+          style={{ fontSize: "0.8125rem", padding: "0.5rem 1rem" }}
+        >
+          Reset to default
+        </button>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="themed-btn-primary"
+          className="themed-btn-accent rounded-lg"
+          style={{ fontSize: "0.8125rem", padding: "0.5rem 1rem" }}
         >
-          {saving ? "Saving..." : saved ? "Saved!" : `Save ${mode} theme`}
-        </button>
-        <button onClick={handleReset} className="themed-link text-sm">
-          Reset {mode} to default
+          {saving ? "Saving…" : saved ? "Saved ✓" : `Save ${mode} theme`}
         </button>
       </div>
+
     </div>
   )
 }

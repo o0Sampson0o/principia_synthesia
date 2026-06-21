@@ -43,6 +43,11 @@ function ListEventRow({
   const { focusIndex, registerRef } = useKeyboardNavContext()
   const isFocused = focusIndex === index
 
+  const dateShort = new Date(event.eventDate).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })
+
   return (
     <li
       ref={(el) => registerRef(index, el)}
@@ -58,9 +63,7 @@ function ListEventRow({
         style={{
           display: "flex",
           alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 20,
-          padding: "1rem 0.5rem 1rem 0",
+          padding: "1.125rem 0.5rem 1.125rem 0",
           background: "none",
           border: "none",
           cursor: "pointer",
@@ -69,41 +72,57 @@ function ListEventRow({
         }}
         tabIndex={-1}
       >
+        {/* Dateline column */}
+        <div style={{ width: "5.25rem", flexShrink: 0, paddingTop: "0.1875rem" }}>
+          <span
+            style={{
+              fontSize: "0.5625rem",
+              fontFamily: "ui-monospace, monospace",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "var(--muted-foreground)",
+              lineHeight: 1.4,
+            }}
+          >
+            {dateShort}
+          </span>
+        </div>
+
+        {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Title */}
           <p
+            className="article-title-serif"
             style={{
               fontSize: "0.9375rem",
-              color: "var(--foreground)",
-              fontFamily: "system-ui, -apple-system, sans-serif",
-              lineHeight: 1.4,
+              lineHeight: 1.35,
               marginBottom: 5,
+              color: "var(--foreground)",
             }}
           >
             {event.title}
           </p>
 
-          {/* Meta line */}
-          <p
-            style={{
-              fontSize: "0.5625rem",
-              fontFamily: "ui-monospace, monospace",
-              color: "var(--muted-foreground)",
-              letterSpacing: "0.07em",
-              textTransform: "uppercase",
-              marginBottom: event.description ? 7 : 0,
-            }}
-          >
-            {fmtDate(event.eventDate)}
-            {event.publisherSlug ? ` · @${event.publisherSlug}` : ""}
-            {event.category ? ` · ${event.category}` : ""}
-          </p>
+          {(event.publisherSlug || event.category) && (
+            <p
+              style={{
+                fontSize: "0.5625rem",
+                fontFamily: "ui-monospace, monospace",
+                color: "var(--muted-foreground)",
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                marginBottom: event.description ? 6 : 0,
+              }}
+            >
+              {event.publisherSlug ? `@${event.publisherSlug}` : ""}
+              {event.publisherSlug && event.category ? " · " : ""}
+              {event.category ?? ""}
+            </p>
+          )}
 
-          {/* Description snippet */}
           {event.description && (
             <p
               style={{
-                fontSize: "0.875rem",
+                fontSize: "0.8125rem",
                 color: "var(--muted-foreground)",
                 lineHeight: 1.65,
                 display: "-webkit-box",
@@ -117,15 +136,16 @@ function ListEventRow({
           )}
         </div>
 
-        {/* Arrow */}
+        {/* Hover arrow */}
         <span
           aria-hidden="true"
-          className="opacity-0 group-hover:opacity-60 transition-opacity"
+          className="opacity-0 group-hover:opacity-50 transition-opacity"
           style={{
             color: "var(--muted-foreground)",
             fontSize: "0.875rem",
             flexShrink: 0,
             marginTop: 2,
+            paddingLeft: 12,
           }}
         >
           →
@@ -204,11 +224,17 @@ export default function TimelineClientShell({
                 {grouped.map(([year, evts]) => {
                   const yearStartIndex = flatRows.indexOf(evts[0])
                   return (
-                    <div key={year} className="mb-12">
+                    <div key={year} className="mb-10">
                       {/* Year header */}
                       <div
-                        className="flex items-baseline gap-5 mb-0"
-                        style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.75rem", marginBottom: 0 }}
+                        style={{
+                          display: "flex",
+                          alignItems: "baseline",
+                          gap: "1.25rem",
+                          borderBottom: "1px solid var(--border)",
+                          paddingBottom: "0.75rem",
+                          marginBottom: 0,
+                        }}
                       >
                         <span
                           className="tabular-nums"
@@ -260,7 +286,7 @@ export default function TimelineClientShell({
       {/* ── Event detail modal ── */}
       <dialog
         ref={dialogRef}
-        className="w-[min(90vw,34rem)] rounded-xl themed-card shadow-xl flex flex-col"
+        className="timeline-event-dialog"
         onClick={(e) => { if (e.target === dialogRef.current) closeModal() }}
         onClose={() => setSelectedEvent(null)}
         aria-labelledby="list-event-modal-title"
