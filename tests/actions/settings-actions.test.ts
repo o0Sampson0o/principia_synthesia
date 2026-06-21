@@ -216,6 +216,8 @@ const VALID_TOKENS: Record<string, string> = {
   muted:            "#27272a",
   mutedForeground:  "#a1a1aa",
   border:           "#3f3f46",
+  accent:           "#6366f1",
+  accentForeground: "#ffffff",
   link:             "#60a5fa",
   linkHover:        "#93c5fd",
   codeBackground:   "#27272a",
@@ -249,7 +251,7 @@ describe("saveTheme", () => {
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
-  it("accepts a valid 15-token submission and calls db.update when a row exists", async () => {
+  it("accepts a valid 17-token submission and calls db.update when a row exists", async () => {
     setupSelectLimit([{ id: 3, userId: 1 }]);
     setupUpdate();
 
@@ -260,7 +262,7 @@ describe("saveTheme", () => {
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
-  it("accepts a valid 15-token submission and calls db.insert when no row exists", async () => {
+  it("accepts a valid 17-token submission and calls db.insert when no row exists", async () => {
     setupSelectLimit([]);
     setupInsert();
 
