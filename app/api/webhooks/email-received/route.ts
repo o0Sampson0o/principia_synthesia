@@ -1,13 +1,6 @@
 import { sendEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
-  const secret = process.env.RESEND_WEBHOOK_SECRET;
-  if (secret) {
-    const signature = req.headers.get("svix-signature") ?? req.headers.get("webhook-signature");
-    if (!signature || signature !== secret) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-  }
 
   const body = await req.json();
   if (body.type !== "email.received") {
