@@ -154,7 +154,7 @@ export default async function EditArticlePage({
 
         <div>
           <label className="block font-medium mb-1.5 themed-secondary" style={{ fontSize: "0.75rem" }}>
-            Categories
+            Tags
           </label>
           <CategoryPicker initialSelected={currentCategories ? currentCategories.split(",").filter(Boolean) : []} />
         </div>

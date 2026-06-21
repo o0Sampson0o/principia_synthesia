@@ -150,11 +150,11 @@ describe("addExternalArticle", () => {
       })
       .mockResolvedValueOnce(publisherB);
 
-    // select calls: article lookup → slug conflict → book slug
+    // select calls: book ownership → article lookup → slug conflict
     mockSelect
-      .mockReturnValueOnce(chainResolving([{ id: 7 }]))        // article found
-      .mockReturnValueOnce(chainResolving([]))                  // no slug conflict
-      .mockReturnValueOnce(chainResolving([{ slug: "book-x" }])); // book slug
+      .mockReturnValueOnce(chainResolving([{ id: 5, slug: "book-x" }])) // book ownership
+      .mockReturnValueOnce(chainResolving([{ id: 7 }]))                  // article found
+      .mockReturnValueOnce(chainResolving([]));                           // no slug conflict
 
     // insert chain
     mockInsertValues.mockResolvedValue([]);
@@ -191,6 +191,9 @@ describe("addExternalArticle", () => {
   });
 
   it("rejects when targetPublisher equals the host publisher", async () => {
+    // book ownership check happens before same-publisher guard
+    mockSelect.mockReturnValueOnce(chainResolving([{ id: 5, slug: "book-x" }]));
+
     const fd = makeFormData({
       bookId: "5",
       targetPublisher: "publisher-a",
@@ -215,6 +218,9 @@ describe("addExternalArticle", () => {
       })
       .mockResolvedValueOnce(null);
 
+    // book ownership check happens before target publisher resolution
+    mockSelect.mockReturnValueOnce(chainResolving([{ id: 5, slug: "book-x" }]));
+
     const fd = makeFormData({
       bookId: "5",
       targetPublisher: "publisher-b",
@@ -238,8 +244,10 @@ describe("addExternalArticle", () => {
       })
       .mockResolvedValueOnce(publisherB);
 
-    // article lookup returns empty
-    mockSelect.mockReturnValueOnce(chainResolving([]));
+    // book ownership check → then article lookup returns empty
+    mockSelect
+      .mockReturnValueOnce(chainResolving([{ id: 5, slug: "book-x" }])) // book ownership
+      .mockReturnValueOnce(chainResolving([]));                           // article not found
 
     const fd = makeFormData({
       bookId: "5",
@@ -262,8 +270,10 @@ describe("addExternalArticle", () => {
       })
       .mockResolvedValueOnce(publisherB);
 
-    // article found
-    mockSelect.mockReturnValueOnce(chainResolving([{ id: 7 }]));
+    // book ownership check → article found, but canView returns false
+    mockSelect
+      .mockReturnValueOnce(chainResolving([{ id: 5, slug: "book-x" }])) // book ownership
+      .mockReturnValueOnce(chainResolving([{ id: 7 }]));                  // article found
     mockCanView.mockResolvedValue(false);
 
     const fd = makeFormData({
@@ -289,10 +299,11 @@ describe("addExternalArticle", () => {
       })
       .mockResolvedValueOnce(publisherB);
 
-    // article found, then conflict found
+    // book ownership → article found → conflict found
     mockSelect
-      .mockReturnValueOnce(chainResolving([{ id: 7 }]))
-      .mockReturnValueOnce(chainResolving([{ id: 99 }]));
+      .mockReturnValueOnce(chainResolving([{ id: 5, slug: "book-x" }])) // book ownership
+      .mockReturnValueOnce(chainResolving([{ id: 7 }]))                  // article found
+      .mockReturnValueOnce(chainResolving([{ id: 99 }]));                // slug conflict
 
     const fd = makeFormData({
       bookId: "5",
@@ -327,10 +338,10 @@ describe("upsertCurriculumEntry security", () => {
   });
 
   it("rejects when the article's owner differs from the host publisher", async () => {
-    // article ownership check: ownerId 99 ≠ host ownerId 10
-    mockSelect.mockReturnValueOnce(
-      chainResolving([{ ownerType: "user", ownerId: 99 }])
-    );
+    // book ownership check passes, then article ownership check fails (ownerId 99 ≠ host 10)
+    mockSelect
+      .mockReturnValueOnce(chainResolving([{ id: 5, slug: "book-x" }]))       // book ownership
+      .mockReturnValueOnce(chainResolving([{ ownerType: "user", ownerId: 99 }])); // article wrong owner
 
     const fd = makeFormData({
       bookId: "5",
@@ -344,11 +355,11 @@ describe("upsertCurriculumEntry security", () => {
   });
 
   it("allows when the article's owner matches and inserts a new entry", async () => {
-    // article ownership: matches host (ownerType=user, ownerId=10)
+    // book ownership → article ownership (matches) → existing entry lookup
     mockSelect
+      .mockReturnValueOnce(chainResolving([{ id: 5, slug: "book-x" }]))          // book ownership
       .mockReturnValueOnce(chainResolving([{ ownerType: "user", ownerId: 10 }])) // art check
-      .mockReturnValueOnce(chainResolving([]))                                    // existing entry lookup
-      .mockReturnValueOnce(chainResolving([{ slug: "book-x" }]));               // book slug
+      .mockReturnValueOnce(chainResolving([]));                                   // existing entry lookup
 
     mockInsertValues.mockResolvedValue([]);
     mockInsert.mockReturnValue({ values: mockInsertValues });

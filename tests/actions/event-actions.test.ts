@@ -216,7 +216,10 @@ describe("updateEvent", () => {
   it("scopes the DB update to ownerType + ownerId", async () => {
     setupUpdateQueue(mockUpdate, mockUpdateSet, mockUpdateWhere);
     setupDeleteQueue(mockDelete, mockDeleteWhere);
-    setupSelectQueue(mockSelect, [{ result: [], withLimit: false }]);
+    setupSelectQueue(mockSelect, [
+      { result: [{ id: 5 }], withLimit: true },  // existingEvent ownership check
+      { result: [], withLimit: false },            // article lookup in setEventArticleLinks
+    ]);
 
     mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue([]) });
 
@@ -238,7 +241,10 @@ describe("updateEvent", () => {
   it("redirects to the event page on success", async () => {
     setupUpdateQueue(mockUpdate, mockUpdateSet, mockUpdateWhere);
     setupDeleteQueue(mockDelete, mockDeleteWhere);
-    setupSelectQueue(mockSelect, [{ result: [], withLimit: false }]);
+    setupSelectQueue(mockSelect, [
+      { result: [{ id: 7 }], withLimit: true },  // existingEvent ownership check
+      { result: [], withLimit: false },            // article lookup in setEventArticleLinks
+    ]);
 
     mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue([]) });
 

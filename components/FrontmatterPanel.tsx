@@ -91,21 +91,6 @@ export default forwardRef<FrontmatterPanelRef, {
           </select>
         </div>
 
-        {/* Tags */}
-        <div className="flex items-center gap-3">
-          <label className="w-24 text-sm themed-secondary shrink-0">Tags</label>
-          <input
-            type="text"
-            value={meta.tags.join(", ")}
-            onChange={(e) => {
-              const tags = e.target.value.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
-              applyChange({ ...meta, tags });
-            }}
-            placeholder="comma-separated"
-            className="themed-input text-sm flex-1"
-          />
-        </div>
-
         {/* Description */}
         <div className="flex items-start gap-3">
           <label className="w-24 text-sm themed-secondary shrink-0 pt-1">Description</label>

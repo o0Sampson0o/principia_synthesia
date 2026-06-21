@@ -108,6 +108,13 @@ export async function updateEvent(
     parsed.data.recurrenceUntil ? new Date(parsed.data.recurrenceUntil) : undefined
   );
 
+  const [existingEvent] = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(and(eq(events.id, parsed.data.id), eq(events.ownerType, ownerType), eq(events.ownerId, ownerId)))
+    .limit(1);
+  if (!existingEvent) return { errors: { id: ["Event not found"] } };
+
   await db
     .update(events)
     .set({

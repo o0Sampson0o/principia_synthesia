@@ -210,16 +210,24 @@ export const categories = pgTable("categories", {
 });
 
 /** Many-to-many join between articles and categories. Both sides cascade-delete. */
-export const articleCategories = pgTable("article_categories", {
-  articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
-  categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
-});
+export const articleCategories = pgTable(
+  "article_categories",
+  {
+    articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+    categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
+  },
+  (t) => [unique().on(t.articleId, t.categoryId)]
+);
 
 /** Many-to-many join between books and categories. Both sides cascade-delete. */
-export const bookCategories = pgTable("book_categories", {
-  bookId: integer("book_id").notNull().references(() => books.id, { onDelete: "cascade" }),
-  categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
-});
+export const bookCategories = pgTable(
+  "book_categories",
+  {
+    bookId: integer("book_id").notNull().references(() => books.id, { onDelete: "cascade" }),
+    categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
+  },
+  (t) => [unique().on(t.bookId, t.categoryId)]
+);
 
 /** User-bookmarked categories — appear by default in the category picker. */
 export const categoryBookmarks = pgTable(

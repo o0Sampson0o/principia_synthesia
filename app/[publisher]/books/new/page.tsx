@@ -71,7 +71,7 @@ export default async function NewBookPage({
         </div>
         <div>
           <label className="block text-sm font-medium themed-secondary mb-1">
-            Categories
+            Tags
           </label>
           <CategoryPicker />
         </div>

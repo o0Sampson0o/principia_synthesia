@@ -23,11 +23,10 @@ export default function ArticleMetadataDisplay({
   categories = [],
 }: ArticleMetadataDisplayProps) {
   const showDescription = metadata.description.trim().length > 0;
-  const showTags = metadata.tags.length > 0;
   const showStatus = metadata.status !== "published";
-  const showCategories = categories.length > 0;
+  const showTags = categories.length > 0;
 
-  if (!showDescription && !showTags && !showStatus && !showCategories) return null;
+  if (!showDescription && !showStatus && !showTags) return null;
 
   return (
     <div className="mt-4 space-y-3">
@@ -41,26 +40,13 @@ export default function ArticleMetadataDisplay({
       )}
       {showTags && (
         <div className="flex flex-wrap gap-2">
-          {metadata.tags.map((tag) => (
-            <Link
-              key={tag}
-              href={`/search?tags=${encodeURIComponent(tag)}`}
-              className="themed-tag text-xs"
-            >
-              #{tag}
-            </Link>
-          ))}
-        </div>
-      )}
-      {showCategories && (
-        <div className="flex flex-wrap gap-2">
           {categories.map((cat) => (
             <Link
               key={cat.id}
-              href={`/category/${cat.slug}`}
-              className="themed-category-pill"
+              href={`/search?tags=${encodeURIComponent(cat.slug)}`}
+              className="themed-tag text-xs"
             >
-              {cat.name}
+              #{cat.slug}
             </Link>
           ))}
         </div>

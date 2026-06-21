@@ -1,13 +1,9 @@
 "use server";
 
 import { db } from "@/db";
-import {
-  articles,
-  revisions,
-  categories,
-  articleCategories,
-} from "@/db/schema";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { articles, revisions, articleCategories, categories } from "@/db/schema";
+import { setContentTags } from "@/lib/content-tags";
+import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
@@ -78,25 +74,6 @@ export async function assertEditRights(publisherSlug: string) {
   return { session, pub, ownerType: ownerType as "user" | "org", ownerId };
 }
 
-async function setArticleCategories(articleId: number, slugs: string[], createdByUserId: number) {
-  await db.delete(articleCategories).where(eq(articleCategories.articleId, articleId));
-  if (slugs.length === 0) return;
-
-  // Upsert any unknown slugs as user-created categories
-  for (const slug of slugs) {
-    await db.insert(categories).values({ slug, name: slug, createdByUserId }).onConflictDoNothing();
-  }
-
-  const cats = await db
-    .select({ id: categories.id })
-    .from(categories)
-    .where(inArray(categories.slug, slugs));
-  if (cats.length > 0) {
-    await db.insert(articleCategories).values(
-      cats.map((c) => ({ articleId, categoryId: c.id }))
-    );
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Actions
@@ -113,8 +90,11 @@ export async function createArticle(publisherSlug: string, formData: FormData) {
     categories: formData.get("categories"),
   });
 
-  const categorySlugs = validated.categories?.split(",").filter(Boolean) ?? [];
   const parsed = parseFrontmatter(validated.content ?? "");
+  const categorySlugs = [
+    ...(validated.categories?.split(",").filter(Boolean) ?? []),
+    ...parsed.metadata.tags,
+  ].filter((v, i, arr) => arr.indexOf(v) === i);
 
   const isPublished = parsed.metadata.status === "published";
 
@@ -132,7 +112,7 @@ export async function createArticle(publisherSlug: string, formData: FormData) {
     })
     .returning({ id: articles.id });
 
-  await setArticleCategories(article.id, categorySlugs, session.userId);
+  await setContentTags("article", article.id, categorySlugs, session.userId);
 
   await createSnapshotIfPublished(article.id, {
     title: validated.title,
@@ -197,8 +177,11 @@ export async function updateArticle(
     throw err;
   }
 
-  const categorySlugs = validated.categories?.split(",").filter(Boolean) ?? [];
   const parsedFm = parseFrontmatter(validated.content ?? "");
+  const categorySlugs = [
+    ...(validated.categories?.split(",").filter(Boolean) ?? []),
+    ...parsedFm.metadata.tags,
+  ].filter((v, i, arr) => arr.indexOf(v) === i);
 
   const [current] = await db
     .select()
@@ -245,7 +228,7 @@ export async function updateArticle(
       )
     );
 
-  await setArticleCategories(validated.id, categorySlugs, session.userId);
+  await setContentTags("article", validated.id, categorySlugs, session.userId);
 
   await createSnapshotIfPublished(validated.id, {
     title: validated.title,
@@ -324,7 +307,7 @@ export async function restoreRevision(formData: FormData) {
     publisherSlug: formData.get("publisherSlug"),
   });
 
-  const { ownerType: restoreOwnerType, ownerId: restoreOwnerId } = await assertEditRights(validated.publisherSlug);
+  const { session: restoreSession, ownerType: restoreOwnerType, ownerId: restoreOwnerId } = await assertEditRights(validated.publisherSlug);
 
   const [article] = await db
     .select()
@@ -372,6 +355,16 @@ export async function restoreRevision(formData: FormData) {
         eq(articles.ownerId, restoreOwnerId)
       )
     );
+
+  // Merge existing CategoryPicker tags with frontmatter tags from the restored content
+  // so that tags set via the picker are never silently wiped by a restore.
+  const existingCats = await db
+    .select({ slug: categories.slug })
+    .from(articleCategories)
+    .innerJoin(categories, eq(articleCategories.categoryId, categories.id))
+    .where(eq(articleCategories.articleId, validated.articleId));
+  const mergedSlugs = [...new Set([...existingCats.map((c) => c.slug), ...restoredFm.metadata.tags])];
+  await setContentTags("article", validated.articleId, mergedSlugs, restoreSession.userId);
 
   await createSnapshotIfPublished(validated.articleId, {
     title: article.title,
@@ -465,7 +458,7 @@ export async function markArticleVerified(
   publisherSlug: string,
   formData: FormData
 ): Promise<void> {
-  await assertEditRights(publisherSlug);
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = markArticleVerifiedSchema.parse({
     articleId: formData.get("articleId"),
@@ -475,7 +468,7 @@ export async function markArticleVerified(
   await db
     .update(articles)
     .set({ lastVerifiedAt: new Date() })
-    .where(and(eq(articles.id, validated.articleId), isNull(articles.deletedAt)));
+    .where(and(eq(articles.id, validated.articleId), eq(articles.ownerType, ownerType), eq(articles.ownerId, ownerId), isNull(articles.deletedAt)));
 
   revalidatePath(`/${publisherSlug}`);
 }

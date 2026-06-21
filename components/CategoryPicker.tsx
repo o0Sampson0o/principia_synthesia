@@ -11,8 +11,10 @@ type Category = {
 
 export default function CategoryPicker({
   initialSelected = [],
+  onChange,
 }: {
   initialSelected?: string[];
+  onChange?: (slugs: string[]) => void;
 }) {
   const [selected, setSelected] = useState<string[]>(initialSelected);
   const [defaults, setDefaults] = useState<Category[]>([]);
@@ -61,9 +63,11 @@ export default function CategoryPicker({
   }
 
   function toggleSelect(slug: string) {
-    setSelected((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
-    );
+    const next = selected.includes(slug)
+      ? selected.filter((s) => s !== slug)
+      : [...selected, slug];
+    setSelected(next);
+    onChange?.(next);
   }
 
   async function toggleBookmark(cat: Category, e: React.MouseEvent) {
@@ -101,7 +105,9 @@ export default function CategoryPicker({
     });
     if (!res.ok) return;
     const { category } = await res.json();
-    setSelected((prev) => prev.includes(category.slug) ? prev : [...prev, category.slug]);
+    const next = selected.includes(category.slug) ? selected : [...selected, category.slug];
+    setSelected(next);
+    onChange?.(next);
     setQuery("");
     setSearchResults([]);
   }
@@ -110,8 +116,8 @@ export default function CategoryPicker({
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Hidden input carries the value for form submission */}
-      <input type="hidden" name="categories" value={selected.join(",")} />
+      {/* Hidden input carries the value for form submission (not needed in URL/onChange mode) */}
+      {!onChange && <input type="hidden" name="categories" value={selected.join(",")} />}
 
       {/* Selected chips */}
       <div
@@ -128,7 +134,7 @@ export default function CategoryPicker({
               type="button"
               onClick={(e) => { e.stopPropagation(); toggleSelect(slug); }}
               className="themed-muted hover:text-red-500 leading-none"
-              aria-label={`Remove ${slug}`}
+              aria-label={`Remove tag ${slug}`}
             >
               ×
             </button>
@@ -140,7 +146,7 @@ export default function CategoryPicker({
           value={query}
           onChange={handleQueryChange}
           onFocus={() => setOpen(true)}
-          placeholder={selected.length === 0 ? "Search or pick categories…" : ""}
+          placeholder={selected.length === 0 ? "Search or create tags…" : ""}
           className="flex-1 min-w-[120px] bg-transparent outline-none text-sm themed-foreground placeholder:themed-muted"
         />
       </div>
@@ -151,18 +157,18 @@ export default function CategoryPicker({
           {searching && (
             <p className="px-3 py-2 text-xs themed-muted">Searching…</p>
           )}
-          {!searching && displayList.length === 0 && query.trim() && (
+          {!searching && displayList.length === 0 && query.trim() && !onChange && (
             <div
               className="flex items-center gap-2 px-3 py-2 cursor-pointer themed-row-hover text-sm"
               onClick={() => createCategory(query.trim())}
             >
               <span className="themed-muted text-xs">+</span>
               <span className="themed-foreground">Create <strong>"{query.trim()}"</strong></span>
-              <span className="text-xs themed-muted ml-auto">new category</span>
+              <span className="text-xs themed-muted ml-auto">new tag</span>
             </div>
           )}
           {!searching && displayList.length === 0 && !query.trim() && (
-            <p className="px-3 py-2 text-xs themed-muted">No categories available.</p>
+            <p className="px-3 py-2 text-xs themed-muted">No tags available.</p>
           )}
           {displayList.map((cat) => {
             const isSelected = selected.includes(cat.slug);
@@ -181,8 +187,8 @@ export default function CategoryPicker({
                   type="button"
                   onClick={(e) => toggleBookmark(cat, e)}
                   className={`text-xs px-1.5 py-0.5 rounded transition-colors ${cat.bookmarked ? "text-yellow-500 hover:text-yellow-400" : "themed-muted hover:text-yellow-500"}`}
-                  aria-label={cat.bookmarked ? "Remove bookmark" : "Bookmark category"}
-                  title={cat.bookmarked ? "Bookmarked — click to remove" : "Bookmark this category"}
+                  aria-label={cat.bookmarked ? "Remove bookmark" : "Bookmark tag"}
+                  title={cat.bookmarked ? "Bookmarked — click to remove" : "Bookmark this tag"}
                 >
                   {cat.bookmarked ? "★" : "☆"}
                 </button>
