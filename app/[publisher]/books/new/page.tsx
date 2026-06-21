@@ -26,11 +26,14 @@ export default async function NewBookPage({
   const action = createBook.bind(null, publisherSlug);
 
   return (
-    <main className="max-w-xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold themed-heading mb-6">New book</h1>
+    <main className="max-w-xl mx-auto px-5 py-10 sm:py-14">
+      <div className="mb-8">
+        <p className="ps-eyebrow mb-1.5">Book</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New book</h1>
+      </div>
       <form action={action} className="space-y-4">
         <div>
-          <label htmlFor="title" className="block text-sm font-medium themed-secondary mb-1">
+          <label htmlFor="title" className="block font-medium themed-secondary mb-1.5" style={{ fontSize: "0.75rem" }}>
             Title
           </label>
           <input id="title" name="title" type="text" required maxLength={200} className="themed-input" />
@@ -72,7 +75,7 @@ export default async function NewBookPage({
           </label>
           <CategoryPicker />
         </div>
-        <button type="submit" className="themed-btn-primary">
+        <button type="submit" className="themed-btn-accent rounded-lg">
           Create book
         </button>
       </form>

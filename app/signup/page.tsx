@@ -13,7 +13,11 @@ async function ErrorMessage({ searchParams }: { searchParams: Promise<{ error?: 
   };
   const message = params.error ? messages[params.error] : null;
   if (!message) return null;
-  return <p className="text-sm text-red-500 mb-4">{message}</p>;
+  return (
+    <p className="text-sm mb-5" style={{ color: "var(--color-error)" }}>
+      {message}
+    </p>
+  );
 }
 
 export default async function SignupPage({
@@ -26,39 +30,79 @@ export default async function SignupPage({
       <div className="w-full" style={{ maxWidth: "22rem" }}>
 
         <div className="text-center mb-8">
+          <p className="ps-eyebrow mb-4">Principia Synthesia</p>
           <h1
-            className="themed-heading mb-1.5"
-            style={{
-              fontFamily: "var(--font-playfair), Georgia, serif",
-              fontWeight: 500,
-              fontSize: "1.875rem",
-              letterSpacing: "-0.03em",
-            }}
+            className="ps-display themed-heading"
+            style={{ fontSize: "2rem" }}
           >
             Create an account
           </h1>
-          <p className="themed-muted" style={{ fontSize: "0.875rem" }}>
+          <p className="themed-muted mt-2" style={{ fontSize: "0.875rem" }}>
             Join the platform for scientific publishing
           </p>
         </div>
 
-        <div className="themed-auth-card">
+        <div className="ps-form-card">
           <ErrorMessage searchParams={searchParams} />
           <form action={signupAction} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block themed-secondary font-medium mb-1.5" style={{ fontSize: "0.75rem" }}>Email</label>
-              <input id="email" name="email" type="email" required autoComplete="email" className="themed-input" />
+              <label
+                htmlFor="email"
+                className="block themed-secondary font-medium mb-1.5"
+                style={{ fontSize: "0.75rem" }}
+              >
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                className="themed-input"
+              />
             </div>
             <div>
-              <label htmlFor="password" className="block themed-secondary font-medium mb-1.5" style={{ fontSize: "0.75rem" }}>Password</label>
-              <input id="password" name="password" type="password" required autoComplete="new-password" minLength={8} className="themed-input" />
+              <label
+                htmlFor="password"
+                className="block themed-secondary font-medium mb-1.5"
+                style={{ fontSize: "0.75rem" }}
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autoComplete="new-password"
+                minLength={8}
+                className="themed-input"
+              />
             </div>
             <div>
-              <label htmlFor="displayName" className="block themed-secondary font-medium mb-1.5" style={{ fontSize: "0.75rem" }}>Display name</label>
-              <input id="displayName" name="displayName" type="text" required maxLength={100} className="themed-input" />
+              <label
+                htmlFor="displayName"
+                className="block themed-secondary font-medium mb-1.5"
+                style={{ fontSize: "0.75rem" }}
+              >
+                Display name
+              </label>
+              <input
+                id="displayName"
+                name="displayName"
+                type="text"
+                required
+                maxLength={100}
+                className="themed-input"
+              />
             </div>
             <div>
-              <label htmlFor="publisherSlug" className="block themed-secondary font-medium mb-1.5" style={{ fontSize: "0.75rem" }}>
+              <label
+                htmlFor="publisherSlug"
+                className="block themed-secondary font-medium mb-1.5"
+                style={{ fontSize: "0.75rem" }}
+              >
                 Publisher slug
               </label>
               <div className="flex items-center gap-1.5">
@@ -81,8 +125,8 @@ export default async function SignupPage({
             </div>
             <button
               type="submit"
-              className="themed-btn-accent w-full rounded-lg justify-center"
-              style={{ paddingTop: "0.625rem", paddingBottom: "0.625rem", fontSize: "0.875rem" }}
+              className="themed-btn-accent w-full rounded-lg justify-center mt-1"
+              style={{ paddingTop: "0.65rem", paddingBottom: "0.65rem", fontSize: "0.9375rem" }}
             >
               Create account
             </button>
@@ -91,7 +135,9 @@ export default async function SignupPage({
 
         <p className="mt-5 themed-muted text-center" style={{ fontSize: "0.8125rem" }}>
           Already have an account?{" "}
-          <Link href="/login" className="themed-link">Sign in</Link>
+          <Link href="/login" className="themed-link">
+            Sign in
+          </Link>
         </p>
 
       </div>

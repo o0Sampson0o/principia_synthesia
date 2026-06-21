@@ -19,24 +19,22 @@ export default function NavClient({ session }: { session: SessionPayload | null 
 
   return (
     <nav className="nav-glass sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-5 h-14 flex items-center gap-6">
+      <div className="max-w-6xl mx-auto px-5 h-12 flex items-center gap-6">
 
-        {/* Logo */}
         <Link
           href="/"
-          className="themed-heading font-semibold shrink-0 hover:opacity-70 transition-opacity"
-          style={{ fontSize: "0.9375rem", letterSpacing: "-0.045em" }}
+          className="themed-heading shrink-0 font-semibold hover:opacity-60 transition-opacity"
+          style={{ fontSize: "0.875rem", letterSpacing: "-0.05em" }}
         >
           Principia Synthesia
         </Link>
 
-        {/* Desktop centre links */}
         <div className="hidden md:flex items-center gap-0.5 flex-1">
           {NAV_LINKS.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
-              className="themed-nav-link px-3 py-1.5 rounded-md hover:bg-[var(--muted)] transition-colors"
+              className="themed-nav-link px-2.5 py-1.5 hover:text-[var(--foreground)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:rounded"
               style={{ fontSize: "0.8125rem" }}
             >
               {label}
@@ -44,27 +42,12 @@ export default function NavClient({ session }: { session: SessionPayload | null 
           ))}
         </div>
 
-        {/* Desktop right */}
         <div className="hidden md:flex items-center gap-2 ml-auto shrink-0">
           {session ? (
             <>
               {NOTIFICATIONS_ENABLED && <NotificationsBell />}
-              <Link
-                href={`/${session.userSlug}`}
-                className="themed-btn-outline"
-                style={{ fontSize: "0.8125rem", paddingTop: "0.375rem", paddingBottom: "0.375rem" }}
-              >
-                <span
-                  className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-                  style={{
-                    background: "var(--accent)",
-                    color: "var(--accent-foreground)",
-                    fontSize: "0.5rem",
-                    fontWeight: 700,
-                  }}
-                >
-                  {session.userSlug.charAt(0).toUpperCase()}
-                </span>
+              <Link href={`/${session.userSlug}`} className="ps-user-pill">
+                <span className="ps-avatar-dot">{session.userSlug.charAt(0).toUpperCase()}</span>
                 @{session.userSlug}
               </Link>
               <form action="/api/auth/logout" method="POST">
@@ -81,7 +64,7 @@ export default function NavClient({ session }: { session: SessionPayload | null 
               <Link
                 href="/signup"
                 className="themed-btn-accent rounded-md"
-                style={{ fontSize: "0.8125rem", paddingTop: "0.4rem", paddingBottom: "0.4rem", paddingLeft: "0.875rem", paddingRight: "0.875rem" }}
+                style={{ fontSize: "0.8125rem", padding: "0.375rem 0.875rem" }}
               >
                 Get started
               </Link>
@@ -89,29 +72,27 @@ export default function NavClient({ session }: { session: SessionPayload | null 
           )}
         </div>
 
-        {/* Hamburger — mobile */}
         <button
           ref={hamburgerRef}
           type="button"
           onClick={() => setOpen(o => !o)}
-          className="md:hidden ml-auto w-9 h-9 flex items-center justify-center rounded-md themed-nav-link hover:bg-[var(--muted)] transition-colors"
+          className="md:hidden ml-auto w-8 h-8 flex items-center justify-center rounded themed-nav-link hover:bg-[var(--muted)] transition-colors"
           aria-expanded={open}
           aria-controls="mobile-nav"
           aria-label="Toggle navigation"
         >
           {open ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           )}
         </button>
       </div>
 
-      {/* Mobile panel */}
       {open && (
         <div
           ref={navPanelRef}
@@ -129,10 +110,7 @@ export default function NavClient({ session }: { session: SessionPayload | null 
             ))}
             {session ? (
               <>
-                <Link
-                  href={`/${session.userSlug}`}
-                  className="themed-nav-link font-medium py-3 border-b themed-border text-sm"
-                >
+                <Link href={`/${session.userSlug}`} className="themed-nav-link font-medium py-3 border-b themed-border text-sm">
                   @{session.userSlug}
                 </Link>
                 <form action="/api/auth/logout" method="POST" className="py-3">

@@ -35,27 +35,36 @@ function viewHref(
 
 export default function TimelineViewToggle({ activeView, q, era, category, pubFilter, from, to }: Props) {
   return (
-    <div className="flex items-center gap-1 mb-6">
-      <Link
-        href={viewHref("visual", q, era, category, pubFilter, from, to)}
-        className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
-          activeView === "visual"
-            ? "themed-surface border themed-border themed-heading"
-            : "themed-btn-ghost"
-        }`}
-      >
-        Visual
-      </Link>
-      <Link
-        href={viewHref("list", q, era, category, pubFilter, from, to)}
-        className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
-          activeView === "list"
-            ? "themed-surface border themed-border themed-heading"
-            : "themed-btn-ghost"
-        }`}
-      >
-        List
-      </Link>
+    <div
+      className="flex items-end gap-6 mb-8"
+      style={{ borderBottom: "1px solid var(--border)" }}
+    >
+      {(["visual", "list"] as const).map((v) => {
+        const active = activeView === v
+        const label = v === "visual" ? "Visual" : "List"
+        return (
+          <Link
+            key={v}
+            href={viewHref(v, q, era, category, pubFilter, from, to)}
+            style={{
+              display: "inline-block",
+              fontSize: "0.5625rem",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              fontFamily: "ui-monospace, monospace",
+              fontWeight: active ? 600 : 400,
+              color: active ? "var(--foreground)" : "var(--muted-foreground)",
+              paddingBottom: "0.625rem",
+              borderBottom: active ? "1.5px solid var(--foreground)" : "1.5px solid transparent",
+              marginBottom: "-1px",
+              textDecoration: "none",
+              transition: "color 0.12s, border-color 0.12s",
+            }}
+          >
+            {label}
+          </Link>
+        )
+      })}
     </div>
   )
 }

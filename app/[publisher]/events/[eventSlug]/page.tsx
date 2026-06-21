@@ -63,42 +63,33 @@ export default async function EventPage({
     : [];
 
   return (
-    <main className="max-w-5xl mx-auto px-4 py-8">
-      <nav className="text-sm themed-muted mb-6">
-        <Link href={`/${publisherSlug}/events`} className="themed-link">
-          Events
-        </Link>
-        <span className="mx-2">›</span>
-        <span>{event.title}</span>
-      </nav>
+    <main className="max-w-4xl mx-auto px-5 py-12 sm:py-16">
 
-      <header className="mb-8">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight themed-heading mb-3">
+      <Link href={`/${publisherSlug}/events`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M19 12H5m7-7-7 7 7 7" />
+        </svg>
+        Events
+      </Link>
+
+      <header className="mb-10">
+        <h1 className="ps-display themed-heading mb-5" style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}>
           {event.title}
         </h1>
-        <div className="flex items-center gap-4 text-xs themed-muted flex-wrap">
-          <span>
-            {event.eventDate.toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
+        <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: "0.8125rem" }}>
+          <span className="themed-muted">
+            {event.eventDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
           </span>
           {event.category && (
             <>
-              <span className="opacity-30">·</span>
-              <span className="px-2 py-0.5 rounded-full themed-surface border themed-border">
-                {event.category}
-              </span>
+              <span className="themed-muted opacity-30">·</span>
+              <span className="themed-badge">{event.category}</span>
             </>
           )}
           {isEditor && (
             <>
-              <span className="opacity-30">·</span>
-              <Link
-                href={`/${publisherSlug}/events/${eventSlug}/edit`}
-                className="themed-link underline underline-offset-2"
-              >
+              <span className="themed-muted opacity-30">·</span>
+              <Link href={`/${publisherSlug}/events/${eventSlug}/edit`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors">
                 Edit
               </Link>
             </>
@@ -107,35 +98,34 @@ export default async function EventPage({
       </header>
 
       {event.description && (
-        <div className="themed-muted leading-relaxed whitespace-pre-wrap">
+        <p className="themed-secondary leading-relaxed whitespace-pre-wrap" style={{ fontSize: "1rem", lineHeight: 1.75 }}>
           {event.description}
-        </div>
+        </p>
       )}
 
       {event.recurrenceRule && (
-        <div className="mt-8 p-4 rounded-lg border themed-border themed-surface">
-          <p className="text-sm font-medium themed-heading mb-3">
-            Repeats {describeRecurrence(event.recurrenceRule)}
-          </p>
-          {nextOccurrences.length > 0 && (
-            <>
-              <p className="text-xs themed-muted mb-2">Next occurrences:</p>
-              <ul className="space-y-1">
-                {nextOccurrences.map((date) => (
-                  <li key={date.toISOString()} className="text-sm themed-secondary">
-                    {date.toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+        <div className="mt-8 ps-content-box">
+          <div className="ps-content-row flex-col items-start gap-3">
+            <p className="ps-eyebrow-muted">Recurrence</p>
+            <p className="themed-secondary" style={{ fontSize: "0.9375rem" }}>
+              Repeats {describeRecurrence(event.recurrenceRule)}
+            </p>
+            {nextOccurrences.length > 0 && (
+              <div>
+                <p className="ps-eyebrow-muted mb-2">Upcoming</p>
+                <ul className="space-y-1">
+                  {nextOccurrences.map((date) => (
+                    <li key={date.toISOString()} className="themed-muted" style={{ fontSize: "0.875rem" }}>
+                      {date.toLocaleDateString("en-US", { weekday: "short", month: "long", day: "numeric", year: "numeric" })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       )}
+
     </main>
   );
 }

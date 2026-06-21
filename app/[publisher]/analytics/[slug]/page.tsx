@@ -50,44 +50,80 @@ export default async function ArticleAnalyticsPage({
   const totalViews30d = dailyViews.reduce((s, d) => s + d.views, 0);
 
   return (
-    <main className="themed-container py-8 space-y-8">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <Link
-            href={`/${publisherSlug}/analytics`}
-            className="themed-link text-sm"
-          >
-            &larr; Analytics overview
-          </Link>
-          <h1 className="text-2xl font-bold mt-1">{articleRow.title}</h1>
-        </div>
+    <main className="max-w-5xl mx-auto px-5 sm:px-8 py-10 sm:py-16">
+
+      {/* ── Header ── */}
+      <div className="mb-10">
         <Link
-          href={`/${publisherSlug}/articles/${slug}`}
-          className="themed-link text-sm"
+          href={`/${publisherSlug}/analytics`}
+          className="ps-eyebrow inline-flex items-center gap-1.5 mb-5"
         >
-          View article &rarr;
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M19 12H5m7-7-7 7 7 7" />
+          </svg>
+          Analytics
         </Link>
+
+        <div className="flex items-start justify-between gap-8">
+          <h1
+            className="ps-display themed-heading"
+            style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)" }}
+          >
+            {articleRow.title}
+          </h1>
+          <Link
+            href={`/${publisherSlug}/articles/${slug}`}
+            className="themed-nav-link hover:text-[var(--foreground)] transition-colors shrink-0 mt-1"
+            style={{ fontSize: "0.8125rem" }}
+          >
+            View article →
+          </Link>
+        </div>
       </div>
 
-      <p className="text-sm opacity-60">
-        Showing data for the last 30 days &mdash; {totalViews30d.toLocaleString()} views
-      </p>
+      {/* ── Hero stat ── */}
+      <div className="border-t border-b themed-border py-8 mb-12">
+        <p
+          className="themed-heading font-medium tabular-nums"
+          style={{ fontSize: "clamp(3rem, 6vw, 4.5rem)", letterSpacing: "-0.04em", lineHeight: 1 }}
+        >
+          {totalViews30d.toLocaleString()}
+        </p>
+        <p
+          className="themed-muted mt-3"
+          style={{ fontSize: "0.6875rem", letterSpacing: "0.07em", textTransform: "uppercase" }}
+        >
+          Views · Last 30 days
+        </p>
+      </div>
 
-      {/* Daily views sparkline */}
-      <section>
-        <h2 className="text-lg font-semibold mb-3">Daily views (last 30 days)</h2>
-        <div className="themed-surface rounded-lg p-4 overflow-x-auto">
-          <SparklineSvg data={dailyViews} width={560} height={140} />
-        </div>
-      </section>
+      {/* ── Charts: sparkline + sources side-by-side on desktop ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 lg:gap-16 items-start">
 
-      {/* Source breakdown bar chart */}
-      <section>
-        <h2 className="text-lg font-semibold mb-3">Traffic sources (last 30 days)</h2>
-        <div className="themed-surface rounded-lg p-4 overflow-x-auto">
-          <SourceBarSvg data={sourceBreakdown} width={440} height={160} />
-        </div>
-      </section>
+        {/* Daily views — gets the wider column */}
+        <section>
+          <div className="flex items-baseline justify-between mb-6 pb-3 border-b themed-border">
+            <p className="ps-eyebrow-muted">Daily views</p>
+            <p className="themed-muted" style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}>
+              Last 30 days
+            </p>
+          </div>
+          <SparklineSvg data={dailyViews} width={640} height={160} />
+        </section>
+
+        {/* Traffic sources — narrower column, but now has real room */}
+        <section>
+          <div className="flex items-baseline justify-between mb-6 pb-3 border-b themed-border">
+            <p className="ps-eyebrow-muted">Traffic sources</p>
+            <p className="themed-muted" style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}>
+              Last 30 days
+            </p>
+          </div>
+          <SourceBarSvg data={sourceBreakdown} />
+        </section>
+
+      </div>
+
     </main>
   );
 }

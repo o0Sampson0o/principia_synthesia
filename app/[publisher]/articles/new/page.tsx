@@ -28,56 +28,67 @@ export default async function NewArticlePage({
   const action = createArticle.bind(null, publisherSlug);
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold themed-heading mb-6">New article</h1>
-      <form action={action} className="space-y-4">
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium themed-secondary mb-1">
-            Title
-          </label>
-          <input id="title" name="title" type="text" required maxLength={200} className="themed-input" />
-        </div>
-        <div>
-          <label htmlFor="slug" className="block text-sm font-medium themed-secondary mb-1">
-            Slug
-          </label>
-          <div className="flex items-center gap-1">
-            <span className="text-sm themed-muted">article-</span>
-            <input
-              id="slug"
-              name="slug"
-              type="text"
-              required
-              placeholder="my-article"
-              className="themed-input flex-1"
-              pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
-            />
+    <main className="max-w-7xl mx-auto px-5 py-10 sm:py-14">
+
+      <div className="mb-8">
+        <p className="ps-eyebrow mb-1.5">Article</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+          New article
+        </h1>
+      </div>
+
+      <form action={action} className="space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="title" className="block font-medium mb-1.5 themed-secondary" style={{ fontSize: "0.75rem" }}>
+              Title
+            </label>
+            <input id="title" name="title" type="text" required maxLength={200} className="themed-input" />
           </div>
-          <p className="text-xs themed-muted mt-1">Must start with &ldquo;article-&rdquo;.</p>
+          <div>
+            <label htmlFor="slug" className="block font-medium mb-1.5 themed-secondary" style={{ fontSize: "0.75rem" }}>
+              Slug
+            </label>
+            <div className="flex items-center gap-1.5">
+              <span className="themed-muted shrink-0" style={{ fontSize: "0.875rem" }}>article-</span>
+              <input
+                id="slug"
+                name="slug"
+                type="text"
+                required
+                placeholder="my-article"
+                className="themed-input flex-1"
+                pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
+              />
+            </div>
+            <p className="themed-muted mt-1.5" style={{ fontSize: "0.75rem" }}>Must start with &ldquo;article-&rdquo;.</p>
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="summary" className="block font-medium mb-1.5 themed-secondary" style={{ fontSize: "0.75rem" }}>
+              Summary
+            </label>
+            <textarea id="summary" name="summary" rows={2} maxLength={500} className="themed-input w-full resize-y" />
+          </div>
         </div>
-        <div>
-          <label htmlFor="summary" className="block text-sm font-medium themed-secondary mb-1">
-            Summary
-          </label>
-          <textarea
-            id="summary"
-            name="summary"
-            rows={2}
-            maxLength={500}
-            className="themed-input w-full resize-y"
-          />
-        </div>
+
         <ArticleEditorPanel publisherSlug={publisherSlug} draftKey={`${publisherSlug}:new`} initialMetadata={DEFAULT_ARTICLE_METADATA} />
+
         <div>
-          <label className="block text-sm font-medium themed-secondary mb-1">
+          <label className="block font-medium mb-1.5 themed-secondary" style={{ fontSize: "0.75rem" }}>
             Categories
           </label>
           <CategoryPicker />
         </div>
-        <button type="submit" className="themed-btn-primary">
+
+        <button
+          type="submit"
+          className="themed-btn-accent rounded-lg"
+          style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}
+        >
           Publish article
         </button>
       </form>
+
     </main>
   );
 }

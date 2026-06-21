@@ -16,15 +16,18 @@ export default async function OnboardingSettingsPage() {
     .limit(1);
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight themed-heading mb-2">Onboarding</h1>
-        <p className="text-sm themed-muted">
+    <main className="max-w-2xl mx-auto px-5 py-12 sm:py-16">
+      <div className="mb-10">
+        <p className="ps-eyebrow mb-3">Settings</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}>
+          Onboarding
+        </h1>
+        <p className="themed-muted mt-2" style={{ fontSize: "0.875rem" }}>
           The product tour appears once for new accounts. You can replay it any time.
         </p>
-      </header>
+      </div>
 
-      <hr className="themed-border mb-8" />
+      <hr className="themed-hr mb-10" />
 
       <section>
         <p className="text-sm themed-secondary mb-4">
@@ -33,7 +36,7 @@ export default async function OnboardingSettingsPage() {
             : "You have not finished the tour yet."}
         </p>
         <form action={resetOnboarding}>
-          <button type="submit" className="themed-btn-primary">
+          <button type="submit" className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
             Replay tour
           </button>
         </form>

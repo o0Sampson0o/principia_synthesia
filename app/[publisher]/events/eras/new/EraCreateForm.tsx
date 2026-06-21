@@ -84,7 +84,7 @@ export default function EraCreateForm({ publisherSlug }: { publisherSlug: string
       <button
         type="submit"
         disabled={pending}
-        className="themed-btn-primary px-6 py-2 disabled:opacity-60"
+        className="themed-btn-accent rounded px-6 py-2 disabled:opacity-60"
       >
         {pending ? "Creating…" : "Create era"}
       </button>

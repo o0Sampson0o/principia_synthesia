@@ -37,32 +37,34 @@ export default async function PublisherObjectsPage({
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10">
-      <div className="flex items-center justify-between mb-8">
+    <main className="max-w-5xl mx-auto px-5 py-10 sm:py-14">
+      <div className="flex items-end justify-between mb-10 gap-4">
         <div>
-          <h1 className="text-3xl font-bold themed-heading mb-1">{pub.displayName}&rsquo;s objects</h1>
-          <p className="themed-muted text-sm">@{pub.slug}</p>
+          <p className="ps-eyebrow mb-1.5">Objects</p>
+          <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+            {pub.displayName}
+          </h1>
         </div>
         {isEditor && (
-          <Link href={`/${publisherSlug}/objects/new`} className="themed-btn-primary text-sm px-4 py-2">
-            New object
+          <Link href={`/${publisherSlug}/objects/new`} className="themed-btn-accent rounded-lg shrink-0" style={{ fontSize: "0.8125rem", padding: "0.45rem 1rem" }}>
+            + Object
           </Link>
         )}
       </div>
 
       {allObjects.length === 0 ? (
-        <p className="themed-muted">No objects yet.</p>
+        <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>No objects yet.</p>
       ) : (
-        <ul className="space-y-3">
+        <div className="ps-content-box">
           {allObjects.map((o) => (
-            <li key={o.id} className="flex items-center justify-between border-b themed-border pb-3">
-              <Link href={`/${publisherSlug}/objects/${o.slug}`} className="themed-link font-medium">
+            <div key={o.id} className="ps-content-row">
+              <Link href={`/${publisherSlug}/objects/${o.slug}`} className="ps-list-link flex-1 min-w-0">
                 {o.name}
               </Link>
-              <span className="text-xs themed-muted">{o.type}</span>
-            </li>
+              <span className="themed-badge capitalize shrink-0">{o.type}</span>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </main>
   );

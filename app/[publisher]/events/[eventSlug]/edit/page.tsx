@@ -53,16 +53,15 @@ export default async function EditEventPage({
   const deleteAction = deleteEvent.bind(null, publisherSlug);
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
-      <nav className="text-sm themed-muted mb-6">
-        <Link href={`/${publisherSlug}/events/${eventSlug}`} className="themed-link">
-          {event.title}
-        </Link>
-        <span className="mx-2">›</span>
-        <span>Edit</span>
-      </nav>
-
-      <h1 className="text-3xl font-bold themed-heading mb-8">Edit event</h1>
+    <main className="max-w-2xl mx-auto px-5 py-10 sm:py-14">
+      <Link href={`/${publisherSlug}/events/${eventSlug}`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
+        {event.title}
+      </Link>
+      <div className="mb-8">
+        <p className="ps-eyebrow mb-1.5">Event</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Edit event</h1>
+      </div>
 
       <form action={updateAction as (fd: FormData) => void} className="space-y-6">
         <input type="hidden" name="id" value={event.id} />
@@ -186,7 +185,7 @@ export default async function EditEventPage({
         </fieldset>
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
-          <button type="submit" className="themed-btn-primary px-6 py-2">
+          <button type="submit" className="themed-btn-accent rounded-lg">
             Save changes
           </button>
           <Link

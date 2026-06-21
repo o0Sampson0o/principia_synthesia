@@ -35,16 +35,15 @@ export default async function ImportEventsPage({
   }
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10">
-      <div className="text-sm themed-muted mb-4">
-        <Link href={`/${publisherSlug}`} className="themed-link">@{publisherSlug}</Link>
-        {" / "}
-        <Link href={`/${publisherSlug}/events`} className="themed-link">Events</Link>
-        {" / "}
-        <span>Import</span>
+    <main className="max-w-3xl mx-auto px-5 py-10 sm:py-14">
+      <Link href={`/${publisherSlug}/events`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
+        Events
+      </Link>
+      <div className="mb-8">
+        <p className="ps-eyebrow mb-1.5">Events</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Bulk import</h1>
       </div>
-
-      <h1 className="text-3xl font-bold themed-heading mb-6">Bulk import events</h1>
 
       <div className="themed-surface rounded border themed-border p-4 mb-6 text-sm space-y-2">
         <p className="font-medium themed-heading">CSV format</p>

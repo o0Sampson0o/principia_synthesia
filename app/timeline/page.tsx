@@ -249,100 +249,87 @@ export default async function TimelinePage({
   };
 
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-2xl sm:text-3xl font-bold themed-heading mb-8">Timeline</h1>
+    <main className="max-w-6xl mx-auto px-5 py-12 sm:py-16">
 
-      <form method="GET" action="/timeline" className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label className="block text-xs font-medium themed-secondary mb-1" htmlFor="q">
-            Keyword search
-          </label>
+      {/* ── Header ── */}
+      <div className="mb-10">
+        <p className="ps-eyebrow mb-3">Principia Synthesia</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}>
+          Timeline
+        </h1>
+      </div>
+
+      {/* ── Filter form ── */}
+      <form method="GET" action="/timeline" className="mb-10">
+        <div className="ps-action-bar gap-2">
           <input
             id="q"
             type="search"
             name="q"
             defaultValue={q ?? ""}
-            placeholder="Search titles and descriptions…"
-            className="themed-input w-full text-sm"
+            placeholder="Search events…"
+            className="themed-input flex-1 min-w-32"
+            style={{ fontSize: "0.875rem" }}
           />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium themed-secondary mb-1" htmlFor="era">
-            Era
-          </label>
           <input
             id="era"
             type="text"
             name="era"
             defaultValue={era ?? ""}
-            placeholder="Era name…"
-            className="themed-input w-full text-sm"
+            placeholder="Era"
+            className="themed-input w-32"
+            style={{ fontSize: "0.875rem" }}
           />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium themed-secondary mb-1" htmlFor="category">
-            Category
-          </label>
           <input
             id="category"
             type="text"
             name="category"
             defaultValue={category ?? ""}
-            className="themed-input w-full text-sm"
+            placeholder="Category"
+            className="themed-input w-32"
+            style={{ fontSize: "0.875rem" }}
           />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium themed-secondary mb-1" htmlFor="publisher">
-            Publisher slug
-          </label>
           <input
             id="publisher"
             type="text"
             name="publisher"
             defaultValue={pubFilter ?? ""}
-            className="themed-input w-full text-sm"
+            placeholder="Publisher"
+            className="themed-input w-32"
+            style={{ fontSize: "0.875rem" }}
           />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium themed-secondary mb-1" htmlFor="from">
-            From date
-          </label>
           <input
             id="from"
             type="date"
             name="from"
             defaultValue={from ?? ""}
-            className="themed-input w-full text-sm"
+            className="themed-input w-36"
+            style={{ fontSize: "0.875rem" }}
           />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium themed-secondary mb-1" htmlFor="to">
-            To date
-          </label>
           <input
             id="to"
             type="date"
             name="to"
             defaultValue={to ?? ""}
-            className="themed-input w-full text-sm"
+            className="themed-input w-36"
+            style={{ fontSize: "0.875rem" }}
           />
-        </div>
-
-        {activeView === "list" && (
-          <input type="hidden" name="view" value="list" />
-        )}
-
-        <div className="flex items-center gap-3 sm:col-span-2">
-          <button type="submit" className="themed-btn-primary text-sm px-4 py-2">
+          {activeView === "list" && (
+            <input type="hidden" name="view" value="list" />
+          )}
+          <button
+            type="submit"
+            className="themed-btn-accent rounded-md shrink-0"
+            style={{ fontSize: "0.8125rem", padding: "0.375rem 0.875rem" }}
+          >
             Filter
           </button>
           {hasFilters && (
-            <Link href="/timeline" className="themed-btn-ghost text-sm px-4 py-2">
+            <Link
+              href="/timeline"
+              className="themed-btn-ghost shrink-0"
+              style={{ fontSize: "0.8125rem" }}
+            >
               Clear
             </Link>
           )}

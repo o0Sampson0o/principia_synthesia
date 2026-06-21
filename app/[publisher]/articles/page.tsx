@@ -44,26 +44,28 @@ export default async function PublisherArticlesPage({
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold themed-heading mb-2">
-        {pub.displayName}&rsquo;s articles
-      </h1>
-      <p className="themed-muted text-sm mb-8">@{pub.slug}</p>
+    <main className="max-w-5xl mx-auto px-5 py-10 sm:py-14">
+      <div className="mb-10">
+        <p className="ps-eyebrow mb-1.5">Articles</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+          {pub.displayName}
+        </h1>
+      </div>
 
       {allArticles.length === 0 ? (
-        <p className="themed-muted">No articles yet.</p>
+        <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>No articles yet.</p>
       ) : (
-        <ul className="space-y-4">
+        <div className="ps-content-box">
           {allArticles.map((a) => (
-            <li key={a.id} className="border-b themed-border pb-4">
+            <div key={a.id} className="ps-content-row flex-col items-start gap-1">
               <Link
                 href={`/${publisherSlug}/articles/${a.slug}`}
-                className="text-xl font-medium themed-link"
+                className="ps-list-link"
               >
                 {a.title}
               </Link>
               {a.updatedAt && (
-                <p className="text-xs themed-muted mt-1">
+                <p className="themed-muted" style={{ fontSize: "0.75rem" }}>
                   Updated{" "}
                   {a.updatedAt.toLocaleDateString("en-US", {
                     month: "short",
@@ -72,9 +74,9 @@ export default async function PublisherArticlesPage({
                   })}
                 </p>
               )}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </main>
   );

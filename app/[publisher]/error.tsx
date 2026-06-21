@@ -17,17 +17,18 @@ export default function PublisherError({
 
   return (
     <main className="max-w-2xl mx-auto px-6 py-16 text-center">
-      <h1 className="text-3xl font-bold themed-heading mb-4">
-        Something went wrong loading this publisher
+      <p className="ps-eyebrow mb-4">Error</p>
+      <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+        Something went wrong
       </h1>
-      <p className="themed-muted mb-8">
+      <p className="themed-muted mb-10" style={{ fontSize: "0.9375rem" }}>
         The page could not be rendered. The error has been reported.
       </p>
       <div className="flex items-center justify-center gap-3">
-        <button onClick={reset} className="themed-btn-primary px-5 py-2">
+        <button onClick={reset} className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
           Try again
         </button>
-        <Link href="/" className="themed-btn-ghost px-5 py-2">
+        <Link href="/" className="themed-btn-ghost" style={{ fontSize: "0.9375rem" }}>
           Home
         </Link>
       </div>

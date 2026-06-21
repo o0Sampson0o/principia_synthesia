@@ -45,15 +45,18 @@ export default async function ArticleVersionsPage({
   const snapshots = await listSnapshots(article.id);
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex items-center gap-4 mb-6">
-        <Link href={`/${publisherSlug}/articles/${slug}`} className="themed-link text-sm">
-          ← Back to article
-        </Link>
+    <main className="max-w-4xl mx-auto px-5 py-10 sm:py-14">
+      <Link href={`/${publisherSlug}/articles/${slug}`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
+        {article.title}
+      </Link>
+      <div className="mb-8">
+        <p className="ps-eyebrow mb-1.5">Article</p>
+        <h1 className="ps-display themed-heading mb-2" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+          Version history
+        </h1>
+        <p className="themed-muted" style={{ fontSize: "0.875rem" }}>All published versions are permanently accessible.</p>
       </div>
-
-      <h1 className="text-2xl font-bold themed-heading mb-2">{article.title}</h1>
-      <p className="themed-muted text-sm mb-6">Publish history — all versions are permanently accessible.</p>
 
       {snapshots.length === 0 ? (
         <p className="themed-muted">No snapshots yet. Publish the article to create the first version.</p>

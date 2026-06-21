@@ -11,26 +11,31 @@ interface Props {
 
 export default function ArticleCard({ publisherSlug, slug, title, summary, updatedAt, tags }: Props) {
   return (
-    <div className="py-4 border-b themed-border last:border-b-0">
+    <div className="py-5 border-b themed-border last:border-b-0">
       <Link
         href={`/${publisherSlug}/articles/${slug}`}
-        className="article-title-serif block mb-1.5"
-        style={{ fontSize: "1.0625rem" }}
+        className="article-title-serif block mb-2.5"
+        style={{ fontSize: "1.125rem" }}
       >
         {title}
       </Link>
 
       {summary && (
-        <p className="themed-muted line-clamp-2 mb-2" style={{ fontSize: "0.8125rem", lineHeight: "1.65" }}>
+        <p
+          className="themed-muted line-clamp-2 mb-3"
+          style={{ fontSize: "0.875rem", lineHeight: 1.7 }}
+        >
           {summary}
         </p>
       )}
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="themed-muted" style={{ fontSize: "0.75rem" }}>@{publisherSlug}</span>
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
+          @{publisherSlug}
+        </span>
         {updatedAt && (
           <>
-            <span className="themed-muted" style={{ fontSize: "0.75rem" }}>·</span>
+            <span className="themed-muted" style={{ fontSize: "0.625rem" }}>·</span>
             <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
               {updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </span>

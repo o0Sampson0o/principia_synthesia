@@ -69,102 +69,87 @@ export default async function BookPage({
     .orderBy(asc(curriculumEntries.position));
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10">
-      <div className="mb-8">
-        <p className="text-sm themed-muted mb-1">
-          <Link href={`/${publisherSlug}`} className="themed-link">
-            @{publisherSlug}
-          </Link>
-        </p>
-        <h1 className="text-4xl font-bold themed-heading">{bookRow.title}</h1>
+    <main className="max-w-4xl mx-auto px-5 py-12 sm:py-16">
+
+      {/* ── Header ── */}
+      <Link href={`/${publisherSlug}`} className="ps-eyebrow inline-block mb-6 hover:opacity-70 transition-opacity">
+        {pub.displayName}
+      </Link>
+
+      <div className="mb-10">
+        <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}>
+          {bookRow.title}
+        </h1>
         {bookRow.summary && (
-          <p className="mt-3 text-lg themed-muted leading-relaxed max-w-3xl">
+          <p className="themed-muted" style={{ fontSize: "1.0625rem", lineHeight: 1.7 }}>
             {bookRow.summary}
           </p>
         )}
         {bookCats.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4">
+          <div className="flex flex-wrap gap-2 mt-5">
             {bookCats.map((c) => (
-              <Link
-                key={c.slug}
-                href={`/category/${c.slug}`}
-                className="px-2 py-0.5 rounded-full text-xs font-medium themed-surface border themed-border hover:themed-surface-hover transition-colors"
-              >
+              <Link key={c.slug} href={`/category/${c.slug}`} className="themed-tag">
                 #{c.slug}
               </Link>
             ))}
           </div>
         )}
         {isEditor && (
-          <div className="flex gap-3 mt-4">
-            <Link href={`/${publisherSlug}/books/${bookSlug}/edit`} className="text-sm themed-link">
-              Edit curriculum
+          <div className="ps-action-bar mt-5">
+            <Link href={`/${publisherSlug}/books/${bookSlug}/edit`} className="themed-btn-outline" style={{ fontSize: "0.8125rem", padding: "0.3rem 0.75rem" }}>
+              Edit
             </Link>
-            <Link href={`/${publisherSlug}/books/${bookSlug}/access`} className="text-sm themed-link">
+            <Link href={`/${publisherSlug}/books/${bookSlug}/access`} className="themed-btn-outline" style={{ fontSize: "0.8125rem", padding: "0.3rem 0.75rem" }}>
               Access
             </Link>
-            <Link
-              href={`/api/publishers/${publisherSlug}/books/${bookSlug}/export/pdf`}
-              className="text-sm themed-link"
-            >
+            <Link href={`/api/publishers/${publisherSlug}/books/${bookSlug}/export/pdf`} className="themed-btn-ghost" style={{ fontSize: "0.8125rem" }}>
               PDF
             </Link>
-            <Link
-              href={`/api/publishers/${publisherSlug}/books/${bookSlug}/export/epub`}
-              className="text-sm themed-link"
-            >
+            <Link href={`/api/publishers/${publisherSlug}/books/${bookSlug}/export/epub`} className="themed-btn-ghost" style={{ fontSize: "0.8125rem" }}>
               EPUB
             </Link>
-            <Link
-              href={`/api/publishers/${publisherSlug}/books/${bookSlug}/export/bundle`}
-              className="text-sm themed-link"
-            >
+            <Link href={`/api/publishers/${publisherSlug}/books/${bookSlug}/export/bundle`} className="themed-btn-ghost" style={{ fontSize: "0.8125rem" }}>
               Bundle
             </Link>
           </div>
         )}
       </div>
 
+      <hr className="themed-hr" />
+
+      {/* ── Chapters ── */}
       {entries.length === 0 ? (
-        <p className="themed-muted">No chapters yet.</p>
+        <p className="themed-muted mt-8" style={{ fontSize: "0.9375rem" }}>No chapters yet.</p>
       ) : (
-        <ol className="space-y-2">
+        <div className="ps-content-box mt-0 border-t-0 rounded-none rounded-b-lg">
           {entries.map((e, idx) => {
-            const isExternal =
-              e.articlePublisherSlug !== null &&
-              e.articlePublisherSlug !== publisherSlug;
+            const isExternal = e.articlePublisherSlug !== null && e.articlePublisherSlug !== publisherSlug;
             return (
-              <li key={e.id}>
+              <div key={e.id} className="ps-content-row flex-col items-start gap-0.5">
                 {e.partTitle && (
-                  <p className="text-xs themed-muted uppercase tracking-wider mt-4 mb-1">
-                    {e.partTitle}
-                  </p>
+                  <p className="ps-eyebrow-muted mb-2">{e.partTitle}</p>
                 )}
-                <span className="block">
-                  <Link
-                    href={`/${publisherSlug}/books/${bookSlug}/${e.articleSlug}`}
-                    className="themed-link"
-                  >
-                    <span className="text-sm themed-muted mr-2">{idx + 1}.</span>
+                <div className="flex items-baseline gap-3 w-full min-w-0">
+                  <span className="tabular-nums shrink-0" style={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>
+                    {String(idx + 1).padStart(2, "0")}
+                  </span>
+                  <Link href={`/${publisherSlug}/books/${bookSlug}/${e.articleSlug}`} className="ps-list-link flex-1 min-w-0">
                     {e.articleTitle}
                   </Link>
                   {isExternal && (
-                    <span className="ml-2 text-xs themed-muted">
-                      by{" "}
-                      <Link
-                        href={`/${e.articlePublisherSlug}`}
-                        className="themed-link"
-                      >
+                    <span className="themed-muted shrink-0" style={{ fontSize: "0.75rem" }}>
+                      <Link href={`/${e.articlePublisherSlug}`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors">
                         @{e.articlePublisherSlug}
                       </Link>
                     </span>
                   )}
-                </span>
-              </li>
+                </div>
+              </div>
             );
           })}
-        </ol>
+        </div>
       )}
+
     </main>
   );
 }

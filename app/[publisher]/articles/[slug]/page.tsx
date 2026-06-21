@@ -297,7 +297,7 @@ export default async function ArticlePage({
     : body;
 
   return (
-    <main className="max-w-5xl mx-auto px-4 py-8">
+    <main className="max-w-3xl mx-auto px-5 py-12 sm:py-16">
       {viewingSnapshot && (
         <SnapshotBanner
           publisherSlug={publisherSlug}
@@ -307,56 +307,61 @@ export default async function ArticlePage({
         />
       )}
 
-      <header className="mb-8">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight themed-heading mb-3">{title}</h1>
+      <header className="mb-10">
+        {/* Breadcrumb */}
+        <Link
+          href={`/${publisherSlug}`}
+          className="ps-eyebrow inline-block mb-6 hover:opacity-70 transition-opacity"
+        >
+          {pub.displayName}
+        </Link>
+
+        <h1
+          className="ps-display themed-heading mb-5"
+          style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
+        >
+          {title}
+        </h1>
+
         {summary && (
-          <p className="text-lg themed-muted mb-4 leading-relaxed">{summary}</p>
+          <p
+            className="themed-muted mb-6"
+            style={{ fontSize: "1.0625rem", lineHeight: 1.7 }}
+          >
+            {summary}
+          </p>
         )}
-        <div className="flex items-center gap-4 text-xs themed-muted flex-wrap">
+
+        {/* Meta line */}
+        <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: "0.8125rem" }}>
           {createdAt && (
-            <span>
-              Created{" "}
-              {createdAt.toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
+            <span className="themed-muted">
+              {createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </span>
           )}
           {updatedAt && updatedAt.getTime() !== createdAt?.getTime() && (
             <>
-              <span className="opacity-30">·</span>
-              <span>
-                Updated{" "}
-                {updatedAt.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+              <span className="themed-muted opacity-30">·</span>
+              <span className="themed-muted">
+                Updated {updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </span>
             </>
           )}
           {isEditor && !viewingSnapshot && (
             <>
-              <span className="opacity-30">·</span>
-              <Link
-                href={`/${publisherSlug}/articles/${slug}/edit`}
-                className="themed-link underline underline-offset-2"
-              >
+              <span className="themed-muted opacity-30">·</span>
+              <Link href={`/${publisherSlug}/articles/${slug}/edit`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors">
                 Edit
               </Link>
-              <span className="opacity-30">·</span>
-              <Link
-                href={`/${publisherSlug}/articles/${slug}/versions`}
-                className="themed-link underline underline-offset-2"
-              >
+              <span className="themed-muted opacity-30">·</span>
+              <Link href={`/${publisherSlug}/articles/${slug}/versions`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors">
                 Versions
               </Link>
-              <span className="opacity-30">·</span>
+              <span className="themed-muted opacity-30">·</span>
               <MarkVerifiedForm publisherSlug={publisherSlug} articleId={article.id} />
             </>
           )}
-          <span className="opacity-30">·</span>
+          <span className="themed-muted opacity-30">·</span>
           <CiteButton
             authorDisplayName={pub.displayName}
             authorPublisherSlug={publisherSlug}
@@ -367,7 +372,7 @@ export default async function ArticlePage({
           />
           {!viewingSnapshot && (
             <>
-              <span className="opacity-30">·</span>
+              <span className="themed-muted opacity-30">·</span>
               <ForkButton
                 sourcePublisherSlug={publisherSlug}
                 sourceArticleSlug={slug}
@@ -384,6 +389,7 @@ export default async function ArticlePage({
             />
           )}
         </div>
+
         <ArticleMetadataDisplay
           metadata={metadata}
           categories={articleCats}

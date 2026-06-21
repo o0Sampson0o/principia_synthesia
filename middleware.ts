@@ -18,7 +18,7 @@ function buildCsp(nonce: string): string {
     `script-src ${scriptSrc}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https://*.public.blob.vercel-storage.com`,
-    `font-src 'self'`,
+    `font-src 'self' data:`,
     `connect-src 'self' https://vitals.vercel-insights.com https://vercel.live`,
     `frame-src 'self' https://vercel.live`,
     `object-src 'none'`,

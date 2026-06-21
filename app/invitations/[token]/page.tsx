@@ -29,12 +29,13 @@ export default async function InvitationPage({
 
   if (!invitation) {
     return (
-      <main className="max-w-lg mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold themed-heading mb-4">Invitation not found</h1>
-        <p className="themed-muted mb-6">
+      <main className="max-w-lg mx-auto px-5 py-16 text-center">
+        <p className="ps-eyebrow mb-4">Invitation</p>
+        <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Invitation not found</h1>
+        <p className="themed-muted mb-8" style={{ fontSize: "0.9375rem" }}>
           This invitation link is invalid or has expired.
         </p>
-        <Link href="/" className="themed-btn-primary px-6 py-2">
+        <Link href="/" className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
           Go home
         </Link>
       </main>
@@ -43,10 +44,11 @@ export default async function InvitationPage({
 
   if (invitation.acceptedAt) {
     return (
-      <main className="max-w-lg mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold themed-heading mb-4">Already accepted</h1>
-        <p className="themed-muted mb-6">This invitation has already been accepted.</p>
-        <Link href="/" className="themed-btn-primary px-6 py-2">
+      <main className="max-w-lg mx-auto px-5 py-16 text-center">
+        <p className="ps-eyebrow mb-4">Invitation</p>
+        <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Already accepted</h1>
+        <p className="themed-muted mb-8" style={{ fontSize: "0.9375rem" }}>This invitation has already been accepted.</p>
+        <Link href="/" className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
           Go home
         </Link>
       </main>
@@ -64,24 +66,22 @@ export default async function InvitationPage({
   if (!session) {
     const loginUrl = `/login?redirect=/invitations/${token}`;
     return (
-      <main className="max-w-lg mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold themed-heading mb-4">
+      <main className="max-w-lg mx-auto px-5 py-16 text-center">
+        <p className="ps-eyebrow mb-4">Invitation</p>
+        <h1 className="ps-display themed-heading mb-5" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
           Join {org?.name ?? "an organisation"}
         </h1>
-        <p className="themed-muted mb-2">
-          You have been invited as a <strong>{invitation.role}</strong>.
+        <p className="themed-muted mb-1" style={{ fontSize: "0.9375rem" }}>
+          You have been invited as a <strong className="themed-heading">{invitation.role}</strong>.
         </p>
-        <p className="themed-muted mb-6 text-sm">
-          Invited email: <strong>{invitation.email}</strong>
-        </p>
-        <p className="themed-muted mb-6">
-          Sign in or create an account to accept this invitation.
+        <p className="themed-muted mb-8" style={{ fontSize: "0.875rem" }}>
+          Invited email: {invitation.email}
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href={loginUrl} className="themed-btn-primary px-6 py-2">
+          <Link href={loginUrl} className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
             Sign in
           </Link>
-          <Link href={`/signup?email=${encodeURIComponent(invitation.email)}&redirect=/invitations/${token}`} className="themed-btn-ghost px-6 py-2">
+          <Link href={`/signup?email=${encodeURIComponent(invitation.email)}&redirect=/invitations/${token}`} className="themed-btn-outline rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
             Create account
           </Link>
         </div>
@@ -93,10 +93,11 @@ export default async function InvitationPage({
 
   if (result.error) {
     return (
-      <main className="max-w-lg mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold themed-heading mb-4">Cannot accept invitation</h1>
-        <p className="themed-muted mb-6">{result.error}</p>
-        <Link href="/" className="themed-btn-primary px-6 py-2">
+      <main className="max-w-lg mx-auto px-5 py-16 text-center">
+        <p className="ps-eyebrow mb-4">Invitation</p>
+        <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Cannot accept invitation</h1>
+        <p className="themed-muted mb-8" style={{ fontSize: "0.9375rem" }}>{result.error}</p>
+        <Link href="/" className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
           Go home
         </Link>
       </main>
