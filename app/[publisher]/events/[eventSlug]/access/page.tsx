@@ -100,16 +100,15 @@ export default async function EventAccessPage({
   };
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
-      <nav className="text-sm themed-muted mb-6">
-        <Link href={`/${publisherSlug}/events/${eventSlug}`} className="themed-link">
-          {event.title}
-        </Link>
-        <span className="mx-2">›</span>
-        <span>Access</span>
-      </nav>
-
-      <h1 className="text-3xl font-bold themed-heading mb-8">Access control</h1>
+    <main className="max-w-2xl mx-auto px-5 py-10 sm:py-14">
+      <Link href={`/${publisherSlug}/events/${eventSlug}`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
+        {event.title}
+      </Link>
+      <div className="mb-8">
+        <p className="ps-eyebrow mb-1.5">Event</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Access control</h1>
+      </div>
 
       <section className="mb-10">
         <h2 className="text-lg font-semibold themed-heading mb-1">Visibility</h2>
@@ -188,7 +187,7 @@ export default async function EventAccessPage({
                       </option>
                     ))}
                   </select>
-                  <button type="submit" className="themed-btn-primary text-sm">
+                  <button type="submit" className="themed-btn-accent rounded text-sm">
                     Grant access
                   </button>
                 </form>
@@ -213,7 +212,7 @@ export default async function EventAccessPage({
                         </option>
                       ))}
                     </select>
-                    <button type="submit" className="themed-btn-primary text-sm">
+                    <button type="submit" className="themed-btn-accent rounded text-sm">
                       Grant access
                     </button>
                   </form>

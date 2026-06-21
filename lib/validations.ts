@@ -538,6 +538,8 @@ export const themeTokensSchema = z.object({
   muted:            colorTokenSchema,
   mutedForeground:  colorTokenSchema,
   border:           colorTokenSchema,
+  accent:           colorTokenSchema,
+  accentForeground: colorTokenSchema,
   link:             colorTokenSchema,
   linkHover:        colorTokenSchema,
   codeBackground:   colorTokenSchema,

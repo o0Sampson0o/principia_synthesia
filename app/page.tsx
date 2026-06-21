@@ -7,7 +7,6 @@ import { getSession } from "@/lib/auth";
 export default async function HomePage() {
   const session = await getSession();
 
-  // Top 5 public articles by view count in the last 30 days
   const topArticles = await db
     .select({
       id: articles.id,
@@ -48,80 +47,230 @@ export default async function HomePage() {
     .orderBy(desc(count(articleViews.id)))
     .limit(5);
 
+  const hasArticles = topArticles.length > 0;
+
   return (
-    <main>
-      {/* Hero */}
-      <section className="max-w-6xl mx-auto px-4 py-12 sm:py-20 text-center">
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight themed-heading mb-4 sm:mb-6">
-          Principia Synthesia
-        </h1>
-        <p className="text-base sm:text-xl themed-muted mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
-          A collaborative publishing platform for mathematical and scientific knowledge.
-          Write articles, build curricula, and share interactive animations.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-          {session ? (
-            <Link href={`/${session.userSlug}`} className="themed-btn-primary px-6 py-3 text-base">
-              My profile
-            </Link>
-          ) : (
-            <>
-              <Link href="/signup" className="themed-btn-primary px-6 py-3 text-base">
-                Get started
-              </Link>
-              <Link href="/login" className="themed-btn-ghost px-6 py-3 text-base">
-                Sign in
-              </Link>
-            </>
-          )}
-        </div>
+    <main className="flex-1">
 
-        {/* Feature bullets */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
-          <div className="themed-surface rounded-lg p-6">
-            <h3 className="font-semibold themed-heading mb-2">Publisher profiles</h3>
-            <p className="text-sm themed-muted">
-              Every user and organization gets a permanent publisher slug and a profile page to showcase their work.
-            </p>
-          </div>
-          <div className="themed-surface rounded-lg p-6">
-            <h3 className="font-semibold themed-heading mb-2">Rich content types</h3>
-            <p className="text-sm themed-muted">
-              Write MDX articles with LaTeX math, build structured books, and create interactive canvas animations.
-            </p>
-          </div>
-          <div className="themed-surface rounded-lg p-6">
-            <h3 className="font-semibold themed-heading mb-2">Access control</h3>
-            <p className="text-sm themed-muted">
-              Control who can see your content: public, organization-members only, or specific users.
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* ── Masthead ─────────────────────────────────────────────────── */}
+      <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+        <div className="max-w-6xl mx-auto px-5">
 
-      {/* Top articles this month */}
-      {topArticles.length > 0 && (
-        <section className="max-w-5xl mx-auto px-4 pb-12 sm:pb-20">
-          <h2 className="text-2xl font-semibold themed-heading mb-6">Top articles this month</h2>
-          <ul className="space-y-4">
-            {topArticles.map((a) => {
-              const pubSlug = a.publisherSlug ?? "unknown";
-              return (
-                <li key={a.id} className="border-b themed-border pb-4">
+          {/* Platform name — the masthead itself */}
+          <div
+            className="text-center py-7 sm:py-9"
+            style={{ borderBottom: "1px solid var(--border)" }}
+          >
+            <p
+              className="ps-hero themed-heading"
+              style={{ fontSize: "clamp(2.25rem, 6.5vw, 5.25rem)", letterSpacing: "-0.05em" }}
+            >
+              Principia Synthesia
+            </p>
+          </div>
+
+          {/* Masthead meta row */}
+          <div
+            className="flex items-center justify-between py-2.5"
+            style={{
+              fontSize: "0.5625rem",
+              fontFamily: "ui-monospace, monospace",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--muted-foreground)",
+            }}
+          >
+            <span className="hidden sm:block">A collaborative platform for mathematical and scientific knowledge</span>
+            <span className="sm:hidden">Principia Synthesia</span>
+            <span>Vol. I</span>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── Hero split ───────────────────────────────────────────────── */}
+      <div className="max-w-6xl mx-auto px-5">
+        <div
+          className={`grid grid-cols-1 ${hasArticles ? "lg:grid-cols-[3fr_2fr]" : ""}`}
+          style={{ borderBottom: "1px solid var(--border)" }}
+        >
+
+          {/* Left: tagline + CTA */}
+          <div
+            className={`py-14 sm:py-20 ${hasArticles ? "lg:pr-16 lg:border-r themed-border" : ""}`}
+          >
+            <p className="ps-eyebrow mb-6">The open scholarly record</p>
+            <p
+              className="themed-heading mb-6"
+              style={{
+                fontFamily: "var(--font-playfair)",
+                fontSize: "clamp(1.875rem, 4vw, 3rem)",
+                fontWeight: 500,
+                letterSpacing: "-0.035em",
+                lineHeight: 1.1,
+              }}
+            >
+              Publish what you know.<br />
+              Exactly as you know it.
+            </p>
+            <p
+              className="themed-muted mb-10"
+              style={{ fontSize: "1rem", lineHeight: 1.8, maxWidth: "30rem" }}
+            >
+              Write articles with LaTeX math, build structured books, and create
+              interactive scientific objects — all in one permanent, citable home.
+            </p>
+            <div className="flex items-center gap-3 flex-wrap">
+              {session ? (
+                <Link
+                  href={`/${session.userSlug}`}
+                  className="themed-btn-accent rounded-lg"
+                  style={{ fontSize: "0.9375rem", padding: "0.65rem 1.5rem" }}
+                >
+                  Go to my profile
+                </Link>
+              ) : (
+                <>
                   <Link
-                    href={`/${pubSlug}/articles/${a.slug}`}
-                    className="text-lg font-medium themed-link"
+                    href="/signup"
+                    className="themed-btn-accent rounded-lg"
+                    style={{ fontSize: "0.9375rem", padding: "0.65rem 1.5rem" }}
                   >
-                    {a.title}
+                    Start writing
                   </Link>
-                  {a.summary && <p className="text-sm themed-muted mt-1 line-clamp-2">{a.summary}</p>}
-                  <p className="text-xs themed-muted mt-1">by @{pubSlug}</p>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
+                  <Link
+                    href="/login"
+                    className="themed-btn-outline"
+                    style={{ fontSize: "0.9375rem", padding: "0.6rem 1.375rem" }}
+                  >
+                    Sign in
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Right: trending articles — only shown when data exists */}
+          {hasArticles && (
+            <div className="py-14 sm:py-20 lg:pl-12 border-t themed-border lg:border-t-0">
+              <div className="flex items-baseline justify-between mb-5">
+                <p className="ps-eyebrow-muted">Trending this month</p>
+                <Link
+                  href="/search"
+                  className="themed-nav-link hover:text-[var(--foreground)] transition-colors flex items-center gap-1"
+                  style={{ fontSize: "0.75rem" }}
+                >
+                  All
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 12h14m-7-7 7 7-7 7" />
+                  </svg>
+                </Link>
+              </div>
+
+              <div>
+                {topArticles.map((a, i) => {
+                  const pubSlug = a.publisherSlug ?? "unknown";
+                  return (
+                    <div
+                      key={a.id}
+                      className="group flex gap-4 py-4 border-b themed-border last:border-b-0"
+                    >
+                      <span
+                        className="tabular-nums shrink-0 mt-1 select-none"
+                        style={{
+                          fontSize: "0.5625rem",
+                          fontFamily: "ui-monospace, monospace",
+                          color: "var(--muted-foreground)",
+                          letterSpacing: "0.05em",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href={`/${pubSlug}/articles/${a.slug}`}
+                          className="article-title-serif block mb-1.5 group-hover:text-[var(--accent)] transition-colors"
+                          style={{ fontSize: "0.9375rem", lineHeight: 1.35 }}
+                        >
+                          {a.title}
+                        </Link>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className="themed-muted"
+                            style={{ fontSize: "0.6875rem" }}
+                          >
+                            @{pubSlug}
+                          </span>
+                          <span className="themed-muted" style={{ fontSize: "0.5625rem" }}>·</span>
+                          <span
+                            className="themed-muted flex items-center gap-1"
+                            style={{ fontSize: "0.6875rem" }}
+                          >
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                            {a.viewCount.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* ── Feature strip ────────────────────────────────────────────── */}
+      <div className="max-w-6xl mx-auto px-5 pb-24">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x themed-border">
+          {[
+            {
+              n: "01",
+              title: "Publisher profiles",
+              body: "Users and organisations each get a permanent publisher slug and a dedicated profile to showcase their work.",
+            },
+            {
+              n: "02",
+              title: "Rich content types",
+              body: "MDX articles with LaTeX math, structured books, interactive canvas animations, and full revision history.",
+            },
+            {
+              n: "03",
+              title: "Access control",
+              body: "Make content public, restrict it to organisation members, or share with specific invited users.",
+            },
+          ].map(({ n, title, body }) => (
+            <div key={n} className="py-10 sm:px-10 first:sm:pl-0 last:sm:pr-0">
+              <p
+                className="themed-muted mb-5 tabular-nums"
+                style={{
+                  fontSize: "0.5625rem",
+                  fontFamily: "ui-monospace, monospace",
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {n}
+              </p>
+              <h3
+                className="themed-heading mb-3"
+                style={{ fontSize: "1.0625rem", fontWeight: 500, letterSpacing: "-0.025em", lineHeight: 1.3 }}
+              >
+                {title}
+              </h3>
+              <p className="themed-muted" style={{ fontSize: "0.875rem", lineHeight: 1.7 }}>
+                {body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </main>
   );
 }

@@ -144,21 +144,23 @@ export default forwardRef<ContentEditorRef, {
   return (
     <div data-tour="editor-content">
       <input type="hidden" name="content" id="content-field" />
+
       {altFindings.length > 0 && (
-        <div className="mb-2 flex items-center gap-2">
+        <div className="mb-2 flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={() => setShowAltList((v) => !v)}
             aria-label={`${altFindings.length} image${altFindings.length === 1 ? "" : "s"} missing alt text`}
-            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700 font-medium"
+            className="inline-flex items-center gap-1.5 themed-badge"
+            style={{ fontSize: "0.75rem", padding: "0.25rem 0.625rem", borderColor: "var(--color-warning-border)", color: "var(--color-warning-border)" }}
           >
-            <span aria-hidden="true">!</span>
+            <span aria-hidden="true">⚠</span>
             {altFindings.length} missing alt
           </button>
           {showAltList && (
             <ul className="flex flex-wrap gap-2">
               {altFindings.map((f) => (
-                <li key={`${f.line}-${f.src}`} className="text-xs themed-muted">
+                <li key={`${f.line}-${f.src}`} className="themed-muted" style={{ fontSize: "0.75rem" }}>
                   Line {f.line}{f.src ? `: ${f.src.slice(0, 40)}` : ""}
                 </li>
               ))}
@@ -166,29 +168,31 @@ export default forwardRef<ContentEditorRef, {
           )}
         </div>
       )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100svh-12rem)] lg:h-[760px]">
-        <div className="flex flex-col min-h-0 overflow-hidden">
-          {toolbar && (
-            <div className="flex items-center justify-between px-2 py-1 mb-1 border themed-border rounded-t themed-surface border-b-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs themed-muted">MDX</span>
-                <button
-                  type="button"
-                  onClick={toggleGrammar}
-                  aria-pressed={grammarOn}
-                  title="Grammar & spell check"
-                  className={`text-xs px-2 py-0.5 rounded border transition-colors ${
-                    grammarOn
-                      ? "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-600 dark:bg-blue-900/40 dark:text-blue-300"
-                      : "themed-border themed-muted themed-hover-foreground"
-                  }`}
-                >
-                  Grammar {grammarOn ? "on" : "off"}
-                </button>
-              </div>
-              <div className="flex items-center gap-2">{toolbar}</div>
+
+        {/* ── MDX editor pane ── */}
+        <div className="flex flex-col min-h-0 overflow-hidden rounded-lg border themed-border">
+          <div className="flex items-center justify-between px-3 py-1.5 border-b themed-border themed-surface shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="themed-muted font-medium" style={{ fontSize: "0.6875rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>MDX</span>
+              <button
+                type="button"
+                onClick={toggleGrammar}
+                aria-pressed={grammarOn}
+                title="Grammar & spell check"
+                className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                  grammarOn
+                    ? "themed-accent-border themed-accent"
+                    : "themed-border themed-muted themed-hover-foreground"
+                }`}
+                style={{ fontSize: "0.6875rem" }}
+              >
+                Grammar {grammarOn ? "on" : "off"}
+              </button>
             </div>
-          )}
+            {toolbar && <div className="flex items-center gap-2">{toolbar}</div>}
+          </div>
           <CodeMirror
             value={initial}
             height="100%"
@@ -196,24 +200,33 @@ export default forwardRef<ContentEditorRef, {
             extensions={extensions}
             onChange={handleChange}
             onCreateEditor={(view) => { editorViewRef.current = view; }}
-            className={toolbar ? "border border-t-0 rounded-b overflow-hidden flex-1" : "border rounded overflow-hidden flex-1"}
+            className="overflow-hidden flex-1"
           />
         </div>
-        <div className="border rounded p-4 overflow-y-auto max-w-none relative">
-          <button
-            type="button"
-            onClick={handleCompile}
-            className="absolute top-2 right-2 text-xs px-2 py-1 rounded themed-muted-bg themed-muted themed-hover-foreground transition-colors"
-            title="Force recompile preview"
-          >
-            Compile
-          </button>
-          <Preview
-            ref={previewRef}
-            initialSource={initial}
-            onError={onError}
-          />
+
+        {/* ── Preview pane ── */}
+        <div className="rounded-lg border themed-border overflow-y-auto relative">
+          <div className="flex items-center justify-between px-3 py-1.5 border-b themed-border themed-surface sticky top-0">
+            <span className="themed-muted font-medium" style={{ fontSize: "0.6875rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>Preview</span>
+            <button
+              type="button"
+              onClick={handleCompile}
+              className="themed-btn-ghost"
+              style={{ fontSize: "0.6875rem", padding: "0.2rem 0.5rem" }}
+              title="Force recompile preview"
+            >
+              Compile
+            </button>
+          </div>
+          <div className="p-5">
+            <Preview
+              ref={previewRef}
+              initialSource={initial}
+              onError={onError}
+            />
+          </div>
         </div>
+
       </div>
     </div>
   );

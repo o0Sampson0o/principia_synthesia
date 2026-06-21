@@ -34,11 +34,14 @@ export default async function NewObjectPage({
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold themed-heading mb-6">New object</h1>
+    <main className="max-w-4xl mx-auto px-5 py-10 sm:py-14">
+      <div className="mb-8">
+        <p className="ps-eyebrow mb-1.5">Object</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New object</h1>
+      </div>
       <form action={action} className="space-y-4">
         <NewObjectFormClient />
-        <button type="submit" className="themed-btn-primary">
+        <button type="submit" className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
           Create object
         </button>
       </form>

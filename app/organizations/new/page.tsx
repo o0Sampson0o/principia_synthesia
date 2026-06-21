@@ -20,12 +20,15 @@ export default async function NewOrganizationPage({
   if (!session) redirect("/login");
 
   return (
-    <main className="max-w-xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold themed-heading mb-6">New organization</h1>
+    <main className="max-w-xl mx-auto px-5 py-10 sm:py-14">
+      <div className="mb-8">
+        <p className="ps-eyebrow mb-1.5">Organization</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New organization</h1>
+      </div>
       <ErrorMessage searchParams={searchParams} />
       <form action={createOrganization} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium themed-secondary mb-1">
+          <label htmlFor="name" className="block font-medium themed-secondary mb-1.5" style={{ fontSize: "0.75rem" }}>
             Organization name
           </label>
           <input id="name" name="name" type="text" required maxLength={200} className="themed-input" />
@@ -50,7 +53,7 @@ export default async function NewOrganizationPage({
           </div>
           <p className="text-xs themed-muted mt-1">3–40 characters, lowercase letters, numbers, and hyphens only.</p>
         </div>
-        <button type="submit" className="themed-btn-primary">
+        <button type="submit" className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
           Create organization
         </button>
       </form>

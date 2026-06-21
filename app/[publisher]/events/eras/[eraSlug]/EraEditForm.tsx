@@ -71,7 +71,7 @@ export default function EraEditForm({
           <button
             type="submit"
             disabled={renamePending}
-            className="themed-btn-primary px-4 py-2 text-sm disabled:opacity-60"
+            className="themed-btn-accent rounded px-4 py-2 text-sm disabled:opacity-60"
           >
             {renamePending ? "Renaming…" : "Rename"}
           </button>
@@ -130,7 +130,7 @@ export default function EraEditForm({
             <button
               type="submit"
               disabled={updatePending}
-              className="themed-btn-primary px-4 py-2 text-sm disabled:opacity-60"
+              className="themed-btn-accent rounded px-4 py-2 text-sm disabled:opacity-60"
             >
               {updatePending ? "Saving…" : "Save dates"}
             </button>

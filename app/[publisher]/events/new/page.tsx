@@ -25,8 +25,11 @@ export default async function NewEventPage({
   const action = createEvent.bind(null, publisherSlug, null);
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold themed-heading mb-8">New event</h1>
+    <main className="max-w-2xl mx-auto px-5 py-10 sm:py-14">
+      <div className="mb-8">
+        <p className="ps-eyebrow mb-1.5">Event</p>
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New event</h1>
+      </div>
 
       <form action={action as (fd: FormData) => void} className="space-y-6">
         <div>
@@ -143,7 +146,7 @@ export default async function NewEventPage({
           </div>
         </fieldset>
 
-        <button type="submit" className="themed-btn-primary px-6 py-2">
+        <button type="submit" className="themed-btn-accent rounded-lg">
           Create event
         </button>
       </form>

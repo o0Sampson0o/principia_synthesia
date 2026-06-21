@@ -156,16 +156,17 @@ export default async function ChapterPage({
     : body;
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10">
-      <div className="text-sm themed-muted mb-6 flex gap-2">
-        <Link href={`/${publisherSlug}`} className="themed-link">@{publisherSlug}</Link>
-        <span>/</span>
-        <Link href={`/${publisherSlug}/books/${bookSlug}`} className="themed-link">{bookRow.title}</Link>
+    <main className="max-w-3xl mx-auto px-5 py-10 sm:py-14">
+      <div className="mb-6 flex items-center gap-1.5 flex-wrap" style={{ fontSize: "0.8125rem" }}>
+        <Link href={`/${publisherSlug}`} className="ps-eyebrow">@{publisherSlug}</Link>
+        <span className="themed-muted">/</span>
+        <Link href={`/${publisherSlug}/books/${bookSlug}`} className="ps-eyebrow">{bookRow.title}</Link>
       </div>
 
-      <h1 className="text-4xl font-bold themed-heading mb-2">{article.title}</h1>
+      <h1 className="ps-display themed-heading mb-3" style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}>{article.title}</h1>
+
       {articlePublisherSlug !== publisherSlug && (
-        <p className="text-sm themed-muted mb-6">
+        <p className="themed-muted mb-6" style={{ fontSize: "0.875rem" }}>
           Originally by{" "}
           <Link href={`/${articlePublisherSlug}`} className="themed-link">
             @{articlePublisherSlug}
@@ -178,7 +179,8 @@ export default async function ChapterPage({
         <div className="mb-6">
           <Link
             href={`/${articlePublisherSlug}/articles/${chapterSlug}/edit`}
-            className="text-sm themed-link"
+            className="themed-nav-link hover:text-[var(--foreground)] transition-colors"
+            style={{ fontSize: "0.8125rem" }}
           >
             Edit chapter
           </Link>
@@ -198,17 +200,18 @@ export default async function ChapterPage({
         />
       </div>
 
-      <nav className="flex justify-between mt-12 pt-6 border-t themed-border text-sm">
+      <nav className="flex justify-between mt-14 pt-6 border-t themed-border" style={{ fontSize: "0.875rem" }}>
         {prevSlug ? (
-          <Link href={`/${publisherSlug}/books/${bookSlug}/${prevSlug}`} className="themed-link">
-            &larr; Previous
+          <Link href={`/${publisherSlug}/books/${bookSlug}/${prevSlug}`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors inline-flex items-center gap-1.5">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
+            Previous
           </Link>
         ) : (
           <span />
         )}
         {nextSlug && (
-          <Link href={`/${publisherSlug}/books/${bookSlug}/${nextSlug}`} className="themed-link">
-            Next &rarr;
+          <Link href={`/${publisherSlug}/books/${bookSlug}/${nextSlug}`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors">
+            Next →
           </Link>
         )}
       </nav>

@@ -53,13 +53,16 @@ export default async function NotificationsPage() {
   const unreadCount = rows.filter((r) => !r.readAt).length;
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold themed-heading">Notifications</h1>
+    <main className="max-w-4xl mx-auto px-5 py-10 sm:py-14">
+      <div className="flex items-end justify-between mb-10 gap-4">
+        <div>
+          <p className="ps-eyebrow mb-1.5">Principia Synthesia</p>
+          <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Notifications</h1>
+        </div>
         {unreadCount > 0 && (
           <form action={markAllNotificationsRead}>
-            <button type="submit" className="themed-btn-ghost text-sm px-4 py-2">
-              Mark all as read
+            <button type="submit" className="themed-btn-ghost shrink-0" style={{ fontSize: "0.8125rem" }}>
+              Mark all read
             </button>
           </form>
         )}

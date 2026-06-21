@@ -11,6 +11,8 @@ const TOKEN_LABELS: Record<keyof ThemeTokens, string> = {
   muted:            "Muted background",
   mutedForeground:  "Secondary text",
   border:           "Borders & dividers",
+  accent:           "Accent color",
+  accentForeground: "Accent foreground",
   link:             "Link color",
   linkHover:        "Link hover",
   codeBackground:   "Code background",
@@ -109,11 +111,11 @@ export default function ThemeEditor({ initialLight, initialDark }: Props) {
                 onClick={() => applyPreset(preset)}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg themed-border border themed-secondary hover:themed-heading transition-colors"
               >
-                {/* Color swatch showing bg + accent of the preset */}
+                {/* Color swatch showing bg + primary + accent of the preset */}
                 <span className="flex gap-0.5">
                   <span className="w-3 h-3 rounded-full border themed-border" style={{ background: t.background }} />
                   <span className="w-3 h-3 rounded-full border themed-border" style={{ background: t.primaryBtn }} />
-                  <span className="w-3 h-3 rounded-full border themed-border" style={{ background: t.link }} />
+                  <span className="w-3 h-3 rounded-full border themed-border" style={{ background: t.accent }} />
                 </span>
                 {preset.name}
               </button>
@@ -174,12 +176,18 @@ export default function ThemeEditor({ initialLight, initialDark }: Props) {
             G_μν + Λg_μν = 8πG/c⁴ · T_μν
           </code>
           <hr style={{ borderColor: tokens.border }} />
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <button
               className="text-xs px-3 py-1.5 rounded"
               style={{ background: tokens.primaryBtn, color: tokens.primaryBtnText }}
             >
               Primary button
+            </button>
+            <button
+              className="text-xs px-3 py-1.5 rounded"
+              style={{ background: tokens.accent, color: "#fff" }}
+            >
+              Accent button
             </button>
             <input
               placeholder="Input field"

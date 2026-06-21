@@ -25,7 +25,6 @@ export default async function SearchPage({
 
   if (hasActiveFilter) {
     if (tagList.length > 0) {
-      // If we have tags, we still primarily search articles because books/objects don't have tags yet
       const conditions = [
         eq(articles.isInternal, false),
         isNull(articles.deletedAt),
@@ -90,46 +89,103 @@ export default async function SearchPage({
 
   const totalResults = results.articles.length + results.books.length + results.objects.length;
 
+  // Build status line tokens
+  const statusParts: string[] = [];
+  if (hasActiveFilter) statusParts.push(`${totalResults} result${totalResults !== 1 ? "s" : ""}`);
+  if (query) statusParts.push(query.toUpperCase());
+  for (const t of tagList) statusParts.push(`#${t.toUpperCase()}`);
+
   return (
-    <main className="max-w-5xl mx-auto px-4 py-10">
-      <h1 className="text-2xl sm:text-4xl font-bold themed-heading mb-6">Search</h1>
-      <form method="GET" action="/search" className="mb-8 space-y-2">
-        <input
-          name="q"
-          defaultValue={query}
-          placeholder="Search articles, books, and objects..."
-          className="themed-input w-full"
-        />
-        <input
-          name="tags"
-          defaultValue={tags || ""}
-          placeholder="Filter articles by tags: physics, mechanics"
-          className="themed-input w-full"
-        />
-        <button type="submit" className="themed-btn-primary">
-          Search
-        </button>
-      </form>
+    <main className="max-w-5xl mx-auto px-5 sm:px-8 py-10 sm:py-16">
 
-      {hasActiveFilter && (
-        <p className="text-sm themed-muted mb-6">
-          {totalResults} {totalResults === 1 ? "result" : "results"}
-          {query && <> for &ldquo;{query}&rdquo;</>}
-          {tagList.length > 0 && (
-            <> tagged {tagList.map((t) => <code key={t} className="ml-1">#{t}</code>)}</>
-          )}
-        </p>
+      {/* ── Header ── */}
+      <div className="mb-10">
+        <p className="ps-eyebrow mb-3">Search</p>
+        <h1
+          className="ps-display themed-heading mb-8"
+          style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
+        >
+          {query ? <>&ldquo;{query}&rdquo;</> : "Find anything"}
+        </h1>
+
+        {/* Search form */}
+        <form method="GET" action="/search">
+          <div className="ps-action-bar gap-2">
+            <input
+              name="q"
+              defaultValue={query}
+              placeholder="Articles, books, objects…"
+              autoFocus={!hasActiveFilter}
+              className="themed-input flex-1 min-w-32"
+              style={{ fontSize: "0.875rem" }}
+            />
+            <input
+              name="tags"
+              defaultValue={tags || ""}
+              placeholder="Tags: physics, mechanics"
+              className="themed-input sm:w-52"
+              style={{ fontSize: "0.875rem" }}
+            />
+            <button
+              type="submit"
+              className="themed-btn-accent rounded-lg shrink-0"
+              style={{ fontSize: "0.875rem", padding: "0.5rem 1.25rem" }}
+            >
+              Search
+            </button>
+          </div>
+        </form>
+
+        {/* Status line */}
+        {hasActiveFilter && (
+          <p
+            className="themed-muted mt-4"
+            style={{
+              fontSize: "0.5625rem",
+              fontFamily: "ui-monospace, monospace",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            {statusParts.join(" · ")}
+          </p>
+        )}
+      </div>
+
+      {/* ── Default / empty states ── */}
+      {!hasActiveFilter && (
+        <div className="py-20 text-center">
+          <p className="ps-eyebrow mb-3">Ready</p>
+          <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>
+            Enter a search term or tag above.
+          </p>
+        </div>
       )}
 
-      {totalResults === 0 && hasActiveFilter && (
-        <p className="themed-muted">No results found.</p>
+      {hasActiveFilter && totalResults === 0 && (
+        <div className="py-20 text-center">
+          <p className="ps-eyebrow mb-3">No results</p>
+          <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>
+            Try a different search term or remove some tags.
+          </p>
+        </div>
       )}
 
-      <div className="space-y-10">
-        {results.articles.length > 0 && (
-          <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest themed-muted mb-4">Articles</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ── Results ── */}
+      {totalResults > 0 && (
+        <div className="space-y-12">
+
+          {results.articles.length > 0 && (
+            <section>
+              <div className="flex items-baseline justify-between pb-3 mb-0 border-b themed-border">
+                <p className="ps-eyebrow-muted">Articles</p>
+                <span
+                  className="themed-muted"
+                  style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+                >
+                  {results.articles.length}
+                </span>
+              </div>
               {results.articles.map((a) => (
                 <SearchResultItem
                   key={`article-${a.id}`}
@@ -140,14 +196,20 @@ export default async function SearchPage({
                   description={a.summary}
                 />
               ))}
-            </div>
-          </section>
-        )}
+            </section>
+          )}
 
-        {results.books.length > 0 && (
-          <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest themed-muted mb-4">Books</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {results.books.length > 0 && (
+            <section>
+              <div className="flex items-baseline justify-between pb-3 mb-0 border-b themed-border">
+                <p className="ps-eyebrow-muted">Books</p>
+                <span
+                  className="themed-muted"
+                  style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+                >
+                  {results.books.length}
+                </span>
+              </div>
               {results.books.map((b) => (
                 <SearchResultItem
                   key={`book-${b.id}`}
@@ -158,14 +220,20 @@ export default async function SearchPage({
                   description={b.summary}
                 />
               ))}
-            </div>
-          </section>
-        )}
+            </section>
+          )}
 
-        {results.objects.length > 0 && (
-          <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest themed-muted mb-4">Objects</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {results.objects.length > 0 && (
+            <section>
+              <div className="flex items-baseline justify-between pb-3 mb-0 border-b themed-border">
+                <p className="ps-eyebrow-muted">Objects</p>
+                <span
+                  className="themed-muted"
+                  style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+                >
+                  {results.objects.length}
+                </span>
+              </div>
               {results.objects.map((o) => (
                 <SearchResultItem
                   key={`object-${o.id}`}
@@ -177,10 +245,12 @@ export default async function SearchPage({
                   objectType={o.type}
                 />
               ))}
-            </div>
-          </section>
-        )}
-      </div>
+            </section>
+          )}
+
+        </div>
+      )}
+
     </main>
   );
 }

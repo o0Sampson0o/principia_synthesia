@@ -61,7 +61,7 @@ export async function saveTheme(formData: FormData) {
   let mode: "light" | "dark";
   let tokens: {
     background: string; foreground: string; muted: string; mutedForeground: string;
-    border: string; link: string; linkHover: string; codeBackground: string;
+    border: string; accent: string; accentForeground: string; link: string; linkHover: string; codeBackground: string;
     surface: string; surfaceHover: string; primaryBtn: string; primaryBtnText: string;
     inputBorder: string; inputFocusBorder: string; secondaryText: string;
   };
@@ -75,6 +75,8 @@ export async function saveTheme(formData: FormData) {
         muted:            formData.get("muted"),
         mutedForeground:  formData.get("mutedForeground"),
         border:           formData.get("border"),
+        accent:           formData.get("accent"),
+        accentForeground: formData.get("accentForeground"),
         link:             formData.get("link"),
         linkHover:        formData.get("linkHover"),
         codeBackground:   formData.get("codeBackground"),

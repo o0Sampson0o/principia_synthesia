@@ -133,12 +133,16 @@ export default async function EditBookPage({
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold themed-heading">Edit book</h1>
+    <main className="max-w-4xl mx-auto px-5 py-10 sm:py-14">
+      <div className="flex items-end justify-between mb-8 gap-4">
+        <div>
+          <p className="ps-eyebrow mb-1.5">Book</p>
+          <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Edit book</h1>
+        </div>
         <Link
           href={`/${publisherSlug}/books/${bookSlug}/access`}
-          className="themed-btn-ghost text-sm px-3 py-1"
+          className="themed-btn-outline shrink-0"
+          style={{ fontSize: "0.8125rem", padding: "0.375rem 0.875rem" }}
         >
           Access &amp; visibility
         </Link>
@@ -192,7 +196,7 @@ export default async function EditBookPage({
           </label>
           <CategoryPicker initialSelected={bookCats.map(c => c.slug)} />
         </div>
-        <button type="submit" className="themed-btn-primary">
+        <button type="submit" className="themed-btn-accent rounded-lg">
           Save changes
         </button>
       </form>
@@ -346,7 +350,7 @@ export default async function EditBookPage({
                 placeholder="Part title (optional)"
                 className="themed-input text-sm"
               />
-              <button type="submit" className="themed-btn-primary text-sm">
+              <button type="submit" className="themed-btn-accent rounded text-sm">
                 Add chapter
               </button>
             </form>
@@ -383,7 +387,7 @@ export default async function EditBookPage({
                 placeholder="Part title (optional)"
                 className="themed-input text-sm"
               />
-              <button type="submit" className="themed-btn-primary text-sm">
+              <button type="submit" className="themed-btn-accent rounded text-sm">
                 Create chapter
               </button>
             </form>
@@ -424,7 +428,7 @@ export default async function EditBookPage({
               placeholder="Part title (optional)"
               className="themed-input text-sm"
             />
-            <button type="submit" className="themed-btn-primary text-sm">
+            <button type="submit" className="themed-btn-accent rounded text-sm">
               Add external chapter
             </button>
           </form>

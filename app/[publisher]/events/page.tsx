@@ -70,33 +70,24 @@ export default async function PublisherEventsPage({
   const totalPages = Math.ceil(total / PER_PAGE);
 
   return (
-    <main className="max-w-5xl mx-auto px-4 py-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <main className="max-w-5xl mx-auto px-5 py-10 sm:py-14">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
         <div>
-          <h1 className="text-3xl font-bold themed-heading mb-1">
-            {pub.displayName}&rsquo;s events
+          <p className="ps-eyebrow mb-1.5">Events</p>
+          <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+            {pub.displayName}
           </h1>
-          <p className="themed-muted text-sm">@{pub.slug}</p>
         </div>
         {isOwner && (
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Link
-              href={`/${publisherSlug}/events/eras`}
-              className="themed-btn-ghost text-sm px-4 py-2"
-            >
+          <div className="ps-action-bar self-start sm:self-auto">
+            <Link href={`/${publisherSlug}/events/eras`} className="themed-btn-ghost" style={{ fontSize: "0.8125rem" }}>
               Eras
             </Link>
-            <Link
-              href={`/${publisherSlug}/events/import`}
-              className="themed-btn-ghost text-sm px-4 py-2"
-            >
+            <Link href={`/${publisherSlug}/events/import`} className="themed-btn-ghost" style={{ fontSize: "0.8125rem" }}>
               Import
             </Link>
-            <Link
-              href={`/${publisherSlug}/events/new`}
-              className="themed-btn-primary text-sm px-4 py-2"
-            >
-              New event
+            <Link href={`/${publisherSlug}/events/new`} className="themed-btn-accent rounded-md" style={{ fontSize: "0.8125rem", padding: "0.375rem 0.75rem" }}>
+              + Event
             </Link>
           </div>
         )}

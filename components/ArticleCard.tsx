@@ -6,29 +6,57 @@ interface Props {
   title: string
   summary?: string | null
   updatedAt?: Date | null
+  tags?: string[]
 }
 
-export default function ArticleCard({ publisherSlug, slug, title, summary, updatedAt }: Props) {
+export default function ArticleCard({ publisherSlug, slug, title, summary, updatedAt, tags }: Props) {
   return (
-    <Link href={`/${publisherSlug}/articles/${slug}`} className="group block">
-      <p className="text-base font-medium themed-heading group-hover:opacity-70 transition-opacity">
+    <div className="py-5 border-b themed-border last:border-b-0">
+      <Link
+        href={`/${publisherSlug}/articles/${slug}`}
+        className="article-title-serif block mb-2.5"
+        style={{ fontSize: "1.125rem" }}
+      >
         {title}
-      </p>
-      <p className="text-xs themed-muted mt-0.5">@{publisherSlug}</p>
+      </Link>
+
       {summary && (
-        <p className="text-sm themed-muted mt-0.5 line-clamp-2">
+        <p
+          className="themed-muted line-clamp-2 mb-3"
+          style={{ fontSize: "0.875rem", lineHeight: 1.7 }}
+        >
           {summary}
         </p>
       )}
-      {updatedAt && (
-        <p className="text-xs themed-muted mt-1">
-          {updatedAt.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
-        </p>
-      )}
-    </Link>
+
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
+          @{publisherSlug}
+        </span>
+        {updatedAt && (
+          <>
+            <span className="themed-muted" style={{ fontSize: "0.625rem" }}>·</span>
+            <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
+              {updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </span>
+          </>
+        )}
+        {tags && tags.length > 0 && (
+          <div className="flex gap-1.5 ml-auto flex-wrap">
+            {tags.slice(0, 3).map(tag => (
+              <Link
+                key={tag}
+                href={`/search?tags=${encodeURIComponent(tag)}`}
+                className="themed-tag"
+                style={{ fontSize: "0.6875rem" }}
+                onClick={e => e.stopPropagation()}
+              >
+                {tag}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

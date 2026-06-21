@@ -16,90 +16,97 @@ const SOURCE_LABELS: Record<ReferrerSource, string> = {
 
 const SOURCES: ReferrerSource[] = ["direct", "search", "social", "internal", "external"];
 
-/**
- * A simple inline-SVG horizontal bar chart for referrer-source breakdown.
- * Rendered server-side — no client JS, no chart library.
- */
-export default function SourceBarSvg({ data, width = 400, height = 160 }: Props) {
+export default function SourceBarSvg({ data }: Props) {
   const total = SOURCES.reduce((s, k) => s + data[k], 0);
-  const maxVal = Math.max(...SOURCES.map((k) => data[k]), 1);
-
-  const padLeft = 72; // label column width
-  const padRight = 12;
-  const padTop = 10;
-  const rowH = (height - padTop) / SOURCES.length;
-  const barMaxW = width - padLeft - padRight;
 
   if (total === 0) {
     return (
-      <svg width={width} height={height} aria-label="No source data">
-        <text x={width / 2} y={height / 2} textAnchor="middle" fontSize={12} fill="currentColor" opacity={0.5}>
-          No data in range
-        </text>
-      </svg>
+      <p
+        style={{
+          fontSize: "0.875rem",
+          color: "var(--muted-foreground)",
+          fontFamily: "ui-monospace, monospace",
+          padding: "2rem 0",
+          textAlign: "center",
+        }}
+      >
+        No data in range
+      </p>
     );
   }
 
+  const sorted = [...SOURCES].sort((a, b) => data[b] - data[a]);
+  const maxVal = data[sorted[0]];
+
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      aria-label="Traffic source breakdown"
-      role="img"
-    >
-      {SOURCES.map((src, i) => {
-        const y = padTop + i * rowH;
-        const barW = (data[src] / maxVal) * barMaxW;
-        const pct = total > 0 ? ((data[src] / total) * 100).toFixed(1) : "0.0";
+    <div style={{ width: "100%" }}>
+      {sorted.map((src, i) => {
+        const count = data[src];
+        const hasData = count > 0;
+        const pct = ((count / total) * 100).toFixed(1);
+        const barWidth = maxVal > 0 ? (count / maxVal) * 100 : 0;
+        const isLast = i === sorted.length - 1;
 
         return (
-          <g key={src}>
+          <div
+            key={src}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "10px 0",
+              borderBottom: isLast ? "none" : "1px solid var(--border)",
+              opacity: hasData ? 1 : 0.4,
+            }}
+          >
             {/* Label */}
-            <text
-              x={padLeft - 6}
-              y={y + rowH / 2 + 4}
-              textAnchor="end"
-              fontSize={10}
-              fill="currentColor"
+            <div
+              style={{
+                width: "5rem",
+                flexShrink: 0,
+                textAlign: "right",
+                fontSize: "0.8125rem",
+                fontFamily: "system-ui, -apple-system, sans-serif",
+                color: hasData ? "var(--foreground)" : "var(--muted-foreground)",
+                lineHeight: 1,
+              }}
             >
               {SOURCE_LABELS[src]}
-            </text>
-            {/* Bar background */}
-            <rect
-              x={padLeft}
-              y={y + 4}
-              width={barMaxW}
-              height={rowH - 8}
-              rx={3}
-              fill="currentColor"
-              opacity={0.08}
-            />
-            {/* Bar fill */}
-            {barW > 0 && (
-              <rect
-                x={padLeft}
-                y={y + 4}
-                width={barW.toFixed(1)}
-                height={rowH - 8}
-                rx={3}
-                fill="currentColor"
-                opacity={0.5}
-              />
-            )}
-            {/* Value label */}
-            <text
-              x={padLeft + barMaxW + 4}
-              y={y + rowH / 2 + 4}
-              fontSize={10}
-              fill="currentColor"
-              opacity={0.7}
+            </div>
+
+            {/* Bar track */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {hasData && (
+                <div
+                  style={{
+                    width: `${barWidth}%`,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: "var(--accent)",
+                    opacity: 0.8,
+                    transition: "width 0.3s ease",
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Percentage */}
+            <div
+              style={{
+                width: "3.5rem",
+                flexShrink: 0,
+                textAlign: "right",
+                fontSize: "0.75rem",
+                fontFamily: "ui-monospace, monospace",
+                color: "var(--muted-foreground)",
+                lineHeight: 1,
+              }}
             >
-              {data[src]} ({pct}%)
-            </text>
-          </g>
+              {hasData ? `${pct}%` : "—"}
+            </div>
+          </div>
         );
       })}
-    </svg>
+    </div>
   );
 }

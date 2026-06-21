@@ -133,21 +133,25 @@ export default async function MembersPage({
   }
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
-      <nav className="text-sm themed-muted mb-6">
-        <Link href={`/${publisherSlug}`} className="themed-link">{org.name}</Link>
-        <span className="mx-2">›</span>
-        <span>Members</span>
-      </nav>
+    <main className="max-w-2xl mx-auto px-5 py-12 sm:py-16">
+      <Link href={`/${publisherSlug}`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M19 12H5m7-7-7 7 7 7" />
+        </svg>
+        {org.name}
+      </Link>
 
-      <div className="flex items-start justify-between mb-8">
-        <h1 className="text-3xl font-bold themed-heading">Members</h1>
+      <div className="flex items-end justify-between mb-10 gap-4">
+        <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+          Members
+        </h1>
         {!currentIsProtected && currentMember && (
           <form action={leave}>
             <input type="hidden" name="orgId" value={orgId} />
             <button
               type="submit"
-              className="themed-btn-ghost text-sm px-3 py-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
+              className="themed-btn-ghost shrink-0"
+              style={{ fontSize: "0.8125rem", color: "var(--color-error)" }}
             >
               Leave organisation
             </button>
@@ -289,7 +293,7 @@ export default async function MembersPage({
                 <option value="member">Member</option>
               </select>
             </div>
-            <button type="submit" className="themed-btn-primary text-sm">
+            <button type="submit" className="themed-btn-accent rounded text-sm">
               Send invitation
             </button>
           </form>
@@ -328,7 +332,7 @@ export default async function MembersPage({
                   <option value="member">Member</option>
                 </select>
               </div>
-              <button type="submit" className="themed-btn-primary text-sm">
+              <button type="submit" className="themed-btn-accent rounded text-sm">
                 Add to organisation
               </button>
             </form>

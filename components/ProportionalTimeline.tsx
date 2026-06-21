@@ -10,16 +10,22 @@ import { clusterEvents, clusteringThreshold } from "@/lib/timeline-clusters"
 const BUFFER_MULTIPLIER = 1.5
 const TOP_PADDING_PX = 60
 const BOTTOM_PADDING_PX = 120
+const SPINE_X = 60
 
 export type { EventRow } from "@/lib/timeline-utils"
 import type { EventRow } from "@/lib/timeline-utils"
 
+function fmtDate(date: Date | string, opts?: Intl.DateTimeFormatOptions): string {
+  return new Date(date).toLocaleDateString("en-US", opts ?? {
+    month: "short", day: "numeric", year: "numeric",
+  })
+}
+
 export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
   const [pxPerYear, setPxPerYear] = useState(() =>
-    typeof window !== 'undefined' && window.innerWidth < 640 ? 30 : 80
+    typeof window !== "undefined" && window.innerWidth < 640 ? 30 : 80
   )
   const [containerHeight, setContainerHeight] = useState(640)
-
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const rafIdRef = useRef<number | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -30,9 +36,7 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
   const clusterDialogRef = useRef<HTMLDialogElement>(null)
 
   const handleScroll = useCallback(() => {
-    if (rafIdRef.current !== null) {
-      cancelAnimationFrame(rafIdRef.current)
-    }
+    if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current)
     rafIdRef.current = requestAnimationFrame(() => {
       rafIdRef.current = null
       const el = scrollContainerRef.current
@@ -56,8 +60,8 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
       setContainerHeight(Math.min(720, Math.max(320, vh65)))
     }
     computeHeight()
-    window.addEventListener('resize', computeHeight)
-    return () => window.removeEventListener('resize', computeHeight)
+    window.addEventListener("resize", computeHeight)
+    return () => window.removeEventListener("resize", computeHeight)
   }, [])
 
   const openModal = useCallback((event: EventRow) => {
@@ -90,13 +94,7 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
       if (fractYear > hiFract) hiFract = fractYear
       return { row: r, fractYear }
     })
-    return {
-      minYear: Math.floor(loFract),
-      maxYear: Math.ceil(hiFract),
-      minFractYear: loFract,
-      maxFractYear: hiFract,
-      rowsWithYear: withYear,
-    }
+    return { minYear: Math.floor(loFract), maxYear: Math.ceil(hiFract), minFractYear: loFract, maxFractYear: hiFract, rowsWithYear: withYear }
   }, [rows])
 
   const eraLabels = useMemo(
@@ -126,20 +124,18 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
     (idx: number) => {
       const el = scrollContainerRef.current
       if (!el || idx < 0 || idx >= sortedEvents.length) return
-      el.scrollTo({
-        top: sortedEvents[idx].offset - containerHeight / 4,
-        behavior: "smooth",
-      })
+      el.scrollTo({ top: sortedEvents[idx].offset - containerHeight / 4, behavior: "smooth" })
     },
     [sortedEvents, containerHeight],
   )
 
   useLayoutEffect(() => {
     if (navIndex < 0) return
+    if (dialogRef.current?.open) return
     const sortedId = sortedEvents[navIndex]?.row.id
     if (sortedId === undefined) return
     const btn = dotRefs.current.get(sortedId)
-    if (btn) btn.focus()
+    if (btn) btn.focus({ preventScroll: true })
   }, [navIndex, sortedEvents])
 
   const handleKeyDown = useCallback(
@@ -148,39 +144,28 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault()
-          {
-            const next = navIndex < sortedEvents.length - 1 ? navIndex + 1 : navIndex
-            setNavIndex(next)
-            scrollToIndex(next)
-          }
+          { const next = navIndex < sortedEvents.length - 1 ? navIndex + 1 : navIndex; setNavIndex(next); scrollToIndex(next) }
           break
         case "ArrowUp":
           e.preventDefault()
-          {
-            const next = navIndex > 0 ? navIndex - 1 : 0
-            setNavIndex(next)
-            scrollToIndex(next)
-          }
+          { const next = navIndex > 0 ? navIndex - 1 : 0; setNavIndex(next); scrollToIndex(next) }
           break
         case "Home":
           e.preventDefault()
-          setNavIndex(0)
-          scrollToIndex(0)
+          setNavIndex(0); scrollToIndex(0)
           break
         case "End":
           e.preventDefault()
-          setNavIndex(sortedEvents.length - 1)
-          scrollToIndex(sortedEvents.length - 1)
+          setNavIndex(sortedEvents.length - 1); scrollToIndex(sortedEvents.length - 1)
           break
         default:
           break
       }
     },
-    [navIndex, sortedEvents, scrollToIndex]
+    [navIndex, sortedEvents, scrollToIndex],
   )
 
   const bufferPx = containerHeight * BUFFER_MULTIPLIER
-
   const cardMode: "full" | "compact" | "dot" =
     pxPerYear >= 60 ? "full" : pxPerYear >= 30 ? "compact" : "dot"
 
@@ -195,13 +180,12 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
   const threshold = clusteringThreshold(pxPerYear)
   const clusters = useMemo(
     () => cardMode === "dot" ? clusterEvents(visibleRows.map((r) => r.row), pxPerYear, threshold) : null,
-    [cardMode, pxPerYear, threshold, visibleRows]
+    [cardMode, pxPerYear, threshold, visibleRows],
   )
 
   if (rows.length === 0) return null
 
   const totalHeight = (maxFractYear - minFractYear) * pxPerYear + TOP_PADDING_PX + BOTTOM_PADDING_PX
-
   const interval = yearMarkerInterval(pxPerYear)
   const firstMarkerYear = Math.ceil(minYear / interval) * interval
   const markerYears: number[] = []
@@ -212,168 +196,301 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
     Math.max(minYear, Math.round((scrollTop - TOP_PADDING_PX) / pxPerYear + minFractYear)),
   )
 
+  const modeName = cardMode === "full" ? "Detail" : cardMode === "compact" ? "Compact" : "Overview"
+
   return (
     <div className="w-full">
-      {/* Controls: Back/Next navigation + zoom */}
-      <div className="flex flex-wrap items-center gap-x-1 gap-y-2 mb-3 text-sm">
-        {/* Navigation group */}
+
+      {/* ── Toolbar ─────────────────────────────────────────────────── */}
+      <div
+        className="flex items-center gap-5 mb-4 pb-3 border-b themed-border"
+        style={{ fontSize: "0.8125rem" }}
+      >
+        {/* Nav */}
+        <button
+          type="button"
+          onClick={() => { const n = navIndex - 1; setNavIndex(n); scrollToIndex(n) }}
+          disabled={navIndex <= 0}
+          className="themed-nav-link hover:text-[var(--foreground)] transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+          aria-label="Previous event"
+        >
+          ← Prev
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            let n: number
+            if (navIndex === -1) {
+              const fa = sortedEvents.findIndex(({ offset }) => offset > scrollTop)
+              n = fa === -1 ? 0 : fa
+            } else {
+              n = navIndex + 1
+            }
+            setNavIndex(n); scrollToIndex(n)
+          }}
+          disabled={navIndex >= sortedEvents.length - 1}
+          className="themed-nav-link hover:text-[var(--foreground)] transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+          aria-label="Next event"
+        >
+          Next →
+        </button>
+
+        <div className="flex-1" />
+
+        {/* Mode label */}
+        <span
+          className="themed-muted hidden sm:inline"
+          style={{ fontSize: "0.5625rem", letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "ui-monospace, monospace" }}
+        >
+          {modeName}
+        </span>
+
+        {/* Zoom */}
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => {
-              const next = navIndex - 1
-              setNavIndex(next)
-              scrollToIndex(next)
-            }}
-            disabled={navIndex <= 0}
-            className="themed-btn-ghost px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-label="Scroll to previous event"
-          >
-            ← Back
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              let next: number
-              if (navIndex === -1) {
-                const firstAhead = sortedEvents.findIndex(({ offset }) => offset > scrollTop)
-                next = firstAhead === -1 ? 0 : firstAhead
-              } else {
-                next = navIndex + 1
-              }
-              setNavIndex(next)
-              scrollToIndex(next)
-            }}
-            disabled={navIndex >= sortedEvents.length - 1}
-            className="themed-btn-ghost px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-label="Scroll to next event"
-          >
-            Next →
-          </button>
-        </div>
-        {/* Zoom group */}
-        <div className="flex items-center gap-1 ml-2">
-          <span className="themed-muted text-xs">Zoom</span>
-          <button
-            type="button"
             onClick={() => setPxPerYear((p) => p > 20 ? Math.max(20, p - 20) : Math.max(2, p - 4))}
-            className="themed-btn-ghost px-2 py-1"
+            className="themed-muted hover:text-[var(--foreground)] transition-colors"
+            style={{ fontFamily: "ui-monospace, monospace", fontSize: "1rem", lineHeight: 1, padding: "0 6px" }}
             aria-label="Zoom out"
           >
             −
           </button>
-          <span className="themed-muted w-24 text-center tabular-nums text-xs">
-            {pxPerYear}px/yr · {cardMode === "full" ? "Full" : cardMode === "compact" ? "Compact" : "Dots"}
-          </span>
           <button
             type="button"
             onClick={() => setPxPerYear((p) => p >= 20 ? Math.min(400, p + 20) : Math.min(20, p + 4))}
-            className="themed-btn-ghost px-2 py-1"
+            className="themed-muted hover:text-[var(--foreground)] transition-colors"
+            style={{ fontFamily: "ui-monospace, monospace", fontSize: "1rem", lineHeight: 1, padding: "0 6px" }}
             aria-label="Zoom in"
           >
             +
           </button>
         </div>
-        {/* Current year */}
-        <span className="themed-muted ml-auto text-xs tabular-nums" aria-live="polite">~{currentYear}</span>
-      </div>
-      <p className="sm:hidden text-xs themed-muted mb-2">Scroll to navigate · tap a dot to open</p>
 
-      {/* Scroll container — fixed height keeps the page layout stable */}
+        {/* Current year readout */}
+        <span
+          style={{
+            fontFamily: "ui-monospace, monospace",
+            fontSize: "0.9375rem",
+            fontWeight: 500,
+            letterSpacing: "-0.02em",
+            color: "var(--foreground)",
+            minWidth: "3.25rem",
+            textAlign: "right",
+          }}
+          aria-live="polite"
+          aria-label={`Currently viewing around ${currentYear}`}
+        >
+          {currentYear}
+        </span>
+      </div>
+
+      <p
+        className="sm:hidden themed-muted mb-3"
+        style={{ fontSize: "0.5625rem", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "ui-monospace, monospace" }}
+      >
+        Scroll to navigate · tap to open
+      </p>
+
+      {/* ── Scroll container ─────────────────────────────────────────── */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
         onKeyDown={handleKeyDown}
-        className="overflow-y-auto overscroll-contain rounded-md border themed-border scrollbar-none p-4"
+        className="overflow-y-auto overscroll-contain scrollbar-none"
         style={{ height: containerHeight }}
       >
-        {/* Canvas — height is data-driven; extra 80px bottom padding so last card isn't clipped */}
-        <div className="relative" style={{ height: totalHeight, contain: "layout" } as CSSProperties}>
-          <div className="absolute left-[7px] top-0 bottom-0 w-0.5 bg-[var(--border)]" />
+        {/* Canvas */}
+        <div
+          className="relative"
+          style={{ height: totalHeight, contain: "layout" } as CSSProperties}
+        >
 
-        {eraLabels.map((era) => (
+          {/* Spine */}
           <div
-            key={era.name}
-            className="absolute left-0 right-0 flex items-center z-10"
+            aria-hidden="true"
             style={{
-              top: Math.max(0, topOffset(era.startYear) - 22),
-              transform: era.lane > 0 ? `translateX(${era.lane * 64}px)` : undefined,
+              position: "absolute",
+              left: SPINE_X,
+              top: 0,
+              bottom: 0,
+              width: 1,
+              backgroundColor: "var(--border)",
             }}
-          >
-            <span className="text-xs font-semibold uppercase tracking-widest themed-muted ml-6 pr-3 bg-[var(--background)] whitespace-nowrap">
-              {era.name}
-            </span>
-            <div className="flex-1 h-px bg-[var(--border)]" />
-          </div>
-        ))}
+          />
 
-        {markerYears.map((year) => (
-          <div
-            key={year}
-            className="absolute left-0 flex items-center"
-            style={{ top: topOffset(year) }}
-          >
-            <div className="w-3 h-px bg-[var(--border)] shrink-0" />
-            <span className="text-xs themed-muted ml-1 select-none">{year}</span>
-          </div>
-        ))}
+          {/* Year markers */}
+          {markerYears.map((year) => {
+            const y = topOffset(year)
+            return (
+              <div key={year} aria-hidden="true">
+                {/* Tick — straddles the spine */}
+                <div style={{
+                  position: "absolute",
+                  top: y,
+                  left: SPINE_X - 3,
+                  width: 7,
+                  height: 1,
+                  backgroundColor: "var(--border)",
+                  pointerEvents: "none",
+                }} />
+                {/* Label — right-aligned in left column */}
+                <span style={{
+                  position: "absolute",
+                  top: y - 6,
+                  left: 4,
+                  width: SPINE_X - 12,
+                  textAlign: "right",
+                  fontSize: "0.5rem",
+                  fontFamily: "ui-monospace, monospace",
+                  color: "var(--muted-foreground)",
+                  lineHeight: 1,
+                  userSelect: "none",
+                  pointerEvents: "none",
+                  whiteSpace: "nowrap",
+                }}>
+                  {year}
+                </span>
+              </div>
+            )
+          })}
 
-        {cardMode === "dot" && clusters
-          ? clusters.map((cluster) => {
-              const firstEvent = cluster.events[0]
-              const fractYear = toFractionalYear(new Date(firstEvent.eventDate))
-              const isSingle = cluster.events.length === 1
-              const sortedIdx = sortedEvents.findIndex((s) => s.row.id === firstEvent.id)
-              const isFocused = navIndex === sortedIdx
-              return (
-                <div
-                  key={cluster.id}
-                  className="absolute flex items-center"
-                  style={{ top: topOffset(fractYear), left: 0 }}
-                >
-                  {isSingle ? (
+          {/* Era labels */}
+          {eraLabels.map((era) => {
+            const y = topOffset(era.startYear)
+            return (
+              <div
+                key={era.name}
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  top: y - 9,
+                  left: SPINE_X + 14 + era.lane * 64,
+                  right: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  zIndex: 10,
+                  pointerEvents: "none",
+                }}
+              >
+                <span style={{
+                  fontSize: "0.4375rem",
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: "var(--muted-foreground)",
+                  backgroundColor: "var(--background)",
+                  paddingRight: 6,
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}>
+                  {era.name}
+                </span>
+                <div style={{
+                  flex: 1,
+                  height: 1,
+                  backgroundColor: "var(--border)",
+                  opacity: 0.35,
+                }} />
+              </div>
+            )
+          })}
+
+          {/* ── Events ── */}
+          {cardMode === "dot" && clusters
+            ? clusters.map((cluster) => {
+                const firstEvent = cluster.events[0]
+                const fractYear = toFractionalYear(new Date(firstEvent.eventDate))
+                const y = topOffset(fractYear)
+                const isSingle = cluster.events.length === 1
+                const sortedIdx = sortedEvents.findIndex((s) => s.row.id === firstEvent.id)
+                const isFocused = navIndex === sortedIdx
+
+                if (isSingle) {
+                  return (
                     <button
+                      key={cluster.id}
                       type="button"
                       ref={(el) => {
                         if (el) dotRefs.current.set(firstEvent.id, el)
                         else dotRefs.current.delete(firstEvent.id)
                       }}
                       tabIndex={isFocused ? 0 : -1}
-                      aria-label={`View details: ${firstEvent.title}`}
+                      aria-label={`View: ${firstEvent.title}`}
                       aria-current={isFocused ? "true" : undefined}
-                      onClick={() => {
-                        setNavIndex(sortedIdx)
-                        openModal(firstEvent)
+                      onClick={() => { setNavIndex(sortedIdx); openModal(firstEvent) }}
+                      style={{
+                        position: "absolute",
+                        top: y - 6,
+                        left: SPINE_X - 6,
+                        width: 12,
+                        height: 12,
+                        borderRadius: "50%",
+                        backgroundColor: isFocused ? "var(--accent)" : "var(--muted-foreground)",
+                        opacity: isFocused ? 1 : 0.5,
+                        boxShadow: isFocused
+                          ? "0 0 0 2.5px var(--background), 0 0 0 4.5px var(--accent)"
+                          : "0 0 0 2.5px var(--background)",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        zIndex: 10,
+                        outline: "none",
+                        transition: "opacity 0.12s, box-shadow 0.12s, background-color 0.12s",
                       }}
-                      className="relative z-10 w-2 h-2 rounded-full ring-2 ring-[var(--background)] bg-[var(--foreground)] cursor-pointer p-0 hover:opacity-70 transition-opacity focus-visible:ring-[var(--input-focus-border)] focus-visible:outline-none focus-visible:ring-4"
+                      className="focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                     />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => openClusterModal(cluster.events)}
-                      aria-label={`${cluster.events.length} events clustered around ${cluster.year}`}
-                      className="relative z-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--background)] text-xs font-bold cursor-pointer hover:opacity-70 transition-opacity focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--input-focus-border)] px-2"
-                    >
-                      {cluster.events.length}
-                    </button>
-                  )}
-                </div>
-              )
-            })
-          : visibleRows.map(({ row: e, fractYear }) => {
-              const sortedIdx = sortedEvents.findIndex((s) => s.row.id === e.id)
-              const isFocused = navIndex === sortedIdx
-              return (
-                <div
-                  key={e.id}
-                  className="absolute flex items-start gap-4"
-                  style={{
-                    top: topOffset(fractYear),
-                    left: 0,
-                    right: 0,
-                  }}
-                >
-                  <div className="w-4 shrink-0 flex justify-center mt-1">
+                  )
+                }
+
+                // Cluster pill
+                return (
+                  <button
+                    key={cluster.id}
+                    type="button"
+                    onClick={() => openClusterModal(cluster.events)}
+                    aria-label={`${cluster.events.length} events near ${Math.round(fractYear)}`}
+                    style={{
+                      position: "absolute",
+                      top: y - 10,
+                      left: SPINE_X - 13,
+                      minWidth: 26,
+                      height: 20,
+                      borderRadius: 10,
+                      backgroundColor: "var(--surface)",
+                      border: "1px solid var(--border)",
+                      fontSize: "0.5rem",
+                      fontFamily: "ui-monospace, monospace",
+                      fontWeight: 600,
+                      color: "var(--muted-foreground)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0 5px",
+                      cursor: "pointer",
+                      zIndex: 10,
+                      outline: "none",
+                      boxShadow: "0 0 0 2px var(--background)",
+                      transition: "border-color 0.12s, color 0.12s",
+                    }}
+                    className="hover:text-[var(--foreground)] hover:border-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                  >
+                    {cluster.events.length}
+                  </button>
+                )
+              })
+
+            : visibleRows.map(({ row: e, fractYear }) => {
+                const y = topOffset(fractYear)
+                const sortedIdx = sortedEvents.findIndex((s) => s.row.id === e.id)
+                const isFocused = navIndex === sortedIdx
+
+                return (
+                  <div
+                    key={e.id}
+                    style={{ position: "absolute", top: y, left: 0, right: 0, zIndex: isFocused ? 20 : 1 }}
+                  >
+                    {/* Dot — keyboard nav anchor */}
                     <button
                       type="button"
                       ref={(el) => {
@@ -381,112 +498,191 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
                         else dotRefs.current.delete(e.id)
                       }}
                       tabIndex={isFocused ? 0 : -1}
-                      aria-label={`View details: ${e.title}`}
+                      aria-label={`View: ${e.title}`}
                       aria-current={isFocused ? "true" : undefined}
-                      onClick={() => {
-                        setNavIndex(sortedIdx)
-                        openModal(e)
+                      onClick={() => { setNavIndex(sortedIdx); openModal(e) }}
+                      style={{
+                        position: "absolute",
+                        top: -5,
+                        left: SPINE_X - 5,
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        backgroundColor: isFocused ? "var(--accent)" : "var(--background)",
+                        border: `1.5px solid ${isFocused ? "var(--accent)" : "var(--border)"}`,
+                        boxShadow: isFocused
+                          ? "0 0 0 2.5px var(--background), 0 0 0 4.5px var(--accent)"
+                          : "0 0 0 2.5px var(--background)",
+                        padding: 0,
+                        cursor: "pointer",
+                        zIndex: 2,
+                        outline: "none",
+                        transition: "background-color 0.12s, border-color 0.12s, box-shadow 0.12s",
                       }}
-                      className="relative z-10 w-2 h-2 rounded-full ring-2 ring-[var(--background)] bg-[var(--foreground)] cursor-pointer p-0 hover:opacity-70 transition-opacity focus-visible:ring-[var(--input-focus-border)] focus-visible:outline-none focus-visible:ring-4"
                     />
-                  </div>
 
-                  {cardMode === "full" && (
-                    <div className="flex-1 themed-card p-3 -mt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => openModal(e)}
-                        className="text-sm font-medium themed-link text-left hover:opacity-70 transition-opacity"
-                      >
-                        {e.title}
-                      </button>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs themed-muted">
-                          {new Date(e.eventDate).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
-                        {e.category && (
-                          <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
-                            {e.category}
+                    {/* Connector line (full mode only) */}
+                    {cardMode === "full" && (
+                      <div
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: SPINE_X + 5,
+                          width: 12,
+                          height: 1,
+                          backgroundColor: "var(--border)",
+                          opacity: 0.5,
+                          pointerEvents: "none",
+                        }}
+                      />
+                    )}
+
+                    {/* Full card content */}
+                    {cardMode === "full" && (
+                      <div style={{ position: "absolute", top: -15, left: SPINE_X + 19, right: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => openModal(e)}
+                          style={{
+                            textAlign: "left",
+                            display: "block",
+                            width: "100%",
+                            cursor: "pointer",
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                          }}
+                        >
+                          <span style={{
+                            display: "block",
+                            fontSize: "0.8125rem",
+                            fontWeight: 400,
+                            color: "var(--foreground)",
+                            lineHeight: 1.35,
+                            fontFamily: "system-ui, -apple-system, sans-serif",
+                          }}>
+                            {e.title}
                           </span>
-                        )}
+                          <span style={{
+                            display: "block",
+                            marginTop: 3,
+                            fontSize: "0.5rem",
+                            fontFamily: "ui-monospace, monospace",
+                            color: "var(--muted-foreground)",
+                            letterSpacing: "0.03em",
+                          }}>
+                            {fmtDate(e.eventDate)}
+                            {e.publisherSlug ? ` · @${e.publisherSlug}` : ""}
+                            {e.category ? ` · ${e.category}` : ""}
+                          </span>
+                        </button>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {cardMode === "compact" && (
-                    <div className="flex-1 py-0.5 px-2 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => openModal(e)}
-                        className="text-xs font-medium themed-link text-left hover:opacity-70 transition-opacity"
-                      >
-                        {e.title}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
-            })
-        }
+                    {/* Compact content */}
+                    {cardMode === "compact" && (
+                      <div style={{ position: "absolute", top: -8, left: SPINE_X + 13, right: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => openModal(e)}
+                          style={{
+                            textAlign: "left",
+                            display: "block",
+                            cursor: "pointer",
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                          }}
+                        >
+                          <span style={{
+                            fontSize: "0.6875rem",
+                            color: "var(--foreground)",
+                            fontFamily: "system-ui, -apple-system, sans-serif",
+                            lineHeight: 1.25,
+                          }}>
+                            {e.title}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+          }
         </div>
       </div>
 
+      {/* ── Event modal ─────────────────────────────────────────────── */}
       <dialog
         ref={dialogRef}
-        className="w-[min(90vw,32rem)] rounded-xl themed-card shadow-2xl flex flex-col"
+        className="w-[min(90vw,34rem)] rounded-xl themed-card shadow-xl flex flex-col"
         onClick={(e) => { if (e.target === dialogRef.current) closeModal() }}
         onClose={() => setSelectedEvent(null)}
         aria-labelledby="event-modal-title"
       >
         {selectedEvent && (
-          <div className="flex flex-col min-h-0 overflow-hidden">
-            {/* Header — fixed, never scrolls */}
-            <div className="flex items-start justify-between mb-4 flex-shrink-0">
-              <h2 id="event-modal-title" className="text-xl font-bold themed-heading pr-4">
-                {selectedEvent.title}
-              </h2>
-              <button type="button" onClick={closeModal} className="dialog-close-btn" aria-label="Close">
-                ✕
-              </button>
-            </div>
-
-            {/* Body — scrolls when content is long */}
-            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-              <div className="flex items-center gap-2 mb-4 flex-wrap">
-                <span className="text-sm themed-muted">
-                  {new Date(selectedEvent.eventDate).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-                {selectedEvent.category && (
-                  <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
-                    {selectedEvent.category}
-                  </span>
-                )}
+          <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexShrink: 0 }}>
+              <div style={{ flex: 1, paddingRight: 16 }}>
+                <p style={{
+                  fontSize: "0.5625rem",
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  fontFamily: "ui-monospace, monospace",
+                  color: "var(--muted-foreground)",
+                  marginBottom: 10,
+                }}>
+                  {fmtDate(selectedEvent.eventDate, { month: "long", day: "numeric", year: "numeric" })}
+                  {selectedEvent.category ? ` · ${selectedEvent.category}` : ""}
+                </p>
+                <h2
+                  id="event-modal-title"
+                  className="ps-display themed-heading"
+                  style={{ fontSize: "clamp(1.25rem, 3vw, 1.75rem)" }}
+                >
+                  {selectedEvent.title}
+                </h2>
               </div>
+              <button type="button" onClick={closeModal} className="dialog-close-btn" aria-label="Close">✕</button>
+            </div>
 
+            {/* Body */}
+            <div style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto" }}>
               {selectedEvent.description && (
-                <p className="text-sm themed-secondary leading-relaxed">{selectedEvent.description}</p>
+                <p style={{
+                  fontSize: "0.9375rem",
+                  lineHeight: 1.75,
+                  color: "var(--muted-foreground)",
+                }}>
+                  {selectedEvent.description}
+                </p>
               )}
             </div>
 
-            {/* Footer — fixed, never scrolls */}
-            <div className="flex items-center justify-between mt-4 pt-3 border-t themed-border flex-shrink-0">
-              {selectedEvent.publisherSlug ? (
-                <span className="text-xs themed-muted">@{selectedEvent.publisherSlug}</span>
-              ) : (
-                <span />
-              )}
+            {/* Footer */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingTop: 16,
+              borderTop: "1px solid var(--border)",
+              marginTop: 20,
+              flexShrink: 0,
+            }}>
+              <span style={{
+                fontSize: "0.6875rem",
+                fontFamily: "ui-monospace, monospace",
+                color: "var(--muted-foreground)",
+              }}>
+                {selectedEvent.publisherSlug ? `@${selectedEvent.publisherSlug}` : ""}
+              </span>
               {selectedEvent.publisherSlug && (
                 <Link
                   href={`/${selectedEvent.publisherSlug}/events/${selectedEvent.slug}`}
-                  className="themed-btn-primary text-sm px-4 py-2"
+                  className="themed-btn-accent rounded-lg"
+                  style={{ fontSize: "0.875rem", padding: "0.5rem 1.25rem" }}
                   onClick={closeModal}
                 >
                   View full page →
@@ -497,38 +693,50 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
         )}
       </dialog>
 
+      {/* ── Cluster modal ───────────────────────────────────────────── */}
       <dialog
         ref={clusterDialogRef}
-        className="w-[min(90vw,32rem)] rounded-xl themed-card shadow-2xl flex flex-col"
+        className="w-[min(90vw,32rem)] rounded-xl themed-card shadow-xl flex flex-col"
         onClick={(e) => { if (e.target === clusterDialogRef.current) closeClusterModal() }}
         onClose={() => setClusterEvents_(null)}
         aria-labelledby="cluster-modal-title"
       >
         {clusterEvents_ && (
-          <div className="flex flex-col min-h-0 overflow-hidden">
-            <div className="flex items-start justify-between mb-4 flex-shrink-0">
-              <h2 id="cluster-modal-title" className="text-xl font-bold themed-heading pr-4">
+          <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, flexShrink: 0 }}>
+              <h2
+                id="cluster-modal-title"
+                className="ps-display themed-heading"
+                style={{ fontSize: "clamp(1.25rem, 3vw, 1.75rem)" }}
+              >
                 {clusterEvents_.length} events
               </h2>
-              <button type="button" onClick={closeClusterModal} className="dialog-close-btn" aria-label="Close">
-                ✕
-              </button>
+              <button type="button" onClick={closeClusterModal} className="dialog-close-btn" aria-label="Close">✕</button>
             </div>
-            <ul className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+            <ul style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto" }}>
               {clusterEvents_.map((e) => (
-                <li key={`${e.id}-${e.slug}`} className="border-b themed-border pb-3 last:border-b-0 last:pb-0">
-                  <p className="text-sm font-medium themed-heading">{e.title}</p>
-                  <p className="text-xs themed-muted mt-0.5">
-                    {new Date(e.eventDate).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                <li
+                  key={`${e.id}-${e.slug}`}
+                  style={{ borderBottom: "1px solid var(--border)", paddingTop: 12, paddingBottom: 12 }}
+                  className="last:border-0"
+                >
+                  <p style={{ fontSize: "0.875rem", color: "var(--foreground)", marginBottom: 3, fontFamily: "system-ui, sans-serif" }}>
+                    {e.title}
+                  </p>
+                  <p style={{
+                    fontSize: "0.5625rem",
+                    fontFamily: "ui-monospace, monospace",
+                    color: "var(--muted-foreground)",
+                    letterSpacing: "0.06em",
+                    marginBottom: e.publisherSlug ? 6 : 0,
+                  }}>
+                    {fmtDate(e.eventDate, { month: "long", day: "numeric", year: "numeric" })}
                   </p>
                   {e.publisherSlug && (
                     <Link
                       href={`/${e.publisherSlug}/events/${e.slug}`}
-                      className="text-xs themed-link mt-1 inline-block"
+                      className="themed-link"
+                      style={{ fontSize: "0.75rem" }}
                       onClick={closeClusterModal}
                     >
                       View →
@@ -540,6 +748,7 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
           </div>
         )}
       </dialog>
+
     </div>
   )
 }

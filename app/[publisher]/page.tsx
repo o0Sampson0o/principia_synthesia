@@ -74,7 +74,6 @@ export default async function PublisherProfilePage({
       .limit(5),
   ]);
 
-  // Stale articles (only for the owner, for the sidebar nudge)
   let staleArticles: Array<{ id: number; slug: string; title: string }> = [];
   if (isOwner) {
     staleArticles = await db
@@ -95,8 +94,6 @@ export default async function PublisherProfilePage({
       );
   }
 
-  // Filter private resources for non-owner sessions.
-  // Owners (including org members with edit rights and root admin) see everything.
   let visibleBooks = allBooks;
   let visibleArticles = allArticles;
   let visibleObjects = allObjects;
@@ -126,166 +123,428 @@ export default async function PublisherProfilePage({
     visibleEvents = recentEvents.filter((e) => visEventSlugs.has(e.slug));
   }
 
+  const hasContent =
+    visibleArticles.length > 0 ||
+    visibleBooks.length > 0 ||
+    visibleObjects.length > 0 ||
+    visibleEvents.length > 0;
+
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
-      {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold themed-heading">{pub.displayName}</h1>
-        <p className="text-sm themed-muted mt-1">@{pub.slug}</p>
-        {pub.kind === "org" && (
-          <p className="text-sm themed-muted mt-1">Organization</p>
-        )}
+    <main className="flex-1">
+
+      {/* ── Author header — framed like a journal byline ────────────── */}
+      <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+        <div className="max-w-5xl mx-auto px-5">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-end gap-6 py-12 sm:py-16">
+
+            {/* Left: name + meta */}
+            <div>
+              <p className="ps-eyebrow mb-5">
+                {pub.kind === "org" ? "Organization" : "Publisher"}
+              </p>
+              <div className="flex items-start gap-3 flex-wrap mb-3">
+                <h1
+                  className="ps-display themed-heading"
+                  style={{ fontSize: "clamp(2.25rem, 5vw, 3.75rem)" }}
+                >
+                  {pub.displayName}
+                </h1>
+                {pub.kind === "org" && (
+                  <span
+                    className="themed-badge mt-2"
+                    style={{ fontSize: "0.6875rem", padding: "0.2rem 0.5rem" }}
+                  >
+                    Organization
+                  </span>
+                )}
+              </div>
+              <p
+                className="themed-muted mb-6"
+                style={{
+                  fontSize: "0.8125rem",
+                  fontFamily: "ui-monospace, monospace",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                @{pub.slug}
+              </p>
+              <div className="flex items-center gap-4 flex-wrap">
+                {visibleArticles.length > 0 && (
+                  <span className="ps-stat">
+                    <strong>{visibleArticles.length}</strong>
+                    {" "}{visibleArticles.length === 1 ? "article" : "articles"}
+                  </span>
+                )}
+                {visibleBooks.length > 0 && (
+                  <span className="ps-stat">
+                    <strong>{visibleBooks.length}</strong>
+                    {" "}{visibleBooks.length === 1 ? "book" : "books"}
+                  </span>
+                )}
+                {visibleEvents.length > 0 && (
+                  <span className="ps-stat">
+                    <strong>{visibleEvents.length}</strong>
+                    {" "}{visibleEvents.length === 1 ? "event" : "events"}
+                  </span>
+                )}
+                {visibleObjects.length > 0 && (
+                  <span className="ps-stat">
+                    <strong>{visibleObjects.length}</strong>
+                    {" "}{visibleObjects.length === 1 ? "object" : "objects"}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Right: large decorative initial — typographic ornament */}
+            <div
+              className="hidden sm:flex items-center justify-center shrink-0 select-none"
+              style={{
+                width: "7rem",
+                height: "7rem",
+                borderRadius: "0.75rem",
+                background: "color-mix(in srgb, var(--accent) 10%, var(--surface))",
+                border: "1px solid color-mix(in srgb, var(--accent) 20%, var(--border))",
+                fontFamily: "var(--font-playfair)",
+                fontSize: "3.5rem",
+                fontWeight: 500,
+                color: "var(--accent)",
+                lineHeight: 1,
+              }}
+              aria-hidden="true"
+            >
+              {pub.displayName.charAt(0).toUpperCase()}
+            </div>
+
+          </div>
+        </div>
       </div>
 
-      {/* Action buttons for owner */}
+      {/* ── Owner controls ───────────────────────────────────────────── */}
       {isOwner && (
-        <div className="flex flex-wrap gap-2 mb-8">
-          <Link href={`/${publisherSlug}/articles/new`} data-tour="new-article-button" className="themed-btn-primary text-sm px-4 py-2">
-            New article
-          </Link>
-          <Link href={`/${publisherSlug}/books/new`} className="themed-btn-primary text-sm px-4 py-2">
-            New book
-          </Link>
-          <Link href={`/${publisherSlug}/objects/new`} className="themed-btn-primary text-sm px-4 py-2">
-            New object
-          </Link>
-          <Link href={`/${publisherSlug}/events/new`} className="themed-btn-primary text-sm px-4 py-2">
-            New event
-          </Link>
-          <Link href={`/${publisherSlug}/images`} className="themed-btn-ghost text-sm px-4 py-2">
-            Images
-          </Link>
-          <Link href={`/${publisherSlug}/bin`} className="themed-btn-ghost text-sm px-4 py-2">
-            Bin
-          </Link>
-          {pub.kind === "org" && (
-            <Link href={`/${publisherSlug}/members`} className="themed-btn-ghost text-sm px-4 py-2">
-              Members
+        <div style={{ borderBottom: "1px solid var(--border)" }}>
+          <div className="max-w-5xl mx-auto px-5 py-3 flex items-center gap-1.5 flex-wrap">
+            <Link
+              href={`/${publisherSlug}/articles/new`}
+              data-tour="new-article-button"
+              className="themed-btn-accent rounded-lg"
+              style={{ fontSize: "0.8125rem", padding: "0.35rem 0.75rem" }}
+            >
+              + Article
             </Link>
-          )}
+            <Link
+              href={`/${publisherSlug}/books/new`}
+              className="themed-btn-accent rounded-lg"
+              style={{ fontSize: "0.8125rem", padding: "0.35rem 0.75rem" }}
+            >
+              + Book
+            </Link>
+            <Link
+              href={`/${publisherSlug}/objects/new`}
+              className="themed-btn-accent rounded-lg"
+              style={{ fontSize: "0.8125rem", padding: "0.35rem 0.75rem" }}
+            >
+              + Object
+            </Link>
+            <Link
+              href={`/${publisherSlug}/events/new`}
+              className="themed-btn-accent rounded-lg"
+              style={{ fontSize: "0.8125rem", padding: "0.35rem 0.75rem" }}
+            >
+              + Event
+            </Link>
+
+            <div className="ml-auto flex items-center gap-1.5">
+              <Link
+                href={`/${publisherSlug}/analytics`}
+                className="themed-btn-outline"
+                style={{ fontSize: "0.8125rem", padding: "0.3rem 0.75rem" }}
+              >
+                Analytics
+              </Link>
+              <Link
+                href={`/${publisherSlug}/images`}
+                className="themed-btn-outline"
+                style={{ fontSize: "0.8125rem", padding: "0.3rem 0.75rem" }}
+              >
+                Images
+              </Link>
+              <Link
+                href={`/${publisherSlug}/bin`}
+                className="themed-btn-outline"
+                style={{ fontSize: "0.8125rem", padding: "0.3rem 0.75rem" }}
+              >
+                Bin
+              </Link>
+              {pub.kind === "org" && (
+                <Link
+                  href={`/${publisherSlug}/members`}
+                  className="themed-btn-outline"
+                  style={{ fontSize: "0.8125rem", padding: "0.3rem 0.75rem" }}
+                >
+                  Members
+                </Link>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Books */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold themed-heading mb-4">Books</h2>
-        {visibleBooks.length === 0 ? (
-          <p className="themed-muted text-sm">No books yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {visibleBooks.map((b) => (
-              <li key={b.id}>
-                <Link
-                  href={`/${publisherSlug}/books/${b.slug}`}
-                  className="themed-link font-medium"
-                >
-                  {b.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* ── Publication index ────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-5 py-10 sm:py-14">
 
-      {/* Articles */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold themed-heading mb-4">Articles</h2>
-        {visibleArticles.length === 0 ? (
-          <p className="themed-muted text-sm">No articles yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {visibleArticles.map((a) => (
-              <li key={a.id}>
-                <Link
-                  href={`/${publisherSlug}/articles/${a.slug}`}
-                  className="themed-link"
-                >
-                  {a.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Objects */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold themed-heading mb-4">Objects</h2>
-        {visibleObjects.length === 0 ? (
-          <p className="themed-muted text-sm">No objects yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {visibleObjects.map((o) => (
-              <li key={o.id}>
-                <Link
-                  href={`/${publisherSlug}/objects/${o.slug}`}
-                  className="themed-link"
-                >
-                  {o.name}{" "}
-                  <span className="text-xs themed-muted">({o.type})</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Events */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold themed-heading">Events</h2>
-          <Link href={`/${publisherSlug}/events`} className="text-sm themed-link">
-            View all events →
-          </Link>
-        </div>
-        {visibleEvents.length === 0 ? (
-          <p className="themed-muted text-sm">No events yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {visibleEvents.map((e) => (
-              <li key={e.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                <Link
-                  href={`/${publisherSlug}/events/${e.slug}`}
-                  className="themed-link"
-                >
-                  {e.title}
-                </Link>
-                <span className="text-xs themed-muted">
-                  {new Date(e.eventDate).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+        {/* Section tab nav */}
+        {hasContent && (
+          <div className="flex gap-5 border-b themed-border mb-10 overflow-x-auto scrollbar-none">
+            {visibleArticles.length > 0 && (
+              <a href="#articles" className="ps-tab" data-active="true">
+                Articles
+                <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
+                  ({visibleArticles.length})
                 </span>
-              </li>
-            ))}
-          </ul>
+              </a>
+            )}
+            {visibleBooks.length > 0 && (
+              <a href="#books" className="ps-tab">
+                Books
+                <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
+                  ({visibleBooks.length})
+                </span>
+              </a>
+            )}
+            {visibleObjects.length > 0 && (
+              <a href="#objects" className="ps-tab">
+                Objects
+                <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
+                  ({visibleObjects.length})
+                </span>
+              </a>
+            )}
+            {visibleEvents.length > 0 && (
+              <a href="#events" className="ps-tab">
+                Events
+                <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
+                  ({visibleEvents.length})
+                </span>
+              </a>
+            )}
+          </div>
         )}
-      </section>
 
-      {/* Stale articles nudge — visible only to the owner */}
-      {isOwner && staleArticles.length > 0 && (
-        <section className="mt-10">
-          <h2 className="text-xl font-semibold themed-heading mb-4">Stale Articles</h2>
-          <p className="text-sm themed-muted mb-4">
-            The following published articles have not been verified in over{" "}
-            {Math.round(STALE_DAYS / 30)} months. Consider reviewing and marking them as verified.
-          </p>
-          <ul className="space-y-3">
-            {staleArticles.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <Link
-                  href={`/${publisherSlug}/articles/${a.slug}`}
-                  className="themed-link"
+        <div className="space-y-14">
+
+          {/* ── Articles ─────────────────────────────────────────────── */}
+          {visibleArticles.length > 0 && (
+            <section id="articles">
+              <div className="flex items-baseline justify-between pb-3 border-b themed-border mb-1">
+                <p className="ps-eyebrow-muted">Articles</p>
+                <span
+                  className="themed-muted"
+                  style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
                 >
-                  {a.title}
+                  {visibleArticles.length}
+                </span>
+              </div>
+              {visibleArticles.map((a) => (
+                <div
+                  key={a.id}
+                  className="group py-4 border-b themed-border last:border-b-0"
+                >
+                  <Link
+                    href={`/${publisherSlug}/articles/${a.slug}`}
+                    className="article-title-serif group-hover:text-[var(--accent)] transition-colors block"
+                    style={{ fontSize: "1.0625rem" }}
+                  >
+                    {a.title}
+                  </Link>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* ── Books ────────────────────────────────────────────────── */}
+          {visibleBooks.length > 0 && (
+            <section id="books">
+              <div className="flex items-baseline justify-between pb-3 border-b themed-border mb-1">
+                <p className="ps-eyebrow-muted">Books</p>
+                <span
+                  className="themed-muted"
+                  style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+                >
+                  {visibleBooks.length}
+                </span>
+              </div>
+              {visibleBooks.map((b) => (
+                <div
+                  key={b.id}
+                  className="group flex items-center gap-3 py-4 border-b themed-border last:border-b-0"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="shrink-0 themed-muted"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </svg>
+                  <Link
+                    href={`/${publisherSlug}/books/${b.slug}`}
+                    className="ps-list-link group-hover:text-[var(--accent)] transition-colors"
+                  >
+                    {b.title}
+                  </Link>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* ── Objects ──────────────────────────────────────────────── */}
+          {visibleObjects.length > 0 && (
+            <section id="objects">
+              <div className="flex items-baseline justify-between pb-3 border-b themed-border mb-1">
+                <p className="ps-eyebrow-muted">Objects</p>
+                <span
+                  className="themed-muted"
+                  style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+                >
+                  {visibleObjects.length}
+                </span>
+              </div>
+              {visibleObjects.map((o) => (
+                <div
+                  key={o.id}
+                  className="group flex items-center justify-between gap-6 py-4 border-b themed-border last:border-b-0"
+                >
+                  <Link
+                    href={`/${publisherSlug}/objects/${o.slug}`}
+                    className="ps-list-link group-hover:text-[var(--accent)] transition-colors min-w-0 flex-1"
+                  >
+                    {o.name}
+                  </Link>
+                  <span className="themed-badge capitalize shrink-0">{o.type}</span>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* ── Events ───────────────────────────────────────────────── */}
+          {visibleEvents.length > 0 && (
+            <section id="events">
+              <div className="flex items-baseline justify-between pb-3 border-b themed-border mb-1">
+                <p className="ps-eyebrow-muted">Events</p>
+                <Link
+                  href={`/${publisherSlug}/events`}
+                  className="themed-nav-link hover:text-[var(--foreground)] transition-colors flex items-center gap-1"
+                  style={{ fontSize: "0.75rem" }}
+                >
+                  View all
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M5 12h14m-7-7 7 7-7 7" />
+                  </svg>
                 </Link>
-                <MarkVerifiedForm publisherSlug={publisherSlug} articleId={a.id} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+              </div>
+              {visibleEvents.map((e) => (
+                <div
+                  key={e.id}
+                  className="group flex items-center justify-between gap-6 py-4 border-b themed-border last:border-b-0"
+                >
+                  <Link
+                    href={`/${publisherSlug}/events/${e.slug}`}
+                    className="ps-list-link group-hover:text-[var(--accent)] transition-colors min-w-0 flex-1"
+                  >
+                    {e.title}
+                  </Link>
+                  <span
+                    className="themed-muted shrink-0 tabular-nums"
+                    style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+                  >
+                    {new Date(e.eventDate).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* ── Stale articles (owner only) ──────────────────────────── */}
+          {isOwner && staleArticles.length > 0 && (
+            <section>
+              <div className="flex items-baseline justify-between pb-3 border-b mb-1" style={{ borderColor: "var(--color-warning-border)" }}>
+                <p
+                  className="ps-eyebrow-muted"
+                  style={{ color: "var(--color-warning-text)" }}
+                >
+                  Needs review
+                </p>
+                <span
+                  className="themed-muted"
+                  style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+                >
+                  {staleArticles.length}
+                </span>
+              </div>
+              <p className="themed-muted mb-1" style={{ fontSize: "0.8125rem" }}>
+                These published articles haven&apos;t been verified in over{" "}
+                {Math.round(STALE_DAYS / 30)} months.
+              </p>
+              {staleArticles.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-center justify-between gap-4 py-4 border-b themed-border last:border-b-0 flex-wrap"
+                >
+                  <Link
+                    href={`/${publisherSlug}/articles/${a.slug}`}
+                    className="ps-list-link min-w-0 flex-1"
+                  >
+                    {a.title}
+                  </Link>
+                  <MarkVerifiedForm publisherSlug={publisherSlug} articleId={a.id} />
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* ── Empty state ──────────────────────────────────────────── */}
+          {!hasContent && (
+            <div className="py-24 text-center">
+              <p className="ps-eyebrow mb-3">Nothing published yet</p>
+              {isOwner ? (
+                <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>
+                  Start writing — create your first article above.
+                </p>
+              ) : (
+                <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>
+                  This publisher hasn&apos;t shared anything publicly yet.
+                </p>
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+
     </main>
   );
 }

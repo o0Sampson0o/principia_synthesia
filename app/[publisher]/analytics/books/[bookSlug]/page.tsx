@@ -27,7 +27,6 @@ export default async function BookAnalyticsPage({
   const canEdit = await canEditContent(session, ownerType, ownerId);
   if (!canEdit) notFound();
 
-  // Fetch the book
   const [bookRow] = await db
     .select({ id: books.id, slug: books.slug, title: books.title })
     .from(books)
@@ -42,7 +41,6 @@ export default async function BookAnalyticsPage({
 
   if (!bookRow) notFound();
 
-  // Fetch curriculum entries joined with article metadata
   const entryRows = await db
     .select({
       position: curriculumEntries.position,
@@ -62,18 +60,15 @@ export default async function BookAnalyticsPage({
     )
     .orderBy(curriculumEntries.position);
 
-  // Fetch daily views for each chapter article in parallel
   const DAYS = 30;
   const dailyViewsPerArticle: DailyViewRow[][] = await Promise.all(
     entryRows.map((entry) => getDailyViews(entry.articleId, DAYS))
   );
 
-  // Aggregate total views per article over the window
   const articleTotals = dailyViewsPerArticle.map((rows) =>
     rows.reduce((s, r) => s + r.views, 0)
   );
 
-  // Build publisher-level daily aggregate for the sparkline
   const dayMap = new Map<string, number>();
   for (const rows of dailyViewsPerArticle) {
     for (const row of rows) {
@@ -87,80 +82,133 @@ export default async function BookAnalyticsPage({
   const totalViews30d = articleTotals.reduce((s, v) => s + v, 0);
 
   return (
-    <main className="themed-container py-8 space-y-8">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <Link
-            href={`/${publisherSlug}/analytics`}
-            className="themed-link text-sm"
-          >
-            &larr; Analytics overview
-          </Link>
-          <h1 className="text-2xl font-bold mt-1">{bookRow.title}</h1>
-        </div>
+    <main className="max-w-3xl mx-auto px-5 sm:px-8 py-10 sm:py-16 space-y-14">
+
+      {/* Breadcrumb + header */}
+      <div>
+        <Link
+          href={`/${publisherSlug}/analytics`}
+          className="ps-eyebrow inline-flex items-center gap-1.5 mb-5"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
+          Analytics
+        </Link>
+
+        <h1
+          className="ps-display themed-heading mb-3"
+          style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
+        >
+          {bookRow.title}
+        </h1>
+
         <Link
           href={`/${publisherSlug}/books/${bookSlug}`}
-          className="themed-link text-sm"
+          className="themed-nav-link hover:text-[var(--foreground)] transition-colors"
+          style={{ fontSize: "0.8125rem" }}
         >
-          View book &rarr;
+          View book →
         </Link>
       </div>
 
-      <p className="text-sm opacity-60">
-        Showing data for the last {DAYS} days &mdash; {totalViews30d.toLocaleString()} views across{" "}
-        {entryRows.length} chapter{entryRows.length !== 1 ? "s" : ""}
-      </p>
+      {/* Hero stat */}
+      <div className="border-t border-b themed-border py-8 flex gap-12 flex-wrap">
+        <div>
+          <p
+            className="themed-heading font-medium tabular-nums"
+            style={{ fontSize: "clamp(2.5rem, 5vw, 3.75rem)", letterSpacing: "-0.04em", lineHeight: 1 }}
+          >
+            {totalViews30d.toLocaleString()}
+          </p>
+          <p
+            className="themed-muted mt-2.5"
+            style={{ fontSize: "0.6875rem", letterSpacing: "0.07em", textTransform: "uppercase" }}
+          >
+            Views · {DAYS} days
+          </p>
+        </div>
+        <div>
+          <p
+            className="themed-heading font-medium tabular-nums"
+            style={{ fontSize: "clamp(2.5rem, 5vw, 3.75rem)", letterSpacing: "-0.04em", lineHeight: 1 }}
+          >
+            {entryRows.length}
+          </p>
+          <p
+            className="themed-muted mt-2.5"
+            style={{ fontSize: "0.6875rem", letterSpacing: "0.07em", textTransform: "uppercase" }}
+          >
+            Chapter{entryRows.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
 
-      {/* Aggregate daily traffic sparkline */}
+      {/* Aggregate daily traffic */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Daily views (last {DAYS} days)</h2>
-        <div className="themed-surface rounded-lg p-4 overflow-x-auto">
-          <SparklineSvg data={aggregateTimeline} width={560} height={140} />
+        <div className="flex items-baseline justify-between mb-6 pb-4 border-b themed-border">
+          <p className="ps-eyebrow-muted">Daily views</p>
+          <p className="themed-muted" style={{ fontSize: "0.75rem" }}>Last {DAYS} days · all chapters</p>
+        </div>
+        <div className="overflow-x-auto">
+          <SparklineSvg data={aggregateTimeline} width={560} height={120} />
         </div>
       </section>
 
-      {/* Per-chapter table */}
+      {/* Chapter breakdown — typeset like a table of contents */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Chapters</h2>
+        <div className="flex items-baseline justify-between mb-6 pb-4 border-b themed-border">
+          <p className="ps-eyebrow-muted">Chapters</p>
+          {entryRows.length > 0 && (
+            <p className="themed-muted" style={{ fontSize: "0.75rem" }}>{DAYS}-day views</p>
+          )}
+        </div>
         {entryRows.length === 0 ? (
-          <p className="opacity-60">No chapters yet.</p>
+          <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>No chapters yet.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b themed-border text-left">
-                  <th className="pb-2 pr-4 font-semibold">#</th>
-                  <th className="pb-2 pr-4 font-semibold">Chapter</th>
-                  <th className="pb-2 pr-4 font-semibold text-right">Views (last {DAYS} days)</th>
-                  <th className="pb-2 font-semibold"></th>
-                </tr>
-              </thead>
+            <table className="w-full border-collapse">
               <tbody>
                 {entryRows.map((entry, i) => (
-                  <tr key={entry.articleId} className="border-b themed-border">
-                    <td className="py-2 pr-4 tabular-nums opacity-60">
+                  <tr key={entry.articleId} className="border-b themed-border last:border-0 group">
+                    {/* Position number — narrow, footnote-sized */}
+                    <td
+                      className="py-3.5 pr-5 tabular-nums themed-muted align-top"
+                      style={{ fontSize: "0.75rem", width: "2rem", paddingTop: "1.05rem" }}
+                    >
                       {entry.position + 1}
                     </td>
-                    <td className="py-2 pr-4">
+                    {/* Chapter title with optional part label */}
+                    <td className="py-3.5 pr-8">
                       {entry.partTitle && (
-                        <span className="block text-xs opacity-60 mb-0.5">{entry.partTitle}</span>
+                        <span
+                          className="block themed-muted mb-0.5"
+                          style={{ fontSize: "0.6875rem", letterSpacing: "0.06em", textTransform: "uppercase" }}
+                        >
+                          {entry.partTitle}
+                        </span>
                       )}
                       <Link
                         href={`/${publisherSlug}/articles/${entry.articleSlug}`}
-                        className="themed-link hover:underline"
+                        className="ps-list-link"
                       >
                         {entry.articleTitle}
                       </Link>
                     </td>
-                    <td className="py-2 pr-4 text-right tabular-nums">
+                    {/* Views — right-aligned, dominant in its column */}
+                    <td
+                      className="py-3.5 pr-5 text-right tabular-nums themed-heading font-medium align-middle"
+                      style={{ fontSize: "0.9375rem", whiteSpace: "nowrap" }}
+                    >
                       {articleTotals[i].toLocaleString()}
                     </td>
-                    <td className="py-2">
+                    {/* Detail link — appears on hover */}
+                    <td className="py-3.5 text-right align-middle" style={{ width: "4rem" }}>
                       <Link
                         href={`/${publisherSlug}/analytics/${entry.articleSlug}`}
-                        className="themed-link text-xs hover:underline whitespace-nowrap"
+                        className="themed-nav-link hover:text-[var(--foreground)] transition-colors opacity-0 group-hover:opacity-100 whitespace-nowrap"
+                        style={{ fontSize: "0.75rem" }}
+                        tabIndex={0}
                       >
-                        View detail &rarr;
+                        Detail →
                       </Link>
                     </td>
                   </tr>
@@ -170,6 +218,7 @@ export default async function BookAnalyticsPage({
           </div>
         )}
       </section>
+
     </main>
   );
 }

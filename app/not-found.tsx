@@ -6,8 +6,11 @@ export default async function NotFound() {
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-24 text-center">
-      <h1 className="text-4xl font-bold tracking-tight themed-heading mb-3">404</h1>
-      <p className="themed-muted mb-8">This page doesn&rsquo;t exist.</p>
+      <p className="ps-eyebrow mb-5">404</p>
+      <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}>
+        Page not found
+      </h1>
+      <p className="themed-muted mb-10" style={{ fontSize: "0.9375rem" }}>This page doesn&rsquo;t exist.</p>
       <div className="flex items-center justify-center gap-6">
         <Link href="/" className="text-sm themed-link">
           &larr; Back to home

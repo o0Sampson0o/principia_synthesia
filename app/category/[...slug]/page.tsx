@@ -24,7 +24,6 @@ export default async function CategoryPage({
 
   const session = await getSession();
 
-  // Articles in this category
   const articleConditions = [
     eq(articleCategories.categoryId, category.id),
     eq(articles.isInternal, false),
@@ -63,7 +62,6 @@ export default async function CategoryPage({
     )
     .where(and(...articleConditions));
 
-  // Books in this category
   const bookConditions = [
     eq(bookCategories.categoryId, category.id),
   ];
@@ -102,61 +100,103 @@ export default async function CategoryPage({
   const totalResults = articleResults.length + bookResults.length;
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10">
-      <Link href="/category" className="themed-link text-sm mb-6 inline-block">
-        &larr; All categories
+    <main className="max-w-5xl mx-auto px-5 sm:px-8 py-10 sm:py-16">
+
+      {/* Breadcrumb */}
+      <Link
+        href="/category"
+        className="ps-eyebrow inline-flex items-center gap-1.5 mb-8 hover:opacity-70 transition-opacity"
+      >
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M19 12H5m7-7-7 7 7 7" />
+        </svg>
+        Categories
       </Link>
 
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold themed-heading mb-2">{category.name}</h1>
-        <p className="text-sm themed-muted">
-          {totalResults} {totalResults === 1 ? "result" : "results"}
-        </p>
-      </header>
-
-      <hr className="themed-border mb-8" />
+      {/* Header */}
+      <div className="mb-10">
+        <h1
+          className="ps-display themed-heading mb-2"
+          style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
+        >
+          {category.name}
+        </h1>
+        {totalResults > 0 && (
+          <p
+            className="themed-muted"
+            style={{
+              fontSize: "0.5625rem",
+              fontFamily: "ui-monospace, monospace",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            {totalResults} result{totalResults !== 1 ? "s" : ""}
+          </p>
+        )}
+      </div>
 
       {totalResults === 0 ? (
-        <p className="themed-muted text-sm">No items in this category yet.</p>
+        <div className="py-20 text-center">
+          <p className="ps-eyebrow mb-3">Empty</p>
+          <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>
+            No items in this category yet.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-12">
+
           {articleResults.length > 0 && (
             <section>
-              <h2 className="text-xs font-semibold uppercase tracking-widest themed-muted mb-4">Articles</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {articleResults.map((a) => (
-                  <SearchResultItem
-                    key={`article-${a.id}`}
-                    type="article"
-                    publisherSlug={a.publisherSlug ?? "unknown"}
-                    slug={a.slug}
-                    title={a.title}
-                    description={a.summary}
-                  />
-                ))}
+              <div className="flex items-baseline justify-between pb-3 border-b themed-border">
+                <p className="ps-eyebrow-muted">Articles</p>
+                <span
+                  className="themed-muted"
+                  style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+                >
+                  {articleResults.length}
+                </span>
               </div>
+              {articleResults.map((a) => (
+                <SearchResultItem
+                  key={`article-${a.id}`}
+                  type="article"
+                  publisherSlug={a.publisherSlug ?? "unknown"}
+                  slug={a.slug}
+                  title={a.title}
+                  description={a.summary}
+                />
+              ))}
             </section>
           )}
 
           {bookResults.length > 0 && (
             <section>
-              <h2 className="text-xs font-semibold uppercase tracking-widest themed-muted mb-4">Books</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {bookResults.map((b) => (
-                  <SearchResultItem
-                    key={`book-${b.id}`}
-                    type="book"
-                    publisherSlug={b.publisherSlug ?? "unknown"}
-                    slug={b.slug}
-                    title={b.title}
-                    description={b.summary}
-                  />
-                ))}
+              <div className="flex items-baseline justify-between pb-3 border-b themed-border">
+                <p className="ps-eyebrow-muted">Books</p>
+                <span
+                  className="themed-muted"
+                  style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+                >
+                  {bookResults.length}
+                </span>
               </div>
+              {bookResults.map((b) => (
+                <SearchResultItem
+                  key={`book-${b.id}`}
+                  type="book"
+                  publisherSlug={b.publisherSlug ?? "unknown"}
+                  slug={b.slug}
+                  title={b.title}
+                  description={b.summary}
+                />
+              ))}
             </section>
           )}
+
         </div>
       )}
+
     </main>
   );
 }

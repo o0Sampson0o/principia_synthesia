@@ -38,28 +38,27 @@ export default async function ObjectDetailPage({
   const content = obj.content as KaoContent;
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10">
-      <div className="text-sm themed-muted mb-4">
-        <Link href={`/${publisherSlug}`} className="themed-link">@{publisherSlug}</Link>
-        {" / "}
-        <Link href={`/${publisherSlug}/objects`} className="themed-link">Objects</Link>
-      </div>
+    <main className="max-w-5xl mx-auto px-5 py-12 sm:py-16">
 
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold themed-heading">{obj.name}</h1>
-          <p className="text-sm themed-muted mt-1">
-            {obj.type} &middot; <code className="font-mono">{obj.slug}</code>
-          </p>
+      <Link href={`/${publisherSlug}/objects`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M19 12H5m7-7-7 7 7 7" />
+        </svg>
+        Objects
+      </Link>
+
+      <div className="flex items-start justify-between mb-10 gap-4">
+        <div className="flex-1 min-w-0">
+          <span className="themed-badge capitalize mb-3 inline-block">{obj.type}</span>
+          <h1 className="ps-display themed-heading mb-3" style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}>
+            {obj.name}
+          </h1>
           {obj.description && (
-            <p className="mt-3 themed-muted">{obj.description}</p>
+            <p className="themed-muted" style={{ fontSize: "1rem", lineHeight: 1.7 }}>{obj.description}</p>
           )}
         </div>
         {isEditor && (
-          <Link
-            href={`/${publisherSlug}/objects/${objSlug}/edit`}
-            className="text-sm themed-link ml-6 shrink-0"
-          >
+          <Link href={`/${publisherSlug}/objects/${objSlug}/edit`} className="themed-btn-outline shrink-0" style={{ fontSize: "0.8125rem", padding: "0.375rem 0.875rem" }}>
             Edit
           </Link>
         )}

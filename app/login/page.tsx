@@ -9,20 +9,24 @@ async function StatusMessage({
   const params = await searchParams;
   if (params.verified === "1") {
     return (
-      <p className="text-sm text-green-600 dark:text-green-400 mb-4">
+      <p className="text-sm mb-5" style={{ color: "var(--color-success)" }}>
         Email verified — please sign in.
       </p>
     );
   }
   if (params.verified === "error") {
     return (
-      <p className="text-sm text-red-500 mb-4">
+      <p className="text-sm mb-5" style={{ color: "var(--color-error)" }}>
         That verification link has expired or has already been used.
       </p>
     );
   }
   if (params.error === "invalid") {
-    return <p className="text-sm text-red-500 mb-4">Invalid email or password.</p>;
+    return (
+      <p className="text-sm mb-5" style={{ color: "var(--color-error)" }}>
+        Invalid email or password.
+      </p>
+    );
   }
   return null;
 }
@@ -39,46 +43,78 @@ export default async function LoginPage({
       : undefined;
 
   return (
-    <main className="max-w-md mx-auto px-4 py-20">
-      <h1 className="text-3xl font-bold mb-6 themed-heading">Sign in</h1>
-      <StatusMessage searchParams={searchParams} />
-      <form action={loginAction} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium themed-secondary mb-1">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            className="themed-input"
-          />
+    <main className="flex-1 flex items-center justify-center px-5 py-20">
+      <div className="w-full" style={{ maxWidth: "22rem" }}>
+
+        <div className="text-center mb-8">
+          <p className="ps-eyebrow mb-4">Principia Synthesia</p>
+          <h1
+            className="ps-display themed-heading"
+            style={{ fontSize: "2rem" }}
+          >
+            Welcome back
+          </h1>
+          <p className="themed-muted mt-2" style={{ fontSize: "0.875rem" }}>
+            Sign in to your account to continue
+          </p>
         </div>
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium themed-secondary mb-1">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            autoComplete="current-password"
-            className="themed-input"
-          />
+
+        <div className="ps-form-card">
+          <StatusMessage searchParams={searchParams} />
+          <form action={loginAction} className="space-y-4">
+            <div>
+              <label
+                htmlFor="email"
+                className="block themed-secondary font-medium mb-1.5"
+                style={{ fontSize: "0.75rem" }}
+              >
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                className="themed-input"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="password"
+                className="block themed-secondary font-medium mb-1.5"
+                style={{ fontSize: "0.75rem" }}
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                className="themed-input"
+              />
+            </div>
+            {redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
+            <button
+              type="submit"
+              className="themed-btn-accent w-full rounded-lg justify-center mt-1"
+              style={{ paddingTop: "0.65rem", paddingBottom: "0.65rem", fontSize: "0.9375rem" }}
+            >
+              Sign in
+            </button>
+          </form>
         </div>
-        {redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
-        <button type="submit" className="themed-btn-primary w-full">
-          Sign in
-        </button>
-      </form>
-      <p className="mt-6 text-sm themed-muted">
-        <Link href="/" className="themed-link">
-          Back to home
-        </Link>
-      </p>
+
+        <p className="mt-5 themed-muted text-center" style={{ fontSize: "0.8125rem" }}>
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="themed-link">
+            Get started
+          </Link>
+        </p>
+
+      </div>
     </main>
   );
 }

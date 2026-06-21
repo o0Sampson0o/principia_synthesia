@@ -41,11 +41,16 @@ export default async function BinPage({ params }: { params: Promise<{ publisher:
   });
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold themed-heading mb-1">Bin</h1>
-        <p className="text-sm themed-muted">Deleted articles are kept for {BIN_DAYS} days before being permanently removed.</p>
-      </header>
+    <main className="max-w-3xl mx-auto px-5 py-12 sm:py-16">
+      <div className="mb-8">
+        <p className="ps-eyebrow mb-3">Bin</p>
+        <h1 className="ps-display themed-heading mb-2" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
+          Deleted articles
+        </h1>
+        <p className="themed-muted" style={{ fontSize: "0.875rem" }}>
+          Kept for {BIN_DAYS} days before permanent removal.
+        </p>
+      </div>
       <BinClient publisherSlug={publisherSlug} items={items} />
     </main>
   );

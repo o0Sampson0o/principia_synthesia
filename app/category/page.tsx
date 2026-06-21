@@ -17,41 +17,67 @@ export default async function CategoriesIndexPage() {
     .orderBy(categories.name);
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight themed-heading mb-2">
+    <main className="max-w-5xl mx-auto px-5 sm:px-8 py-10 sm:py-16">
+
+      {/* Header */}
+      <div className="mb-10">
+        <p className="ps-eyebrow mb-3">Principia Synthesia</p>
+        <h1
+          className="ps-display themed-heading mb-8"
+          style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
+        >
           Categories
         </h1>
-        <p className="text-sm themed-muted">
-          {results.length} {results.length === 1 ? "category" : "categories"}
-        </p>
-      </header>
-
-      <hr className="themed-border mb-8" />
+      </div>
 
       {results.length === 0 ? (
-        <p className="themed-muted text-sm">
-          No categories yet.
-        </p>
+        <div className="py-20 text-center">
+          <p className="ps-eyebrow mb-3">Empty</p>
+          <p className="themed-muted" style={{ fontSize: "0.9375rem" }}>
+            No categories yet.
+          </p>
+        </div>
       ) : (
-        <ul className="space-y-3">
+        <div>
+          {/* Section header */}
+          <div className="flex items-baseline justify-between pb-3 border-b themed-border">
+            <p className="ps-eyebrow-muted">All categories</p>
+            <span
+              className="themed-muted"
+              style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+            >
+              {results.length}
+            </span>
+          </div>
+
+          {/* Category rows */}
           {results.map((c) => (
-            <li key={c.id}>
+            <div
+              key={c.id}
+              className="flex items-baseline justify-between hover:bg-[var(--surface)] transition-colors"
+              style={{
+                borderBottom: "1px solid var(--border)",
+                padding: "0.875rem 0.5rem",
+              }}
+            >
               <Link
                 href={`/category/${c.slug}`}
-                className="flex items-baseline justify-between group py-1"
+                className="ps-list-link flex-1 min-w-0"
               >
-                <span className="text-sm font-medium themed-secondary group-hover:[color:var(--foreground)] transition-colors">
-                  {c.name}
-                </span>
-                <span className="text-xs themed-muted ml-4 shrink-0">
-                  {c.articleCount} {c.articleCount === 1 ? "article" : "articles"}
-                </span>
+                {c.name}
               </Link>
-            </li>
+              <span
+                className="themed-muted tabular-nums shrink-0 ml-6"
+                style={{ fontSize: "0.6875rem", fontFamily: "ui-monospace, monospace" }}
+              >
+                {c.articleCount}{" "}
+                {c.articleCount === 1 ? "article" : "articles"}
+              </span>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
+
     </main>
   );
 }
