@@ -37,7 +37,7 @@ export interface SearchAllResult {
 }
 
 /**
- * Searches articles, books, and objects by title/name. Returns up to 20 results
+ * Searches articles, books, and objects by title/name/summary/description. Returns up to 20 results
  * per category. Internal articles are excluded. Private resources are excluded
  * for non-admin sessions (simplified: checks resourceVisibility for public only).
  */
@@ -74,7 +74,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
       .where(
         and(
           eq(articles.isInternal, false),
-          ilike(articles.title, q),
+          or(ilike(articles.title, q), ilike(articles.summary, q)),
           isNull(articles.deletedAt),
           session?.isRootAdmin
             ? undefined
@@ -113,7 +113,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
       )
       .where(
         and(
-          ilike(books.title, q),
+          or(ilike(books.title, q), ilike(books.summary, q)),
           session?.isRootAdmin
             ? undefined
             : or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
@@ -138,7 +138,7 @@ export async function searchAll(query: string): Promise<SearchAllResult> {
           and(eq(objects.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, objects.ownerId))
         )
       )
-      .where(ilike(objects.name, q))
+      .where(or(ilike(objects.name, q), ilike(objects.description, q)))
       .limit(20),
   ]);
 

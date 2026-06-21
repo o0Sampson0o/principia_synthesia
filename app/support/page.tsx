@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { config } from "@/lib/config";
 
 export const metadata: Metadata = { title: "Support — Principia Synthesia" };
 
@@ -225,14 +226,14 @@ export default function SupportPage() {
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
             <a
-              href="mailto:support@principiasynthesia.com"
+              href={`mailto:${config.contact.email}`}
               className="themed-btn-accent rounded-lg text-center"
               style={{ fontSize: "0.875rem", padding: "0.625rem 1.25rem" }}
             >
               Email us
             </a>
             <a
-              href="https://github.com/principia-synthesia/principia-synthesia/issues"
+              href={config.contact.githubIssues}
               target="_blank"
               rel="noopener noreferrer"
               className="themed-btn-outline rounded-lg text-center"
