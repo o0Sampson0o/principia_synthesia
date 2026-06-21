@@ -13,6 +13,7 @@ import { userThemes, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { buildThemeStyle, defaultThemeStyle, defaultLight, defaultDark } from "@/lib/theme";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -84,6 +85,7 @@ export default async function RootLayout({
         <OnboardingTourGate />
         <Footer />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
