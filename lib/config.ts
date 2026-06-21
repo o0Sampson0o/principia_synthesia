@@ -5,7 +5,7 @@ export const config = {
     BUNDLE_EXPORT: process.env.BUNDLE_EXPORT === "true",
   },
   contact: {
-    email: "support@principiasynthesia.com",
-    githubIssues: "https://github.com/principia-synthesia/principia-synthesia/issues",
+    email: "support@principiasynthesia.org",
+    githubIssues: "https://github.com/o0Sampson0o/principia_synthesia/issues",
   },
 } as const;
