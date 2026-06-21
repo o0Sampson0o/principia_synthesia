@@ -46,8 +46,6 @@ export default async function ChapterPage({
   const session = await getSession();
   if (!(await canView({ type: "book", ownerType, ownerId, slug: bookSlug }, session))) notFound();
 
-  // Find the article via its curriculum entry — this handles articles owned by
-  // a different publisher than the book (cross-publisher curriculum entries).
   const [entryRow] = await db
     .select({ article: articles })
     .from(curriculumEntries)
@@ -58,10 +56,8 @@ export default async function ChapterPage({
   const article = entryRow?.article;
   if (!article) notFound();
 
-  // Internal article: must belong to this book
   if (article.isInternal && article.parentBookId !== bookRow.id) notFound();
 
-  // Record view with referrer + anonymous session ID (fire-and-forget; ignore errors)
   {
     const siteHost = new URL(
       process.env.NEXT_PUBLIC_SITE_URL ?? "https://principia-synthesia.com"
@@ -79,8 +75,6 @@ export default async function ChapterPage({
     }).catch(() => {});
   }
 
-  // Resolve the article's own publisher slug — it may differ from the book's
-  // publisher when a cross-publisher article is added to the curriculum.
   const articleOwnerType = article.ownerType as "user" | "org";
   const articleOwnerId = article.ownerId;
   const [articlePublisherRow] = await db
@@ -96,7 +90,6 @@ export default async function ChapterPage({
 
   const isEditor = await canEditContent(session, articleOwnerType, articleOwnerId);
 
-  // Get all entries for prev/next navigation
   const allEntries = await db
     .select({ articleSlug: articles.slug, position: curriculumEntries.position })
     .from(curriculumEntries)
@@ -156,65 +149,157 @@ export default async function ChapterPage({
     : body;
 
   return (
-    <main className="max-w-3xl mx-auto px-5 py-10 sm:py-14">
-      <div className="mb-6 flex items-center gap-1.5 flex-wrap" style={{ fontSize: "0.8125rem" }}>
-        <Link href={`/${publisherSlug}`} className="ps-eyebrow">@{publisherSlug}</Link>
-        <span className="themed-muted">/</span>
-        <Link href={`/${publisherSlug}/books/${bookSlug}`} className="ps-eyebrow">{bookRow.title}</Link>
+    <main className="flex-1">
+
+      {/* ── Framed chapter header ────────────────────────────────── */}
+      <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+        <div className="max-w-3xl mx-auto px-5">
+
+          {/* Breadcrumb + edit row */}
+          <div
+            className="flex items-center justify-between py-3.5"
+            style={{ borderBottom: "1px solid var(--border)" }}
+          >
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <Link
+                href={`/${publisherSlug}`}
+                className="ps-eyebrow hover:opacity-70 transition-opacity"
+              >
+                @{publisherSlug}
+              </Link>
+              <span className="themed-muted" style={{ fontSize: "0.625rem" }}>/</span>
+              <Link
+                href={`/${publisherSlug}/books/${bookSlug}`}
+                className="themed-muted hover:text-[var(--foreground)] transition-colors truncate"
+                style={{ fontSize: "0.6875rem" }}
+              >
+                {bookRow.title}
+              </Link>
+            </div>
+            <div className="flex items-center gap-3 shrink-0 ml-4">
+              {currentIdx >= 0 && (
+                <span
+                  className="themed-muted hidden sm:block"
+                  style={{
+                    fontSize: "0.5625rem",
+                    fontFamily: "ui-monospace, monospace",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {currentIdx + 1} / {allEntries.length}
+                </span>
+              )}
+              {isEditor && (
+                <Link
+                  href={`/${articlePublisherSlug}/articles/${chapterSlug}/edit`}
+                  className="themed-nav-link hover:text-[var(--foreground)] transition-colors"
+                  style={{ fontSize: "0.8125rem" }}
+                >
+                  Edit
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {/* Chapter title */}
+          <div className="py-8 sm:py-11">
+            <h1
+              className="article-title-serif"
+              style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)", lineHeight: 1.15 }}
+            >
+              {article.title}
+            </h1>
+            {articlePublisherSlug !== publisherSlug && (
+              <p className="themed-muted mt-3" style={{ fontSize: "0.875rem" }}>
+                Originally by{" "}
+                <Link href={`/${articlePublisherSlug}`} className="themed-link">
+                  @{articlePublisherSlug}
+                </Link>
+              </p>
+            )}
+          </div>
+
+        </div>
       </div>
 
-      <h1 className="ps-display themed-heading mb-3" style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}>{article.title}</h1>
+      {/* ── Prose ────────────────────────────────────────────────── */}
+      <div className="max-w-3xl mx-auto px-5 py-10 sm:py-14">
+        <div className="markdown-content">
+          <MDXRemote
+            source={renderedBody}
+            options={{
+              mdxOptions: {
+                remarkPlugins: [remarkMath, remarkGfm, remarkWikilinks, [remarkCiteNumbering, { slugToNumber, resolved: resolvedCitations }]],
+                rehypePlugins: [rehypeKatex],
+              },
+            }}
+            components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite }}
+          />
+        </div>
+      </div>
 
-      {articlePublisherSlug !== publisherSlug && (
-        <p className="themed-muted mb-6" style={{ fontSize: "0.875rem" }}>
-          Originally by{" "}
-          <Link href={`/${articlePublisherSlug}`} className="themed-link">
-            @{articlePublisherSlug}
-          </Link>
-        </p>
-      )}
-      {articlePublisherSlug === publisherSlug && <div className="mb-6" />}
-
-      {isEditor && (
-        <div className="mb-6">
-          <Link
-            href={`/${articlePublisherSlug}/articles/${chapterSlug}/edit`}
-            className="themed-nav-link hover:text-[var(--foreground)] transition-colors"
-            style={{ fontSize: "0.8125rem" }}
+      {/* ── Page-turn navigation ─────────────────────────────────── */}
+      {(prevSlug || nextSlug) && (
+        <div className="max-w-3xl mx-auto px-5 pb-16 sm:pb-20">
+          <nav
+            className="flex items-center justify-between pt-8"
+            style={{ borderTop: "1px solid var(--border)" }}
           >
-            Edit chapter
-          </Link>
+            {prevSlug ? (
+              <Link
+                href={`/${publisherSlug}/books/${bookSlug}/${prevSlug}`}
+                className="group flex items-center gap-2 themed-nav-link hover:text-[var(--foreground)] transition-colors"
+                style={{ fontSize: "0.875rem" }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="transition-transform group-hover:-translate-x-0.5"
+                  aria-hidden="true"
+                >
+                  <path d="M19 12H5m7-7-7 7 7 7" />
+                </svg>
+                Previous
+              </Link>
+            ) : (
+              <span />
+            )}
+            {nextSlug ? (
+              <Link
+                href={`/${publisherSlug}/books/${bookSlug}/${nextSlug}`}
+                className="group flex items-center gap-2 themed-nav-link hover:text-[var(--foreground)] transition-colors"
+                style={{ fontSize: "0.875rem" }}
+              >
+                Next
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14m-7-7 7 7-7 7" />
+                </svg>
+              </Link>
+            ) : (
+              <span />
+            )}
+          </nav>
         </div>
       )}
 
-      <div className="markdown-content">
-        <MDXRemote
-          source={renderedBody}
-          options={{
-            mdxOptions: {
-              remarkPlugins: [remarkMath, remarkGfm, remarkWikilinks, [remarkCiteNumbering, { slugToNumber, resolved: resolvedCitations }]],
-              rehypePlugins: [rehypeKatex],
-            },
-          }}
-          components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite }}
-        />
-      </div>
-
-      <nav className="flex justify-between mt-14 pt-6 border-t themed-border" style={{ fontSize: "0.875rem" }}>
-        {prevSlug ? (
-          <Link href={`/${publisherSlug}/books/${bookSlug}/${prevSlug}`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors inline-flex items-center gap-1.5">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
-            Previous
-          </Link>
-        ) : (
-          <span />
-        )}
-        {nextSlug && (
-          <Link href={`/${publisherSlug}/books/${bookSlug}/${nextSlug}`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors">
-            Next →
-          </Link>
-        )}
-      </nav>
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/db";
-import { articles, articleViews, publishers, resourceVisibility } from "@/db/schema";
+import { articles, articleViews, publishers, resourceVisibility, books } from "@/db/schema";
 import { desc, eq, count, min, sql, and, isNull, or } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
@@ -13,8 +13,10 @@ export default async function HomePage() {
       slug: articles.slug,
       title: articles.title,
       summary: articles.summary,
+      isInternal: articles.isInternal,
       viewCount: count(articleViews.id).as("view_count"),
       publisherSlug: min(publishers.slug),
+      parentBookSlug: min(books.slug),
     })
     .from(articles)
     .innerJoin(articleViews, eq(articleViews.articleId, articles.id))
@@ -34,16 +36,16 @@ export default async function HomePage() {
         and(eq(articles.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
       )
     )
+    .leftJoin(books, eq(books.id, articles.parentBookId))
     .where(
       and(
-        eq(articles.isInternal, false),
         sql`${articles.metadata}->>'status' = 'published'`,
         sql`${articleViews.viewedAt} > NOW() - INTERVAL '30 days'`,
         or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public")),
         isNull(articles.deletedAt)
       )
     )
-    .groupBy(articles.id, articles.slug, articles.title, articles.summary)
+    .groupBy(articles.id, articles.slug, articles.title, articles.summary, articles.isInternal)
     .orderBy(desc(count(articleViews.id)))
     .limit(5);
 
@@ -170,6 +172,9 @@ export default async function HomePage() {
               <div>
                 {topArticles.map((a, i) => {
                   const pubSlug = a.publisherSlug ?? "unknown";
+                  const articleUrl = a.isInternal && a.parentBookSlug
+                    ? `/${pubSlug}/books/${a.parentBookSlug}/${a.slug}`
+                    : `/${pubSlug}/articles/${a.slug}`;
                   return (
                     <div
                       key={a.id}
@@ -189,7 +194,7 @@ export default async function HomePage() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <Link
-                          href={`/${pubSlug}/articles/${a.slug}`}
+                          href={articleUrl}
                           className="article-title-serif block mb-1.5 group-hover:text-[var(--accent)] transition-colors"
                           style={{ fontSize: "0.9375rem", lineHeight: 1.35 }}
                         >
