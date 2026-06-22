@@ -110,7 +110,7 @@ function setupTxInsert() {
     values: vi.fn().mockResolvedValue([]),
   });
   const tx = { insert: txInsert };
-  mockTransaction.mockImplementation(async (cb: (tx: typeof tx) => Promise<void>) => {
+  mockTransaction.mockImplementation(async (cb: (tx: { insert: typeof txInsert }) => Promise<void>) => {
     await cb(tx);
   });
   return txInsert;
@@ -175,7 +175,7 @@ describe("renameEra", () => {
     const txUpdateSet = vi.fn().mockReturnValue({ where: txUpdateWhere });
     const txUpdate = vi.fn().mockReturnValue({ set: txUpdateSet });
     const tx = { update: txUpdate };
-    mockTransaction.mockImplementation(async (cb: (tx: typeof tx) => Promise<void>) => {
+    mockTransaction.mockImplementation(async (cb: (tx: { update: typeof txUpdate }) => Promise<void>) => {
       await cb(tx);
     });
     return txUpdate;

@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { renderTimelineHtml } from "@/lib/events-html";
 import type { EventRow } from "@/lib/timeline-utils";
 
-function makeRow(overrides: Partial<EventRow> & { eventDate: string }): EventRow {
+function makeRow(overrides: Omit<Partial<EventRow>, "eventDate"> & { eventDate: string }): EventRow {
+  const { eventDate, ...rest } = overrides;
   return {
     id: 1,
     slug: "event-foo",
@@ -13,8 +14,8 @@ function makeRow(overrides: Partial<EventRow> & { eventDate: string }): EventRow
     isEraStart: false,
     isEraEnd: false,
     eraName: null,
-    ...overrides,
-    eventDate: new Date(overrides.eventDate),
+    ...rest,
+    eventDate: new Date(eventDate),
   };
 }
 
