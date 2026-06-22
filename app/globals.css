@@ -414,6 +414,10 @@ body {
   color: var(--foreground);
   margin-top: 2.5em;
   margin-bottom: 0.6em;
+  padding-top: 0.6em;
+  padding-bottom: 0.6em;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 .markdown-content h2 {
   font-family: var(--font-playfair), Georgia, serif;
@@ -424,8 +428,6 @@ body {
   color: var(--foreground);
   margin-top: 2.25em;
   margin-bottom: 0.5em;
-  padding-bottom: 0.5em;
-  border-bottom: 1px solid var(--border);
 }
 .markdown-content h3 {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
