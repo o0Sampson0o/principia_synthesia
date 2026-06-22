@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { getQueue, enqueue, dequeue, type QueuedSubmission } from "@/lib/offline-queue";
+import { useOnlineStatus } from "@/lib/useOnlineStatus";
 
 function fillForm(item: QueuedSubmission) {
   const forms = document.querySelectorAll<HTMLFormElement>("form");
@@ -18,10 +19,12 @@ function fillForm(item: QueuedSubmission) {
 export default function OfflineFormGuard() {
   const [queue, setQueue] = useState<QueuedSubmission[]>([]);
   const [toast, setToast] = useState<string | null>(null);
-  const [isOnline, setIsOnline] = useState(true);
+  const isOnline = useOnlineStatus();
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(() => setQueue(getQueue()), []);
+
+  useEffect(() => { if (isOnline) refresh(); }, [isOnline, refresh]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -39,13 +42,7 @@ export default function OfflineFormGuard() {
   }, [queue]);
 
   useEffect(() => {
-    setIsOnline(navigator.onLine);
     refresh();
-
-    const onOnline = () => { setIsOnline(true); refresh(); };
-    const onOffline = () => setIsOnline(false);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
 
     const handleSubmit = (e: Event) => {
       if (navigator.onLine) return;
@@ -75,8 +72,6 @@ export default function OfflineFormGuard() {
     document.addEventListener("submit", handleSubmit, true);
 
     return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
       document.removeEventListener("submit", handleSubmit, true);
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };

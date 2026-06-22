@@ -1,20 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useOnlineStatus } from "@/lib/useOnlineStatus";
 
 export default function OfflineGuard() {
-  const [offline, setOffline] = useState(false);
-  useEffect(() => {
-    setOffline(!navigator.onLine);
-    const on = () => setOffline(false);
-    const off = () => setOffline(true);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
-    return () => {
-      window.removeEventListener("online", on);
-      window.removeEventListener("offline", off);
-    };
-  }, []);
-  if (!offline) return null;
+  const isOnline = useOnlineStatus();
+  if (isOnline) return null;
   return (
     <div
       role="alert"
