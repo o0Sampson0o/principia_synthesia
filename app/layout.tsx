@@ -4,6 +4,7 @@ import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import CommandPalette from "@/components/CommandPalette";
 import OfflineGuard from "@/components/OfflineGuard";
+import OfflineFormGuard from "@/components/OfflineFormGuard";
 import EmailVerificationBannerGate from "@/components/EmailVerificationBannerGate";
 import OnboardingTourGate from "@/components/OnboardingTourGate";
 import "./globals.css";
@@ -78,6 +79,7 @@ export default async function RootLayout({
         <Nav />
         <CommandPalette />
         <OfflineGuard />
+        <OfflineFormGuard />
         {session && !emailVerifiedAt && (
           <EmailVerificationBannerGate email={session.email} />
         )}
