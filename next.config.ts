@@ -107,4 +107,10 @@ export default withSentryConfig(withPWA(nextConfig), {
 
   // Route Sentry requests through a Next.js rewrite to bypass ad-blockers.
   tunnelRoute: "/monitoring",
+
+  webpack: {
+    // Auto-create Sentry Cron Monitors for each job in vercel.json, so a
+    // missed or failing cron run alerts. Webpack-only (build uses --webpack).
+    automaticVercelMonitors: true,
+  },
 });
