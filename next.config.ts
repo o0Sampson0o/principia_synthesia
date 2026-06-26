@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -88,4 +89,22 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+export default withSentryConfig(withPWA(nextConfig), {
+  // Source map upload + release tracking happens at build time. Requires
+  // SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT in the build environment.
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Only print upload logs in CI.
+  silent: !process.env.CI,
+
+  // Upload a wider set of client bundle source maps for readable stack traces.
+  widenClientFileUpload: true,
+
+  // Tree-shake Sentry logger statements (webpack only — build uses --webpack).
+  disableLogger: true,
+
+  // Route Sentry requests through a Next.js rewrite to bypass ad-blockers.
+  tunnelRoute: "/monitoring",
+});
