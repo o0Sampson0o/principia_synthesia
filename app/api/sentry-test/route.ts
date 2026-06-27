@@ -1,14 +1,37 @@
 /**
- * GET /api/sentry-test  — TEMPORARY Sentry pipeline verification.
+ * GET /api/sentry-test  — TEMPORARY Sentry server-runtime diagnostic.
  *
- * Emits a metric and then throws, so the error surfaces in Sentry via the
- * onRequestError hook (server runtime) with a readable, source-mapped trace.
- * Delete this route once Sentry capture is confirmed working.
+ * Instead of throwing (which relies on onRequestError + the SDK flushing
+ * before the serverless function freezes), this explicitly captures an event
+ * and *awaits a flush*, then reports what happened as JSON. This isolates
+ * whether the server SDK can send to Sentry at all, separately from the
+ * onRequestError path. Delete once server capture is confirmed.
  */
 
 import * as Sentry from "@sentry/nextjs";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
-  Sentry.metrics.count("sentry_test_metric", 1);
-  throw new Error("Sentry server test error — pipeline verification (safe to ignore)");
+  const dsnConfigured = Boolean(
+    process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN
+  );
+  const client = Sentry.getClient();
+  const initialized = Boolean(client);
+
+  const eventId = Sentry.captureException(
+    new Error("Sentry server DIAGNOSTIC — explicit capture + flush")
+  );
+
+  // Block until the event is actually sent (or 5s passes). On serverless this
+  // is the difference between the event arriving and being dropped on freeze.
+  const flushed = await Sentry.flush(5000);
+
+  return Response.json({
+    dsnConfigured,
+    sdkInitialized: initialized,
+    eventId: eventId ?? null,
+    flushed,
+    runtime: process.env.NEXT_RUNTIME ?? "unknown",
+  });
 }
