@@ -1,0 +1,13 @@
+{
+  "name": "ps-sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sync Principia Synthesia articles to a local folder — editable with any markdown editor — over the /api/v1 sync API.",
+  "type": "module",
+  "bin": {
+    "ps-sync": "./bin.mjs"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3"
+  }
+}

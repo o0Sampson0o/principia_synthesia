@@ -201,16 +201,11 @@ Contents:
 - `chapters/<slug>.mdx` — raw MDX content of each chapter, ordered by
   position.
 
-**Import:** The `importSyncBundle` server action — root-admin-only, accepts a
-zip upload (25 MB cap), validates `bookSlug` matches the URL param, then runs a
-per-chapter last-write-wins merge: if the zip chapter's `updatedAt >= DB
-article's updatedAt`, `articles.content` and `articles.updatedAt` are updated;
-otherwise the chapter is skipped. Returns `{ updated, skipped }`. Never creates
-new articles; never modifies metadata (slug, title, `isInternal`,
-`parentBookId`).
-
-The sync UI lives at `/:publisher/books/[bookSlug]/sync` — a server component
-with a download link and a file upload form.
+**Import:** The originally planned `importSyncBundle` server action (zip
+upload with per-chapter last-write-wins merge) was never built. Round-trip
+external editing is instead provided by the `/api/v1` sync REST API and the
+`ps-sync` CLI, which use per-article `If-Match` preconditions and reject
+conflicting writes instead of last-write-wins. See `docs/sync-cli.md`.
 
 ---
 
