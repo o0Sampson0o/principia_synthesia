@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 import { createInterface } from "node:readline/promises";
 import { ApiClient } from "../api";
 import { ensureGitignore, saveConfig, saveToken, CONFIG_FILE, STATE_DIR } from "../config";
+import { cliCommand } from "../invocation";
 
 export async function init(root: string, argv: string[]): Promise<number> {
   const { values } = parseArgs({
@@ -81,7 +82,7 @@ export async function init(root: string, argv: string[]): Promise<number> {
     ensureGitignore(root);
 
     console.log(`\nWrote ${CONFIG_FILE} and ${STATE_DIR}/token.`);
-    console.log(`Next: run "ps-sync pull" to download your articles.`);
+    console.log(`Next: run "${cliCommand()} pull" to download your articles.`);
     return 0;
   } finally {
     rl.close();

@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
+import { cliCommand } from "./invocation";
 
 export const CONFIG_FILE = ".ps-sync.json";
 export const STATE_DIR = ".ps-sync";
@@ -21,7 +22,7 @@ export interface SyncConfig {
 export function loadConfig(root: string): SyncConfig {
   const path = join(root, CONFIG_FILE);
   if (!existsSync(path)) {
-    throw new Error(`No ${CONFIG_FILE} found in ${root}. Run "ps-sync init" first.`);
+    throw new Error(`No ${CONFIG_FILE} found in ${root}. Run "${cliCommand()} init" first.`);
   }
   const cfg = JSON.parse(readFileSync(path, "utf8")) as Partial<SyncConfig>;
   if (!cfg.server || !Array.isArray(cfg.publishers) || cfg.publishers.length === 0) {
@@ -46,7 +47,7 @@ export function resolveToken(root: string): string {
   const path = join(root, STATE_DIR, TOKEN_FILE);
   if (existsSync(path)) return readFileSync(path, "utf8").trim();
   throw new Error(
-    `No API token found. Set PS_SYNC_TOKEN or run "ps-sync init" (writes ${STATE_DIR}/${TOKEN_FILE}).`
+    `No API token found. Set PS_SYNC_TOKEN or run "${cliCommand()} init" (writes ${STATE_DIR}/${TOKEN_FILE}).`
   );
 }
 

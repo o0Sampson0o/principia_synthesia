@@ -14,6 +14,7 @@ import {
 import { indexByPsId, scanVault } from "../scan";
 import { loadState, saveState, stateKey } from "../state";
 import { findUntracked, localSemanticHash } from "../sync-status";
+import { cliCommand } from "../invocation";
 
 export async function push(root: string, argv: string[]): Promise<number> {
   const { values } = parseArgs({
@@ -117,7 +118,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
     } catch (err) {
       if (err instanceof ConflictError) {
         conflicts++;
-        console.warn(`C ${file.path} — changed remotely since your last pull (run "ps-sync pull", merge, then push)`);
+        console.warn(`C ${file.path} — changed remotely since your last pull (run "${cliCommand()} pull", merge, then push)`);
       } else {
         throw err;
       }
