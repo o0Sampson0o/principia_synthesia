@@ -491,6 +491,48 @@ export type SyncBundleManifest = z.infer<typeof syncBundleManifestSchema>;
 export type SyncBundleChapter = z.infer<typeof syncBundleChapterSchema>;
 
 // ---------------------------------------------------------------------------
+// Sync REST API (/api/v1) request bodies
+// ---------------------------------------------------------------------------
+
+/** Max article content size accepted over the sync API (2 MB). */
+export const API_MAX_CONTENT_LENGTH = 2_000_000;
+
+/** Validates POST /api/v1/publishers/[publisher]/articles */
+export const apiCreateArticleSchema = z.object({
+  slug: articleSlugSchema,
+  title: z.string().min(1, "Title is required").max(200, "Title too long"),
+  summary: z.string().max(500, "Summary too long").optional(),
+  content: z.string().max(API_MAX_CONTENT_LENGTH, "Content too large"),
+});
+
+/**
+ * Validates PUT /api/v1/publishers/[publisher]/articles/[slug].
+ * `title`/`summary` are optional — when omitted the stored values are kept
+ * (external sync edits usually only touch the markdown content).
+ */
+export const apiUpdateArticleSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200, "Title too long").optional(),
+  summary: z.string().max(500, "Summary too long").optional(),
+  content: z.string().max(API_MAX_CONTENT_LENGTH, "Content too large"),
+  editNote: z.string().max(200).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// API tokens (settings UI)
+// ---------------------------------------------------------------------------
+
+/** Validates the "create API token" form. */
+export const createApiTokenSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100, "Name too long"),
+  expiresInDays: z.coerce.number().int().min(1).max(3650).optional(),
+});
+
+/** Validates the "revoke API token" form. */
+export const revokeApiTokenSchema = z.object({
+  tokenId: z.coerce.number().int().positive("Invalid token ID"),
+});
+
+// ---------------------------------------------------------------------------
 // Article frontmatter metadata
 // ---------------------------------------------------------------------------
 

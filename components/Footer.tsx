@@ -11,6 +11,9 @@ export default function Footer() {
           <Link href="/settings/theme" className="themed-nav-link transition-colors hover:text-[var(--foreground)]" style={{ fontSize: "0.75rem" }}>
             Theme
           </Link>
+          <Link href="/settings/api-tokens" className="themed-nav-link transition-colors hover:text-[var(--foreground)]" style={{ fontSize: "0.75rem" }}>
+            API
+          </Link>
           <Link href="/pricing" className="themed-nav-link transition-colors hover:text-[var(--foreground)]" style={{ fontSize: "0.75rem" }}>
             Pricing
           </Link>

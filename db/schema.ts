@@ -666,3 +666,29 @@ export const articleCitations = pgTable(
     index("article_citations_cited_idx").on(t.citedArticleId),
   ]
 );
+
+// ---------------------------------------------------------------------------
+// API tokens (personal access tokens for the sync REST API)
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-user bearer tokens for /api/v1 (the external sync API used by ps-sync).
+ * Only the sha256 hash of the raw token is stored; `prefix` keeps the first
+ * characters of the raw token so users can recognise tokens in the settings
+ * UI. Revocation is soft (`revokedAt`) so the row remains as an audit record.
+ */
+export const apiTokens = pgTable(
+  "api_tokens",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    tokenHash: text("token_hash").unique().notNull(),
+    prefix: text("prefix").notNull(),
+    lastUsedAt: timestamp("last_used_at"),
+    expiresAt: timestamp("expires_at"), // null = never expires
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("api_tokens_user_idx").on(t.userId)]
+);
