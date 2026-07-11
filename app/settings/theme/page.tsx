@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
@@ -25,7 +26,9 @@ export default async function ThemeSettingsPage() {
       {/* ── Framed masthead ─────────────────────────────────────────── */}
       <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
         <div className="max-w-2xl mx-auto px-5 py-8 sm:py-11">
-          <p className="ps-eyebrow mb-3">Settings</p>
+          <p className="ps-eyebrow mb-3">
+            <Link href="/settings" className="hover:opacity-70 transition-opacity">Settings</Link>
+          </p>
           <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}>
             Theme
           </h1>

@@ -77,7 +77,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <Nav />
-        <CommandPalette />
+        <CommandPalette userSlug={session?.userSlug ?? null} />
         <OfflineGuard />
         <OfflineFormGuard />
         {session && !emailVerifiedAt && (
