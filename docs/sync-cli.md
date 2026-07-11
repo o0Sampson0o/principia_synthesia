@@ -59,14 +59,23 @@ The optimistic-concurrency base is always the **server-reported**
 
 ## ps-sync CLI (`cli/ps-sync`)
 
-Standalone package; only dependency is `gray-matter`. Run from the sync
-folder root (which can be, but doesn't have to be, an Obsidian vault):
+Sources live in `cli/ps-sync/src` (only dependency: `gray-matter`).
+
+**Distribution:** `cli/ps-sync/build.mjs` (wired as the app's `prebuild`
+script) esbuild-bundles the CLI into a single self-contained ESM file at
+`public/ps-sync.mjs`, so every deploy serves a CLI matching its own API at
+`https://<server>/ps-sync.mjs`. End users need nothing but Node 18+ — no repo
+checkout, no npm install:
 
 ```bash
-cd ~/notes/principia
-npx tsx ~/dev/principia-synthesia/cli/ps-sync/src/index.ts <command>
-# or: npm link ~/dev/principia-synthesia/cli/ps-sync  → global `ps-sync`
+# in the folder to sync into (can be, but need not be, an Obsidian vault)
+curl -O https://www.principiasynthesia.org/ps-sync.mjs
+node ps-sync.mjs init
+node ps-sync.mjs pull
 ```
+
+A quickstart with the download link is shown on `/settings/api-tokens`.
+For development against the repo checkout: `npx tsx cli/ps-sync/src/index.ts`.
 
 - `init` — prompts for server URL + token, validates via `/me`, writes
   `.ps-sync.json` (no secrets) and `.ps-sync/token` (gitignored). Token can

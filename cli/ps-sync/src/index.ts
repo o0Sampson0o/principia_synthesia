@@ -7,7 +7,13 @@ import { ApiError } from "./api";
 const HELP = `ps-sync — sync Principia Synthesia articles with a local folder,
 editable in any markdown editor (Obsidian, VS Code, Typora, vim, ...).
 
-Usage: ps-sync <command> [options]
+Quickstart (no install beyond Node 18+):
+  1. Create a token at <server>/settings/api-tokens
+  2. In the folder you want to sync into:
+       node ps-sync.mjs init --server https://www.principiasynthesia.org
+       node ps-sync.mjs pull
+
+Usage: node ps-sync.mjs <command> [options]
 
 Commands:
   init      Connect this folder to a server (writes .ps-sync.json + token)
@@ -25,6 +31,10 @@ Layout: <publisher>/articles/<slug>.md (tracked) and <publisher>/books/<slug>.md
 `;
 
 async function main(): Promise<number> {
+  if (typeof fetch !== "function") {
+    console.error("ps-sync requires Node.js 18 or newer (built-in fetch).");
+    return 1;
+  }
   const [cmd, ...rest] = process.argv.slice(2);
   const root = process.cwd();
 
