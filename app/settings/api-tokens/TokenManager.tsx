@@ -77,7 +77,19 @@ export default function TokenManager({ tokens }: { tokens: TokenRow[] }) {
             name="expiresInDays"
             defaultValue="90"
             className="themed-input rounded-lg"
-            style={{ fontSize: "0.875rem", padding: "0.5rem 0.75rem" }}
+            style={{
+              fontSize: "0.875rem",
+              padding: "0.5rem 0.75rem",
+              // themed-input sets width:100%; in the sm:flex-row layout that
+              // gives the select a full-row flex-basis, which starves the
+              // flex-1 name input down to zero width. auto = content-sized in
+              // the row, still stretched full-width in the mobile column.
+              width: "auto",
+              // The native select widget ignores the transparent background
+              // and paints itself light in dark mode; pin it to theme tokens.
+              background: "var(--background)",
+              color: "var(--foreground)",
+            }}
           >
             <option value="30">Expires in 30 days</option>
             <option value="90">Expires in 90 days</option>
