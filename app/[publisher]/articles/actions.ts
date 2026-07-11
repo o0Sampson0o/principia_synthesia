@@ -18,8 +18,7 @@ import {
   markArticleVerifiedSchema,
 } from "@/lib/validations";
 import { createSnapshotIfPublished } from "@/lib/article-snapshots";
-import { syncArticleCitations } from "@/lib/citations-sync";
-import { notify, resolveArticleAuthors, type ArticleCitedPayload } from "@/lib/notifications";
+import { createArticleCore, updateArticleCore, deleteArticleCore } from "@/lib/articles-write";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkMath from "remark-math";
@@ -90,56 +89,17 @@ export async function createArticle(publisherSlug: string, formData: FormData) {
     categories: formData.get("categories"),
   });
 
-  const parsed = parseFrontmatter(validated.content ?? "");
-  const categorySlugs = [
-    ...(validated.categories?.split(",").filter(Boolean) ?? []),
-    ...parsed.metadata.tags,
-  ].filter((v, i, arr) => arr.indexOf(v) === i);
-
-  const isPublished = parsed.metadata.status === "published";
-
-  const [article] = await db
-    .insert(articles)
-    .values({
-      title: validated.title,
-      slug: validated.slug,
-      summary: validated.summary,
-      content: validated.content,
-      ownerType,
-      ownerId,
-      metadata: parsed.metadata,
-      ...(isPublished ? { lastVerifiedAt: new Date() } : {}),
-    })
-    .returning({ id: articles.id });
-
-  await setContentTags("article", article.id, categorySlugs, session.userId);
-
-  await createSnapshotIfPublished(article.id, {
+  await createArticleCore({
+    actor: session,
+    ownerType,
+    ownerId,
+    publisherSlug,
+    slug: validated.slug,
     title: validated.title,
-    summary: validated.summary ?? null,
-    content: validated.content ?? "",
-    metadata: parsed.metadata,
+    summary: validated.summary,
+    content: validated.content,
+    extraCategorySlugs: validated.categories?.split(",").filter(Boolean),
   });
-
-  // Sync internal citations and notify newly-cited authors
-  {
-    const syncResult = await syncArticleCitations(article.id, validated.content ?? "");
-    if (syncResult.added.length > 0) {
-      for (const citedId of syncResult.added) {
-        const [citedRow] = await db.select({ ownerType: articles.ownerType, ownerId: articles.ownerId, slug: articles.slug }).from(articles).where(and(eq(articles.id, citedId), isNull(articles.deletedAt))).limit(1);
-        if (!citedRow) continue;
-        const recipients = await resolveArticleAuthors(citedRow.ownerType, citedRow.ownerId);
-        const payload: ArticleCitedPayload = {
-          citingArticleId: article.id,
-          citingPublisherSlug: publisherSlug,
-          citingSlug: validated.slug,
-          citingTitle: validated.title,
-          citedSlug: citedRow.slug,
-        };
-        await Promise.all(recipients.map((uid) => notify(uid, "article_cited", payload).catch(() => {})));
-      }
-    }
-  }
 
   revalidatePath("/");
   revalidatePath(`/${publisherSlug}`);
@@ -177,85 +137,19 @@ export async function updateArticle(
     throw err;
   }
 
-  const parsedFm = parseFrontmatter(validated.content ?? "");
-  const categorySlugs = [
-    ...(validated.categories?.split(",").filter(Boolean) ?? []),
-    ...parsedFm.metadata.tags,
-  ].filter((v, i, arr) => arr.indexOf(v) === i);
-
-  const [current] = await db
-    .select()
-    .from(articles)
-    .where(
-      and(
-        eq(articles.id, validated.id),
-        eq(articles.ownerType, ownerType),
-        eq(articles.ownerId, ownerId)
-      )
-    )
-    .limit(1);
-
-  if (current?.content) {
-    await db.insert(revisions).values({
-      articleId: validated.id,
-      content: current.content,
-      editNote: (formData.get("editNote") as string) || "Updated",
-    });
-  }
-
-  const isPublishedUpdate = parsedFm.metadata.status === "published";
-
-  await db
-    .update(articles)
-    .set({
-      title: validated.title,
-      slug: validated.slug,
-      summary: validated.summary,
-      content: validated.content,
-      metadata: parsedFm.metadata,
-      updatedAt: new Date(),
-      // A real save promotes the working copy to the live version, so any
-      // pending draft is now obsolete.
-      draftContent: null,
-      draftSavedAt: null,
-      ...(isPublishedUpdate ? { lastVerifiedAt: new Date() } : {}),
-    })
-    .where(
-      and(
-        eq(articles.id, validated.id),
-        eq(articles.ownerType, ownerType),
-        eq(articles.ownerId, ownerId)
-      )
-    );
-
-  await setContentTags("article", validated.id, categorySlugs, session.userId);
-
-  await createSnapshotIfPublished(validated.id, {
+  const { current } = await updateArticleCore({
+    actor: session,
+    ownerType,
+    ownerId,
+    publisherSlug,
+    id: validated.id,
+    slug: validated.slug,
     title: validated.title,
-    summary: validated.summary ?? null,
-    content: validated.content ?? "",
-    metadata: parsedFm.metadata,
+    summary: validated.summary,
+    content: validated.content,
+    editNote: (formData.get("editNote") as string) || undefined,
+    extraCategorySlugs: validated.categories?.split(",").filter(Boolean),
   });
-
-  // Sync internal citations and notify newly-cited authors
-  {
-    const syncResult = await syncArticleCitations(validated.id, validated.content ?? "");
-    if (syncResult.added.length > 0) {
-      for (const citedId of syncResult.added) {
-        const [citedRow] = await db.select({ ownerType: articles.ownerType, ownerId: articles.ownerId, slug: articles.slug }).from(articles).where(and(eq(articles.id, citedId), isNull(articles.deletedAt))).limit(1);
-        if (!citedRow) continue;
-        const recipients = await resolveArticleAuthors(citedRow.ownerType, citedRow.ownerId);
-        const payload: ArticleCitedPayload = {
-          citingArticleId: validated.id,
-          citingPublisherSlug: publisherSlug,
-          citingSlug: validated.slug,
-          citingTitle: validated.title,
-          citedSlug: citedRow.slug,
-        };
-        await Promise.all(recipients.map((uid) => notify(uid, "article_cited", payload).catch(() => {})));
-      }
-    }
-  }
 
   if (current?.isInternal && current?.parentBookId) {
     // Find the book slug for the redirect
@@ -284,16 +178,7 @@ export async function deleteArticle(publisherSlug: string, formData: FormData) {
     slug: formData.get("slug"),
   });
 
-  await db
-    .update(articles)
-    .set({ deletedAt: new Date() })
-    .where(
-      and(
-        eq(articles.id, validated.id),
-        eq(articles.ownerType, ownerType),
-        eq(articles.ownerId, ownerId)
-      )
-    );
+  await deleteArticleCore({ ownerType, ownerId, id: validated.id });
 
   revalidatePath("/");
   revalidatePath(`/${publisherSlug}`);
