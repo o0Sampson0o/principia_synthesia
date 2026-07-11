@@ -12,6 +12,15 @@ import { dirname, join } from "node:path";
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
+// Bake the producing site's URL into the bundle so `init` doesn't have to ask
+// where the CLI came from. On Vercel, VERCEL_PROJECT_PRODUCTION_URL is the
+// project's production domain; PS_SYNC_SERVER_URL overrides it explicitly.
+const defaultServer =
+  process.env.PS_SYNC_SERVER_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "");
+
 await build({
   entryPoints: [join(dir, "src", "index.ts")],
   outfile: join(dir, "..", "..", "public", "ps-sync.mjs"),
@@ -19,6 +28,9 @@ await build({
   platform: "node",
   format: "esm",
   target: "node18",
+  define: {
+    "process.env.PS_SYNC_DEFAULT_SERVER": JSON.stringify(defaultServer),
+  },
   banner: {
     js: [
       "#!/usr/bin/env node",

@@ -15,17 +15,40 @@ export async function init(root: string, argv: string[]): Promise<number> {
     },
   });
 
+  // Baked in at build time (the site the CLI was downloaded from), so most
+  // users never have to answer a server question at all.
+  const bakedServer = process.env.PS_SYNC_DEFAULT_SERVER || "";
+
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const server =
-      values.server ?? (await rl.question("Server URL (e.g. https://your-site.com): "));
+    let server = values.server ?? bakedServer;
+    if (server) {
+      console.log(`Server: ${server}${values.server ? "" : " (override with --server <url>)"}`);
+    } else {
+      server = await rl.question("Server URL (e.g. https://your-site.com): ");
+    }
+    server = server.trim();
+    if (server.startsWith("pst_")) {
+      console.error(
+        "That looks like an API token, not a server URL. The server is the website address (https://...)."
+      );
+      return 1;
+    }
+    if (server && !/^https?:\/\//.test(server)) server = `https://${server}`;
+
     const token =
       values.token ??
       process.env.PS_SYNC_TOKEN ??
       (await rl.question("API token (create one at Settings → API tokens): "));
+    if (!token.trim().startsWith("pst_")) {
+      console.error('That does not look like an API token (tokens start with "pst_").');
+      return 1;
+    }
 
     const api = new ApiClient(server, token.trim());
     const me = await api.me();
+    // Persist the post-redirect canonical origin (e.g. apex → www).
+    server = api.baseUrl;
     console.log(`\nAuthenticated as ${me.email}`);
     console.log(
       `Available publishers: ${me.publishers.map((p) => `${p.slug} (${p.kind})`).join(", ")}`
@@ -49,7 +72,7 @@ export async function init(root: string, argv: string[]): Promise<number> {
     }
 
     saveConfig(root, {
-      server: server.trim().replace(/\/+$/, ""),
+      server: server.replace(/\/+$/, ""),
       publishers,
       extension: values.extension || "md",
       links: values.links === "wikilink" ? "wikilink" : "markdown",

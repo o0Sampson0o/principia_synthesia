@@ -10,7 +10,7 @@ editable in any markdown editor (Obsidian, VS Code, Typora, vim, ...).
 Quickstart (no install beyond Node 18+):
   1. Create a token at <server>/settings/api-tokens
   2. In the folder you want to sync into:
-       node ps-sync.mjs init --server https://www.principiasynthesia.org
+       node ps-sync.mjs init   # server is auto-detected; paste your token
        node ps-sync.mjs pull
 
 Usage: node ps-sync.mjs <command> [options]

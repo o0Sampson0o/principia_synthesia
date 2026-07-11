@@ -76,6 +76,11 @@ export class ApiClient {
     this.server = server.replace(/\/+$/, "");
   }
 
+  /** The server origin after following any permanent redirects (apex → www). */
+  get baseUrl(): string {
+    return this.server;
+  }
+
   private async request<T>(
     method: string,
     path: string,
@@ -87,15 +92,34 @@ export class ApiClient {
     if (opts.body !== undefined) headers["Content-Type"] = "application/json";
     if (opts.ifMatch) headers["If-Match"] = `"${opts.ifMatch}"`;
 
+    // Follow redirects by hand: Node's fetch strips the Authorization header
+    // on cross-origin redirects (e.g. apex domain 308 → www), which would turn
+    // every authenticated call into a silent 401.
+    let url = `${this.server}${path}`;
     let res: Response;
-    try {
-      res = await fetch(`${this.server}${path}`, {
-        method,
-        headers,
-        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-      });
-    } catch (err) {
-      throw new ApiError(0, "network_error", `Cannot reach ${this.server}: ${String(err)}`);
+    for (let hop = 0; ; hop++) {
+      try {
+        res = await fetch(url, {
+          method,
+          headers,
+          body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+          redirect: "manual",
+        });
+      } catch (err) {
+        throw new ApiError(0, "network_error", `Cannot reach ${url}: ${String(err)}`);
+      }
+      if (![301, 302, 307, 308].includes(res.status)) break;
+      const location = res.headers.get("location");
+      if (!location || hop >= 3) {
+        throw new ApiError(res.status, "redirect_loop", `Too many redirects at ${url}`);
+      }
+      const next = new URL(location, url);
+      // Permanent redirect of the origin: remember it so the caller can
+      // persist the canonical server URL and later calls skip the hop.
+      if ([301, 308].includes(res.status) && next.origin !== new URL(url).origin) {
+        this.server = next.origin;
+      }
+      url = next.toString();
     }
 
     if (res.status === 204) return undefined as T;
