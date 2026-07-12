@@ -28,7 +28,7 @@ export default async function NewArticlePage({
   const action = createArticle.bind(null, publisherSlug);
 
   return (
-    <main className="max-w-7xl mx-auto px-5 py-10 sm:py-14">
+    <main className="w-full max-w-7xl mx-auto px-5 py-10 sm:py-14">
 
       <div className="mb-8">
         <p className="ps-eyebrow mb-1.5">Article</p>

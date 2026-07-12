@@ -44,24 +44,65 @@ Article MDX is stored with a leading `---` YAML block. The full string (frontmat
 
 **Tag search:** `/search` accepts `?tags=<comma-separated>`, adding a JSONB array-containment check against `articles.metadata`.
 
-## Article editor (FrontmatterPanel + bidirectional sync)
+## Article editor (live preview + FrontmatterPanel)
 
-The article edit/new pages embed a `FrontmatterPanel` (`"use client"`, `forwardRef`) inside a collapsible `<details>`. Fields: Status, Tags, Description, Canvas animation. Bidirectional sync:
+`components/ContentEditor.tsx` is a single-panel CodeMirror 6 editor with
+three modes (Ctrl/Cmd+E cycles Live → Source → Preview; segmented control in
+the header; preference persisted in `localStorage["ps:editor-mode"]`, default
+`live`). Live/Source reconfigure in place via a `Compartment`; Preview hides
+the (still-mounted) CodeMirror view — so the document, cursor, scroll
+position, and undo history all survive every mode switch. The text column is
+a fixed `min(52rem, 100%)` measure with gutters hidden in all modes, so
+switching never reflows the page.
 
-- `FrontmatterPanel` change → `applyChange()` re-serialises frontmatter → `editorRef.current.setValue()` updates CodeMirror.
+- **Live Preview** (Obsidian-style, `lib/live-preview/`): markdown renders in
+  place. Formatting markers are hidden and text is styled to match the public
+  `.markdown-content` rules; the raw syntax is revealed wherever the selection
+  intersects a node. Rich content renders as widgets: KaTeX math
+  (`$…$`/`$$…$$`, client-side `katex.renderToString` — string templating, no
+  eval, so the CSP posture below is unchanged), wikilink chips, and inline
+  images. Everything else — fenced code, JSX like `<Cite/>`, tables, and the
+  YAML frontmatter block — is deliberately left as syntax-highlighted source.
+  Decorations are viewport-scoped and rebuilt only when the document, viewport,
+  parse, or a relevant selection changes (O(visible nodes), never O(doc));
+  widgets implement `eq()` and KaTeX output is cached per formula, so
+  untouched content is never re-rendered. The document remains pure text —
+  decorations are view-only.
+- **Source**: plain syntax-highlighted markdown (the same dialect: markdown +
+  `MarkdownMath` + `MarkdownWikilink`).
+- **Preview**: the real thing — the document compiled through the `previewMdx`
+  server pipeline and rendered read-only in `.markdown-content`, refreshed on
+  every entry into the mode.
+
+Editor chrome theming lives in `lib/live-preview/theme.ts` (CSS custom
+properties, so user themes and dark mode apply without JS); the live-preview
+*typography* (`.cm-lp-*`) lives in `app/globals.css`, co-located with — and
+value-identical to — the `.markdown-content` rules it must match.
+
+The article edit/new pages embed a `FrontmatterPanel` (`"use client"`,
+`forwardRef`) inside a collapsible `<details>`. Fields: Status, Tags,
+Description, Canvas animation. Bidirectional sync:
+
+- `FrontmatterPanel` change → `applyChange()` serialises the frontmatter block
+  → `editorRef.current.replaceFrontmatter()` dispatches a change covering only
+  `[0, frontmatterEnd)` — the body, cursor, and live-preview state are untouched.
 - CodeMirror `onChange` → `frontmatterRef.current.syncFromMdx(val)` re-parses MDX → updates panel state (skips re-render when unchanged).
 
 `ArticleEditorPanel` is the parent `"use client"` component that holds both refs and wires the sync.
 
 **Public display:** `components/ArticleMetadata.tsx` (server component) renders at the top of article/chapter pages: updated-at date, status badge (hidden for `"published"`), tags as `/search?tags=<tag>` links, description.
 
-## MDX preview (editor)
+## MDX compile check (editor)
 
-`components/Preview.tsx` (`"use client"`, `forwardRef`) renders the right-hand pane of the split editor. It does **not** run MDX compilation in the browser. Instead it calls the `previewMdx` server action (`app/[publisher]/articles/actions.ts`), which runs the full `unified` remark/rehype pipeline (including `remark-math`, `rehype-katex`, `remark-gfm`, and `remarkWikilinks`) on the server and returns serialised HTML. The client renders the result with `dangerouslySetInnerHTML`.
+The old split-editor Preview pane is gone (live preview renders in place).
+`components/CheckMdxButton.tsx` remains the full-fidelity validation path: it
+calls the `previewMdx` server action (`app/[publisher]/articles/actions.ts`),
+which runs the full `unified` remark/rehype pipeline (including `remark-math`,
+`rehype-katex`, `remark-gfm`, and `remarkWikilinks`) on the server and returns
+serialised HTML. The button surfaces a ✓/✗ badge; clicking it opens a native
+`<dialog>` with the compile error or the rendered output.
 
 This design is intentional: running `next-mdx-remote`'s client-side `serialize()` in the browser calls `new Function()`, which violates the CSP `unsafe-eval` restriction when navigating client-side to the edit page (the nonce-based CSP header from the previous navigation is no longer in scope). Compiling on the server means the browser never evaluates dynamic code, so editor routes do not need `unsafe-eval`.
-
-Preview has two modes: a fast synchronous path using `marked` for local markdown (no KaTeX, no wikilinks) that renders during typing, and the full server-side path that fires after a debounce. The `ref` exposed by `Preview` lets the parent (`ArticleEditorPanel`) call `preview.current.refresh()` to trigger an immediate full render (e.g. on initial load).
 
 ## Article section reordering
 

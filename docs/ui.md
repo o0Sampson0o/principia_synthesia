@@ -8,9 +8,12 @@
 | `max-w-4xl` | Medium edit forms: book edit page, organizations list |
 | `max-w-5xl` | Reading & listing pages: article read, chapter, book TOC, articles list, objects list, search, category, events |
 | `max-w-6xl` | Hub/dashboard pages: publisher profile, images, nav bar, footer, timeline |
-| `max-w-7xl` | Split-editor pages: new/edit article (CodeMirror + preview) |
+| `max-w-7xl` | Editor pages: new/edit article (single-panel CodeMirror live preview) |
 
-`components/ContentEditor.tsx` renders a two-column split at `h-[760px]`. CodeMirror inner height: `728px` with toolbar, `760px` without.
+`components/ContentEditor.tsx` renders a single full-width panel at
+`h-[calc(100svh-12rem)]` (`lg:h-[760px]`) with a header bar (mode toggle
+Live/Source, Grammar toggle, Check MDX, toolbar slot). In Live Preview mode
+the content column is capped at a readable `45rem` measure and centered.
 
 ## Responsive breakpoints
 
@@ -29,7 +32,7 @@ Mobile-first. Standard Tailwind breakpoints:
 
 - **Nav** (`NavClient.tsx`): switches to hamburger at `md:` (768 px). Menu panel closes on route change via `usePathname()` — see the Nav section below.
 - **Article reader** (`app/[publisher]/articles/[slug]/page.tsx`): `max-w-5xl`, no column change across breakpoints; horizontal padding is constant.
-- **Split editor** (`components/ContentEditor.tsx`): fixed `grid-cols-2` at `h-[760px]` — no responsive collapse. Editors narrow to 50% each at any viewport. Design intent is desktop-only.
+- **Editor** (`components/ContentEditor.tsx`): single panel at all viewports; live preview's `45rem` readable measure only matters above ~768 px. Source ⇄ Live toggle via Ctrl/Cmd+E.
 - **ProportionalTimeline** (`components/ProportionalTimeline.tsx`): reads `window.innerWidth < 640` on first paint to pick `pxPerYear=30` (mobile) vs `pxPerYear=80` (desktop). This is a one-time init; zoom can be changed by the user afterwards.
 - **iOS scroll-lock**: applied to `<body>` when a modal is open. See `docs/ui.md` Nav section and `components/NavClient.tsx`.
 

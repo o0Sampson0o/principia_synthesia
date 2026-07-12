@@ -34,11 +34,11 @@ function parseFrontmatterClient(mdx: string): { metadata: ArticleMetadata; body:
   return { metadata: { ...defaults, ...meta }, body };
 }
 
-function serializeFrontmatterClient(metadata: ArticleMetadata, body: string): string {
+function serializeFrontmatterBlock(metadata: ArticleMetadata): string {
   const tags = JSON.stringify(metadata.tags.map((t) => t.toLowerCase()));
   const desc = JSON.stringify(metadata.description);
   const canvas = metadata.canvas === null ? "null" : metadata.canvas;
-  return `---\nstatus: ${metadata.status}\ntags: ${tags}\ndescription: ${desc}\ncanvas: ${canvas}\n---\n\n${body.trimStart()}`;
+  return `---\nstatus: ${metadata.status}\ntags: ${tags}\ndescription: ${desc}\ncanvas: ${canvas}\n---`;
 }
 
 export default forwardRef<FrontmatterPanelRef, {
@@ -64,11 +64,9 @@ export default forwardRef<FrontmatterPanelRef, {
 
   function applyChange(next: ArticleMetadata) {
     setMeta(next);
-    const editor = editorRef.current;
-    if (!editor) return;
-    const current = editor.getValue();
-    const { body } = parseFrontmatterClient(current);
-    editor.setValue(serializeFrontmatterClient(next, body));
+    // Replace only the frontmatter block — the body (and the author's cursor,
+    // scroll, and live-preview state) stays untouched.
+    editorRef.current?.replaceFrontmatter(serializeFrontmatterBlock(next));
   }
 
   return (

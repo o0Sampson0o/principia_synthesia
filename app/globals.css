@@ -592,6 +592,137 @@ body {
 }
 .markdown-content tbody tr:last-child td { border-bottom: none; }
 
+/* ─── Live-preview editor typography (.cm-lp-*) ────────────────────
+   Applied inside CodeMirror by lib/live-preview. These MUST stay in
+   lockstep with the .markdown-content rules above — same fonts, sizes,
+   colors, and borders — so in-place rendering matches the published
+   article. Differences are deliberate and CodeMirror-specific only:
+   vertical rhythm uses padding (CM lines must not carry margins), and
+   spacing between blocks comes from the document's own blank lines. */
+
+.cm-line.cm-lp-h1 {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: clamp(1.625rem, 3.5vw, 2.25rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.3;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.cm-line.cm-lp-h2 {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: clamp(1.25rem, 2.5vw, 1.625rem);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.4;
+  padding-top: 0.4em;
+}
+.cm-line.cm-lp-h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding-top: 0.35em;
+}
+.cm-line.cm-lp-h4,
+.cm-line.cm-lp-h5,
+.cm-line.cm-lp-h6 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  padding-top: 0.35em;
+}
+.cm-line.cm-lp-blockquote {
+  border-left: 2px solid var(--accent);
+  padding-left: 1.25em;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+.cm-lp-strong { font-weight: 600; color: var(--foreground); }
+.cm-lp-em { font-style: italic; }
+.cm-lp-code {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.8125em;
+  background: var(--code-background);
+  color: var(--foreground);
+  padding: 0.08em 0.35em;
+  border-radius: 0.25em;
+  border: 1px solid var(--border);
+}
+.cm-lp-link {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+}
+.cm-lp-link:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+.cm-lp-bullet {
+  color: var(--muted-foreground);
+  font-size: 0.875em;
+}
+.cm-lp-hr {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 1.125rem;
+  letter-spacing: 0.4em;
+}
+.cm-lp-wikilink {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 0 0.55em;
+  font-size: 0.875em;
+  line-height: 1.6;
+  color: var(--foreground);
+  background: var(--surface);
+  cursor: pointer;
+}
+.cm-lp-wikilink:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cm-lp-image img {
+  max-width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  display: block;
+  margin: 0.4em 0;
+}
+.cm-lp-math { cursor: pointer; }
+.cm-lp-math-block {
+  display: block;
+  text-align: center;
+  padding: 0.5em 0;
+  cursor: pointer;
+}
+.cm-lp-math-error {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.8125em;
+  color: var(--color-warning-border, #b45309);
+}
+/* Floating live render shown above a math region while its source is being
+   edited (Obsidian's Latex Suite behavior). CodeMirror adds .cm-tooltip to
+   the element itself. */
+.cm-tooltip.cm-lp-math-tooltip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 0.5em 0.9em;
+  max-width: min(44rem, 80vw);
+  overflow-x: auto;
+  font-size: 1.0625rem;
+  color: var(--foreground);
+}
+
 /* ─── Native <dialog> — full ownership of all visual properties ──── */
 
 dialog {
