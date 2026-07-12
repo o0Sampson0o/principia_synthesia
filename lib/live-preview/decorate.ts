@@ -6,6 +6,9 @@ import { BulletWidget, HrWidget } from "./widgets/misc";
 import { InlineMathWidget } from "./widgets/math";
 import { WikilinkChipWidget } from "./widgets/wikilink";
 import { ImageWidget } from "./widgets/image";
+import { CiteChipWidget } from "./widgets/cite";
+import { buildCitationIndex, type CitationIndex } from "@/lib/mdx-cite-numbering";
+import type { Text } from "@codemirror/state";
 
 /**
  * Pure decoration builder for the live-preview ViewPlugin. Given a state and
@@ -51,11 +54,28 @@ const SKIP_NODES = new Set([
   "FencedCode",
   "CodeBlock",
   "HTMLBlock",
-  "HTMLTag",
   "CommentBlock",
   "Table",
   "Autolink",
 ]);
+
+/** Self-closing <Cite slug="…" /> — the only JSX live preview widget-izes.
+    (Paired <Cite …></Cite> stays as source: it spans two HTMLTag nodes.) */
+const CITE_SELF_CLOSING_RE = /^<Cite\b[^>]*\bslug\s*=\s*["']([^"']+)["'][^>]*\/>$/;
+
+// Citation numbers depend on the whole document (first-appearance order), so
+// they're cached per immutable Text instance: recomputed only when the doc
+// actually changes, reused across selection/viewport rebuilds.
+const citeIndexCache = new WeakMap<Text, CitationIndex>();
+
+function citationIndex(doc: Text): CitationIndex {
+  let index = citeIndexCache.get(doc);
+  if (!index) {
+    index = buildCitationIndex(doc.toString());
+    citeIndexCache.set(doc, index);
+  }
+  return index;
+}
 
 export function buildInlineDecorations(
   state: EditorState,
@@ -251,6 +271,22 @@ export function buildInlineDecorations(
             seenNodes.add(nodeKey);
             const raw = state.doc.sliceString(node.from, node.to);
             const deco = Decoration.replace({ widget: new WikilinkChipWidget(raw) });
+            decos.push(deco.range(node.from, node.to));
+            atomics.push(deco.range(node.from, node.to));
+            return false;
+          }
+
+          case "HTMLTag": {
+            const text = state.doc.sliceString(node.from, node.to);
+            const cite = CITE_SELF_CLOSING_RE.exec(text);
+            if (!cite) return false; // other JSX/HTML stays as source
+            nodeRanges.push({ from: node.from, to: node.to });
+            if (selectionIntersects(sel, node.from, node.to)) return false;
+            if (seenNodes.has(nodeKey)) return false;
+            seenNodes.add(nodeKey);
+            const slug = cite[1].trim();
+            const number = citationIndex(state.doc).slugToNumber.get(slug) ?? 0;
+            const deco = Decoration.replace({ widget: new CiteChipWidget(slug, number) });
             decos.push(deco.range(node.from, node.to));
             atomics.push(deco.range(node.from, node.to));
             return false;

@@ -696,6 +696,12 @@ body {
   display: block;
   margin: 0.4em 0;
 }
+.cm-lp-cite {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+  cursor: pointer;
+}
 .cm-lp-math { cursor: pointer; }
 .cm-lp-math-block {
   display: block;

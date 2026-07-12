@@ -145,10 +145,10 @@ describe("untouched constructs (the must-not-break guarantee)", () => {
     expect(build(stateOf(doc, doc.length))).toHaveLength(0);
   });
 
-  it("JSX/HTML tags get zero decorations", () => {
-    const doc = '<Cite slug="pub/article-x" />\n\ntext';
+  it("non-Cite JSX/HTML tags get zero decorations", () => {
+    const doc = '<DynamicAnimation publisher="p" slug="anim-x" />\n\ntext';
     const specs = build(stateOf(doc, doc.length));
-    expect(specs.filter((s) => s.from < 29)).toHaveLength(0);
+    expect(specs.filter((s) => s.from < 48)).toHaveLength(0);
   });
 
   it("tables get zero decorations", () => {
@@ -193,6 +193,32 @@ describe("rich widgets (phase 3)", () => {
     const doc = "before\n\n![diagram](/images/p/x.png)\n\nafter";
     const specs = build(stateOf(doc, 0));
     expect(specs).toContainEqual({ from: 8, to: 35, kind: "widget:ImageWidget" });
+  });
+
+  it("renders <Cite/> as numbered chips in first-appearance order", () => {
+    const doc =
+      'One <Cite slug="a/article-x" /> two <Cite slug="b/article-y" /> again <Cite slug="a/article-x" />.\n\nend';
+    const state = stateOf(doc, doc.length);
+    const built = buildInlineDecorations(state, [{ from: 0, to: doc.length }]);
+    const chips: { number: number; slug: string }[] = [];
+    built.decorations.between(0, doc.length, (_f, _t, deco) => {
+      const w = (deco as unknown as { spec: { widget?: { slug: string; number: number } } }).spec
+        .widget;
+      if (w && "number" in w) chips.push({ number: w.number, slug: w.slug });
+    });
+    expect(chips.map((c) => c.number)).toEqual([1, 2, 1]); // repeat reuses its number
+  });
+
+  it("reveals cite source when the selection touches it", () => {
+    const doc = 'text <Cite slug="a/article-x" /> end';
+    const specs = build(stateOf(doc, 10)); // inside the tag
+    expect(specs.filter((s) => s.kind === "widget:CiteChipWidget")).toHaveLength(0);
+  });
+
+  it("leaves the paired <Cite></Cite> form as source", () => {
+    const doc = 'text <Cite slug="a/article-x"></Cite> end';
+    const specs = build(stateOf(doc, 0));
+    expect(specs.filter((s) => s.kind === "widget:CiteChipWidget")).toHaveLength(0);
   });
 
   it("wikilink and math widgets are atomic", () => {
