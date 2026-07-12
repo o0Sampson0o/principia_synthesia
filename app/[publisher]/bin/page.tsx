@@ -41,7 +41,7 @@ export default async function BinPage({ params }: { params: Promise<{ publisher:
   });
 
   return (
-    <main className="max-w-3xl mx-auto px-5 py-12 sm:py-16">
+    <main className="w-full max-w-3xl mx-auto px-5 py-12 sm:py-16">
       <div className="mb-8">
         <p className="ps-eyebrow mb-3">Bin</p>
         <h1 className="ps-display themed-heading mb-2" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>

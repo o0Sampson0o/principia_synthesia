@@ -17,7 +17,7 @@ export default async function OnboardingSettingsPage() {
     .limit(1);
 
   return (
-    <main className="max-w-2xl mx-auto px-5 py-12 sm:py-16">
+    <main className="w-full max-w-2xl mx-auto px-5 py-12 sm:py-16">
       <div className="mb-10">
         <p className="ps-eyebrow mb-3">
             <Link href="/settings" className="hover:opacity-70 transition-opacity">Settings</Link>

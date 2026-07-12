@@ -53,7 +53,7 @@ export default async function NotificationsPage() {
   const unreadCount = rows.filter((r) => !r.readAt).length;
 
   return (
-    <main className="max-w-4xl mx-auto px-5 py-10 sm:py-14">
+    <main className="w-full max-w-4xl mx-auto px-5 py-10 sm:py-14">
       <div className="flex items-end justify-between mb-10 gap-4">
         <div>
           <p className="ps-eyebrow mb-1.5">Principia Synthesia</p>

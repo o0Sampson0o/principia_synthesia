@@ -82,7 +82,7 @@ export default async function BookAnalyticsPage({
   const totalViews30d = articleTotals.reduce((s, v) => s + v, 0);
 
   return (
-    <main className="max-w-3xl mx-auto px-5 sm:px-8 py-10 sm:py-16 space-y-14">
+    <main className="w-full max-w-3xl mx-auto px-5 sm:px-8 py-10 sm:py-16 space-y-14">
 
       {/* Breadcrumb + header */}
       <div>

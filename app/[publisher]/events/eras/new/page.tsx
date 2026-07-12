@@ -23,7 +23,7 @@ export default async function NewEraPage({
   if (!isOwner) notFound();
 
   return (
-    <main className="max-w-2xl mx-auto px-5 py-10 sm:py-14">
+    <main className="w-full max-w-2xl mx-auto px-5 py-10 sm:py-14">
       <Link href={`/${publisherSlug}/events/eras`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
         Eras

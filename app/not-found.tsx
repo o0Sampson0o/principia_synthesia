@@ -5,7 +5,7 @@ export default async function NotFound() {
   const session = await getSession()
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-24 text-center">
+    <main className="w-full max-w-3xl mx-auto px-6 py-24 text-center">
       <p className="ps-eyebrow mb-5">404</p>
       <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}>
         Page not found

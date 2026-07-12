@@ -29,7 +29,7 @@ export default async function InvitationPage({
 
   if (!invitation) {
     return (
-      <main className="max-w-lg mx-auto px-5 py-16 text-center">
+      <main className="w-full max-w-lg mx-auto px-5 py-16 text-center">
         <p className="ps-eyebrow mb-4">Invitation</p>
         <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Invitation not found</h1>
         <p className="themed-muted mb-8" style={{ fontSize: "0.9375rem" }}>
@@ -44,7 +44,7 @@ export default async function InvitationPage({
 
   if (invitation.acceptedAt) {
     return (
-      <main className="max-w-lg mx-auto px-5 py-16 text-center">
+      <main className="w-full max-w-lg mx-auto px-5 py-16 text-center">
         <p className="ps-eyebrow mb-4">Invitation</p>
         <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Already accepted</h1>
         <p className="themed-muted mb-8" style={{ fontSize: "0.9375rem" }}>This invitation has already been accepted.</p>
@@ -66,7 +66,7 @@ export default async function InvitationPage({
   if (!session) {
     const loginUrl = `/login?redirect=/invitations/${token}`;
     return (
-      <main className="max-w-lg mx-auto px-5 py-16 text-center">
+      <main className="w-full max-w-lg mx-auto px-5 py-16 text-center">
         <p className="ps-eyebrow mb-4">Invitation</p>
         <h1 className="ps-display themed-heading mb-5" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
           Join {org?.name ?? "an organisation"}
@@ -93,7 +93,7 @@ export default async function InvitationPage({
 
   if (result.error) {
     return (
-      <main className="max-w-lg mx-auto px-5 py-16 text-center">
+      <main className="w-full max-w-lg mx-auto px-5 py-16 text-center">
         <p className="ps-eyebrow mb-4">Invitation</p>
         <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Cannot accept invitation</h1>
         <p className="themed-muted mb-8" style={{ fontSize: "0.9375rem" }}>{result.error}</p>

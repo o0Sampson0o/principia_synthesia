@@ -69,7 +69,7 @@ export default async function BookPage({
     .orderBy(asc(curriculumEntries.position));
 
   return (
-    <main className="max-w-4xl mx-auto px-5 py-12 sm:py-16">
+    <main className="w-full max-w-4xl mx-auto px-5 py-12 sm:py-16">
 
       {/* ── Header ── */}
       <Link href={`/${publisherSlug}`} className="ps-eyebrow inline-block mb-6 hover:opacity-70 transition-opacity">

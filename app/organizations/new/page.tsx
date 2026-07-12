@@ -20,7 +20,7 @@ export default async function NewOrganizationPage({
   if (!session) redirect("/login");
 
   return (
-    <main className="max-w-xl mx-auto px-5 py-10 sm:py-14">
+    <main className="w-full max-w-xl mx-auto px-5 py-10 sm:py-14">
       <div className="mb-8">
         <p className="ps-eyebrow mb-1.5">Organization</p>
         <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New organization</h1>

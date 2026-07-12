@@ -297,7 +297,7 @@ export default async function ArticlePage({
     : body;
 
   return (
-    <main className="max-w-3xl mx-auto px-5 py-12 sm:py-16">
+    <main className="w-full max-w-3xl mx-auto px-5 py-12 sm:py-16">
       {viewingSnapshot && (
         <SnapshotBanner
           publisherSlug={publisherSlug}

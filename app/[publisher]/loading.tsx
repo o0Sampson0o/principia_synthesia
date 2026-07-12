@@ -1,6 +1,6 @@
 export default function PublisherLoading() {
   return (
-    <main className="max-w-6xl mx-auto px-6 py-12">
+    <main className="w-full max-w-6xl mx-auto px-6 py-12">
       <div className="animate-pulse">
         <div className="h-8 themed-surface w-1/3 mb-4 rounded" />
         <div className="h-4 themed-surface w-1/5 mb-12 rounded" />

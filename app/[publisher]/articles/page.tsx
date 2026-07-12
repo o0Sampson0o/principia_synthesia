@@ -93,7 +93,7 @@ export default async function PublisherArticlesPage({
   const count = items.length;
 
   return (
-    <main className="max-w-5xl mx-auto px-5 sm:px-8 py-10 sm:py-16">
+    <main className="w-full max-w-5xl mx-auto px-5 sm:px-8 py-10 sm:py-16">
       {/* Masthead header */}
       <header className="mb-10 sm:mb-12">
         <div className="flex items-end justify-between gap-6">

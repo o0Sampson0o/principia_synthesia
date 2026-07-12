@@ -133,7 +133,7 @@ export default async function EditBookPage({
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-5 py-10 sm:py-14">
+    <main className="w-full max-w-4xl mx-auto px-5 py-10 sm:py-14">
       <div className="flex items-end justify-between mb-8 gap-4">
         <div>
           <p className="ps-eyebrow mb-1.5">Book</p>

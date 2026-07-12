@@ -38,7 +38,7 @@ export default async function ObjectDetailPage({
   const content = obj.content as KaoContent;
 
   return (
-    <main className="max-w-5xl mx-auto px-5 py-12 sm:py-16">
+    <main className="w-full max-w-5xl mx-auto px-5 py-12 sm:py-16">
 
       <Link href={`/${publisherSlug}/objects`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

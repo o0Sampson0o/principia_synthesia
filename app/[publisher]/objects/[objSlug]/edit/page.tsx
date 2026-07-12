@@ -55,7 +55,7 @@ export default async function EditObjectPage({
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-5 py-10 sm:py-14">
+    <main className="w-full max-w-4xl mx-auto px-5 py-10 sm:py-14">
       <div className="mb-8">
         <p className="ps-eyebrow mb-1.5">Object</p>
         <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Edit object</h1>

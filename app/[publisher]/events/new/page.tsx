@@ -25,7 +25,7 @@ export default async function NewEventPage({
   const action = createEvent.bind(null, publisherSlug, null);
 
   return (
-    <main className="max-w-2xl mx-auto px-5 py-10 sm:py-14">
+    <main className="w-full max-w-2xl mx-auto px-5 py-10 sm:py-14">
       <div className="mb-8">
         <p className="ps-eyebrow mb-1.5">Event</p>
         <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New event</h1>

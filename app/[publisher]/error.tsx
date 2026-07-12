@@ -16,7 +16,7 @@ export default function PublisherError({
   }, [error]);
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-16 text-center">
+    <main className="w-full max-w-2xl mx-auto px-6 py-16 text-center">
       <p className="ps-eyebrow mb-4">Error</p>
       <h1 className="ps-display themed-heading mb-4" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>
         Something went wrong

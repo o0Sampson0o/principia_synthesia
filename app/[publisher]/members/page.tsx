@@ -133,7 +133,7 @@ export default async function MembersPage({
   }
 
   return (
-    <main className="max-w-2xl mx-auto px-5 py-12 sm:py-16">
+    <main className="w-full max-w-2xl mx-auto px-5 py-12 sm:py-16">
       <Link href={`/${publisherSlug}`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M19 12H5m7-7-7 7 7 7" />

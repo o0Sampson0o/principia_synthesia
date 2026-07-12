@@ -37,7 +37,7 @@ export default async function PublisherObjectsPage({
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-5 py-10 sm:py-14">
+    <main className="w-full max-w-5xl mx-auto px-5 py-10 sm:py-14">
       <div className="flex items-end justify-between mb-10 gap-4">
         <div>
           <p className="ps-eyebrow mb-1.5">Objects</p>
