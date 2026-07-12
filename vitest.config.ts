@@ -7,7 +7,14 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./tests/setup.ts"],
-    exclude: ["**/node_modules/**", "**/.next/**"],
+    exclude: [
+      "**/node_modules/**",
+      "**/.next/**",
+      // Playwright specs run via `npm run test:e2e`, not vitest
+      "tests/e2e/**",
+      // agent worktrees may contain stale copies of the repo
+      "**/.claude/**",
+    ],
   },
   resolve: {
     tsconfigPaths: true,
