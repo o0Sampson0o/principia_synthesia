@@ -1,5 +1,6 @@
 import { visit } from "unist-util-visit"
 import type { Root, Text, Link, PhrasingContent } from "mdast"
+import { wikilinkRe } from "@/lib/wikilink-syntax"
 
 /**
  * Remark plugin that transforms `[[publisher:type:slug]]` wikilink syntax in
@@ -20,7 +21,8 @@ export function remarkWikilinks() {
       if (!parent || index === undefined) return
 
       // Regex: [[publisher:type:slug]] or [[publisher:type:slug|Label]]
-      const regex = /\[\[([a-z0-9-]+):(articles|books|objects):([a-z0-9-]+)(?:\|([^\]]+))?\]\]/g
+      // (single source of truth shared with the editor: lib/wikilink-syntax.ts)
+      const regex = wikilinkRe()
       const parts: PhrasingContent[] = []
       let lastIndex = 0
       let match
