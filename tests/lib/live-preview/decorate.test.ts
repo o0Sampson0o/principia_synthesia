@@ -145,10 +145,10 @@ describe("untouched constructs (the must-not-break guarantee)", () => {
     expect(build(stateOf(doc, doc.length))).toHaveLength(0);
   });
 
-  it("non-Cite JSX/HTML tags get zero decorations", () => {
-    const doc = '<DynamicAnimation publisher="p" slug="anim-x" />\n\ntext';
+  it("unsupported JSX/HTML tags get zero decorations", () => {
+    const doc = '<UnknownThing foo="p" bar="x" />\n\ntext';
     const specs = build(stateOf(doc, doc.length));
-    expect(specs.filter((s) => s.from < 48)).toHaveLength(0);
+    expect(specs.filter((s) => s.from < 32)).toHaveLength(0);
   });
 
   it("tables get zero decorations", () => {
@@ -213,6 +213,18 @@ describe("rich widgets (phase 3)", () => {
     const doc = 'text <Cite slug="a/article-x" /> end';
     const specs = build(stateOf(doc, 10)); // inside the tag
     expect(specs.filter((s) => s.kind === "widget:CiteChipWidget")).toHaveLength(0);
+  });
+
+  it("renders a DynamicAnimation on its own line as a widget", () => {
+    const doc = 'Intro.\n\n<DynamicAnimation publisher="p" slug="anim-flow" />\n\nend';
+    const specs = build(stateOf(doc, doc.length));
+    expect(specs.filter((s) => s.kind === "widget:AnimationWidget")).toHaveLength(1);
+  });
+
+  it("leaves an unknown JSX tag as source", () => {
+    const doc = '<SomeOtherComponent foo="bar" />\n\ntext';
+    const specs = build(stateOf(doc, doc.length));
+    expect(specs.filter((s) => s.kind.startsWith("widget:"))).toHaveLength(0);
   });
 
   it("leaves the paired <Cite></Cite> form as source", () => {

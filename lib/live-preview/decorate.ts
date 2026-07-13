@@ -1,5 +1,5 @@
 import type { EditorState, Range } from "@codemirror/state";
-import { Decoration, type DecorationSet } from "@codemirror/view";
+import { Decoration, type DecorationSet, type WidgetType } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import { selectionIntersects, selectionTouchesLine, frontmatterExtent } from "./reveal";
 import { BulletWidget, HrWidget } from "./widgets/misc";
@@ -7,6 +7,7 @@ import { InlineMathWidget } from "./widgets/math";
 import { WikilinkChipWidget } from "./widgets/wikilink";
 import { ImageWidget } from "./widgets/image";
 import { CiteChipWidget } from "./widgets/cite";
+import { AnimationWidget } from "./widgets/animation";
 import { buildCitationIndex, type CitationIndex } from "@/lib/mdx-cite-numbering";
 import type { Text } from "@codemirror/state";
 
@@ -53,15 +54,17 @@ const hrDeco = Decoration.replace({ widget: new HrWidget() });
 const SKIP_NODES = new Set([
   "FencedCode",
   "CodeBlock",
-  "HTMLBlock",
   "CommentBlock",
   "Table",
   "Autolink",
 ]);
 
-/** Self-closing <Cite slug="…" /> — the only JSX live preview widget-izes.
-    (Paired <Cite …></Cite> stays as source: it spans two HTMLTag nodes.) */
+/** Self-closing <Cite slug="…" /> — one of the two JSX tags live preview
+    widget-izes. (Paired <Cite …></Cite> stays as source: two HTMLTag nodes.) */
 const CITE_SELF_CLOSING_RE = /^<Cite\b[^>]*\bslug\s*=\s*["']([^"']+)["'][^>]*\/>$/;
+/** Self-closing <DynamicAnimation publisher="…" slug="anim-…" />. */
+const ANIMATION_RE = /^<DynamicAnimation\b[^>]*\/>$/;
+const ATTR_RE = (name: string) => new RegExp(`\\b${name}\\s*=\\s*["']([^"']+)["']`);
 
 // Citation numbers depend on the whole document (first-appearance order), so
 // they're cached per immutable Text instance: recomputed only when the doc
@@ -75,6 +78,26 @@ function citationIndex(doc: Text): CitationIndex {
     citeIndexCache.set(doc, index);
   }
   return index;
+}
+
+/**
+ * Maps a single self-closing JSX tag to its live-preview widget, or null when
+ * the text isn't a supported tag (so it stays as source). Handles both inline
+ * (HTMLTag) and own-line (HTMLBlock) occurrences.
+ */
+function jsxWidgetFor(text: string, doc: Text): WidgetType | null {
+  const cite = CITE_SELF_CLOSING_RE.exec(text);
+  if (cite) {
+    const slug = cite[1].trim();
+    const number = citationIndex(doc).slugToNumber.get(slug) ?? 0;
+    return new CiteChipWidget(slug, number);
+  }
+  if (ANIMATION_RE.test(text)) {
+    const publisher = ATTR_RE("publisher").exec(text)?.[1];
+    const slug = ATTR_RE("slug").exec(text)?.[1];
+    if (publisher && slug) return new AnimationWidget(publisher, slug);
+  }
+  return null;
 }
 
 export function buildInlineDecorations(
@@ -276,17 +299,18 @@ export function buildInlineDecorations(
             return false;
           }
 
-          case "HTMLTag": {
-            const text = state.doc.sliceString(node.from, node.to);
-            const cite = CITE_SELF_CLOSING_RE.exec(text);
-            if (!cite) return false; // other JSX/HTML stays as source
+          case "HTMLTag": // inline: `text <Cite … /> text`
+          case "HTMLBlock": {
+            // A DynamicAnimation on its own line is an HTMLBlock; an inline
+            // Cite is an HTMLTag. Both resolve through the same tag handler.
+            const raw = state.doc.sliceString(node.from, node.to);
+            const widget = jsxWidgetFor(raw.trim(), state.doc);
+            if (!widget) return false; // other JSX/HTML stays as source
             nodeRanges.push({ from: node.from, to: node.to });
             if (selectionIntersects(sel, node.from, node.to)) return false;
             if (seenNodes.has(nodeKey)) return false;
             seenNodes.add(nodeKey);
-            const slug = cite[1].trim();
-            const number = citationIndex(state.doc).slugToNumber.get(slug) ?? 0;
-            const deco = Decoration.replace({ widget: new CiteChipWidget(slug, number) });
+            const deco = Decoration.replace({ widget });
             decos.push(deco.range(node.from, node.to));
             atomics.push(deco.range(node.from, node.to));
             return false;

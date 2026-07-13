@@ -702,6 +702,41 @@ body {
   color: var(--accent);
   cursor: pointer;
 }
+.cm-lp-animation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.5em 0;
+  padding: 0.75em 1em;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+}
+.cm-lp-animation-label {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+.cm-lp-animation-load {
+  font-size: 0.75rem;
+  padding: 0.25em 0.75em;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+}
+.cm-lp-animation-load:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cm-lp-animation-frame {
+  width: 100%;
+  height: 400px;
+  border: 0;
+  border-radius: 0.375rem;
+}
 .cm-lp-math { cursor: pointer; }
 .cm-lp-math-block {
   display: block;
