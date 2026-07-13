@@ -37,7 +37,7 @@ const COMMANDS: BlockCommand[] = [
   { label: "Table", detail: "columns", keywords: "grid", insert: "| $ |  |\n| --- | --- |\n|  |  |" },
   { label: "Math block", detail: "$$ $$", keywords: "latex equation", insert: "$$\n$\n$$" },
   { label: "Wikilink", detail: "[[…]]", keywords: "link reference", insert: "[[$]]" },
-  { label: "Columns", detail: "side by side", keywords: "layout multi column", insert: ":::columns\n::: column\n$\n:::\n::: column\n\n:::\n:::" },
+  { label: "Columns", detail: "side by side", keywords: "layout multi column", insert: "::::columns\n:::column\n$\n:::\n:::column\n\n:::\n::::" },
 ];
 
 function applyBlock(insert: string) {

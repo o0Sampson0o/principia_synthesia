@@ -646,6 +646,41 @@ body {
 .markdown-content .callout-quote,
 .markdown-content .callout-cite { --callout-accent: var(--muted-foreground); --callout-icon: "❝"; }
 
+/* ─── Columns (:::columns / ::: column) ───────────────────────────── */
+.markdown-content .columns {
+  display: flex;
+  gap: 1.5rem;
+  margin: 1.75em 0;
+}
+.markdown-content .columns > .column {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.markdown-content .columns > .column > :first-child { margin-top: 0; }
+.markdown-content .columns > .column > :last-child { margin-bottom: 0; }
+@media (max-width: 640px) {
+  .markdown-content .columns { flex-direction: column; gap: 0; }
+}
+
+/* ─── Toggles (<details> / <summary>) ─────────────────────────────── */
+.markdown-content details {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.4em 1em;
+  margin: 1.75em 0;
+}
+.markdown-content details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.3em 0;
+  list-style-position: outside;
+}
+.markdown-content details[open] > summary {
+  margin-bottom: 0.4em;
+  border-bottom: 1px solid var(--border);
+}
+.markdown-content details > :last-child { margin-bottom: 0.3em; }
+
 /* ─── Live-preview editor typography (.cm-lp-*) ────────────────────
    Applied inside CodeMirror by lib/live-preview. These MUST stay in
    lockstep with the .markdown-content rules above — same fonts, sizes,
