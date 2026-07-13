@@ -5,7 +5,7 @@ import { ApiClient, type RemoteArticle } from "../api";
 import { loadConfig, resolveToken } from "../config";
 import { injectPsId, semanticHash } from "../content";
 import { parseBookNote, renderBookNote, structureLocalHash } from "../book-note";
-import { indexByPsId, scanVault, type LocalFile } from "../scan";
+import { indexByPsId, scanVault } from "../scan";
 import { loadState, saveState, stateKey, type ArticleState, type SyncState } from "../state";
 import { analyzeEntry, localSemanticHash } from "../sync-status";
 

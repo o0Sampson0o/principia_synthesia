@@ -184,7 +184,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
 
   // --- Book structure: reorder / re-part existing chapters ----------------
   let booksPushed = 0;
-  for (const [key, bst] of Object.entries(state.books ?? {})) {
+  for (const bst of Object.values(state.books ?? {})) {
     if (!publishers.includes(bst.publisher)) continue;
     const abs = join(root, bst.path);
     if (!existsSync(abs)) continue;
