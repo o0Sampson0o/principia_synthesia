@@ -59,6 +59,9 @@ const SKIP_NODES = new Set([
   "Autolink",
 ]);
 
+/** A blockquote line opening with `> [!type]` — marks it as a callout. */
+const CALLOUT_LINE_RE = /^\s*>\s*\[!(\w+)\]/;
+
 /** Self-closing <Cite slug="…" /> — one of the two JSX tags live preview
     widget-izes. (Paired <Cite …></Cite> stays as source: two HTMLTag nodes.) */
 const CITE_SELF_CLOSING_RE = /^<Cite\b[^>]*\bslug\s*=\s*["']([^"']+)["'][^>]*\/>$/;
@@ -225,12 +228,19 @@ export function buildInlineDecorations(
           }
 
           case "Blockquote": {
+            // Detect a callout (`> [!type]`) so its lines get the callout look
+            // instead of the plain-quote rule; the source stays editable.
+            const firstLine = state.doc.lineAt(node.from).text;
+            const calloutType = CALLOUT_LINE_RE.exec(firstLine)?.[1]?.toLowerCase();
+            const lineDecoForQuote = calloutType
+              ? Decoration.line({ class: `cm-lp-callout cm-lp-callout-${calloutType}` })
+              : lineDeco.blockquote;
             for (
               let line = state.doc.lineAt(node.from);
               line.from <= node.to;
               line = state.doc.lineAt(line.to + 1)
             ) {
-              addLine(line.from, lineDeco.blockquote, "bq");
+              addLine(line.from, lineDecoForQuote, "bq");
               if (line.to >= state.doc.length) break;
             }
             return;

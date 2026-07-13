@@ -592,6 +592,60 @@ body {
 }
 .markdown-content tbody tr:last-child td { border-bottom: none; }
 
+/* ─── Callouts / admonitions (> [!type]) ──────────────────────────
+   Rendered by lib/remark-callouts into .markdown-content. Each type maps to
+   an accent hue; the box is a tinted panel with a colored left rule. */
+.markdown-content .callout {
+  --callout-accent: var(--accent);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--callout-accent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--callout-accent) 7%, var(--background));
+  padding: 0.9em 1.1em;
+  margin: 1.75em 0;
+}
+.markdown-content .callout > .callout-title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--callout-accent);
+  margin: 0 0 0.4em;
+  letter-spacing: -0.01em;
+}
+.markdown-content .callout > .callout-title::before {
+  content: var(--callout-icon, "◆");
+  margin-right: 0.5em;
+}
+.markdown-content .callout > :last-child { margin-bottom: 0; }
+.markdown-content .callout p { font-style: normal; }
+
+.markdown-content .callout-note,
+.markdown-content .callout-info,
+.markdown-content .callout-abstract,
+.markdown-content .callout-summary,
+.markdown-content .callout-tldr { --callout-accent: #3b82f6; --callout-icon: "ℹ"; }
+.markdown-content .callout-tip,
+.markdown-content .callout-hint,
+.markdown-content .callout-important { --callout-accent: #06b6d4; --callout-icon: "✎"; }
+.markdown-content .callout-success,
+.markdown-content .callout-check,
+.markdown-content .callout-done { --callout-accent: #22c55e; --callout-icon: "✔"; }
+.markdown-content .callout-question,
+.markdown-content .callout-help,
+.markdown-content .callout-faq,
+.markdown-content .callout-todo { --callout-accent: #eab308; --callout-icon: "?"; }
+.markdown-content .callout-warning,
+.markdown-content .callout-caution,
+.markdown-content .callout-attention { --callout-accent: #f59e0b; --callout-icon: "⚠"; }
+.markdown-content .callout-danger,
+.markdown-content .callout-error,
+.markdown-content .callout-failure,
+.markdown-content .callout-fail,
+.markdown-content .callout-missing,
+.markdown-content .callout-bug { --callout-accent: #ef4444; --callout-icon: "✖"; }
+.markdown-content .callout-example,
+.markdown-content .callout-quote,
+.markdown-content .callout-cite { --callout-accent: var(--muted-foreground); --callout-icon: "❝"; }
+
 /* ─── Live-preview editor typography (.cm-lp-*) ────────────────────
    Applied inside CodeMirror by lib/live-preview. These MUST stay in
    lockstep with the .markdown-content rules above — same fonts, sizes,
@@ -641,6 +695,27 @@ body {
   color: var(--muted-foreground);
   font-style: italic;
 }
+/* Callout lines in the editor: accent left rule + tint, source stays visible.
+   The per-type --callout-accent is set by the .cm-lp-callout-<type> classes
+   below; using a var() fallback here (rather than declaring the default on
+   this higher-specificity selector) lets those lower-specificity type rules
+   win. */
+.cm-line.cm-lp-callout {
+  border-left: 3px solid var(--callout-accent, var(--accent));
+  padding-left: 1.25em;
+  background: color-mix(in srgb, var(--callout-accent, var(--accent)) 7%, transparent);
+}
+.cm-lp-callout-note, .cm-lp-callout-info, .cm-lp-callout-abstract,
+.cm-lp-callout-summary, .cm-lp-callout-tldr { --callout-accent: #3b82f6; }
+.cm-lp-callout-tip, .cm-lp-callout-hint, .cm-lp-callout-important { --callout-accent: #06b6d4; }
+.cm-lp-callout-success, .cm-lp-callout-check, .cm-lp-callout-done { --callout-accent: #22c55e; }
+.cm-lp-callout-question, .cm-lp-callout-help, .cm-lp-callout-faq,
+.cm-lp-callout-todo { --callout-accent: #eab308; }
+.cm-lp-callout-warning, .cm-lp-callout-caution, .cm-lp-callout-attention { --callout-accent: #f59e0b; }
+.cm-lp-callout-danger, .cm-lp-callout-error, .cm-lp-callout-failure,
+.cm-lp-callout-fail, .cm-lp-callout-missing, .cm-lp-callout-bug { --callout-accent: #ef4444; }
+.cm-lp-callout-example, .cm-lp-callout-quote,
+.cm-lp-callout-cite { --callout-accent: var(--muted-foreground); }
 .cm-lp-strong { font-weight: 600; color: var(--foreground); }
 .cm-lp-em { font-style: italic; }
 .cm-lp-code {
