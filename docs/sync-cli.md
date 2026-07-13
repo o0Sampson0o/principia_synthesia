@@ -51,8 +51,15 @@ authoring API). Rate limit: 240 req/min per user. Content cap: 2 MB.
 | POST | `/api/v1/publishers/:pub/articles` | `{ slug, title, summary?, content }` → 201. 409 `slug_exists`, 422 validation. |
 | PUT | `/api/v1/publishers/:pub/articles/:slug` | Requires `If-Match: "<baseHash>"` (else 428). Stale base → **412** with `remoteContentHash`. Body `{ title?, summary?, content, editNote? }`; omitted title/summary are kept. |
 | DELETE | `/api/v1/publishers/:pub/articles/:slug` | Same If-Match semantics; soft delete → 204. |
-| GET | `/api/v1/publishers/:pub/books` | Read-only. |
-| GET | `/api/v1/publishers/:pub/books/:slug` | Ordered chapter list (read-only; structure edits stay in the web UI). |
+| GET | `/api/v1/publishers/:pub/books` | Read-only list. |
+| GET | `/api/v1/publishers/:pub/books/:slug` | Ordered chapter list + `structureHash` (also the `ETag`). |
+| PUT | `/api/v1/publishers/:pub/books/:slug` | Reorder / re-group chapters. Requires `If-Match: "<structureHash>"` (else 428); stale base → **412**; a changed chapter *set* → **409** (`chapter_set_mismatch`). Body `{ chapters: [{ articleSlug, partTitle }] }`. |
+
+Book index files (`<publisher>/books/<slug>.md`) are editable: reorder the
+chapter lines and move them under `## Part` headings, then `push`. **Only order
+and part grouping sync** — adding or removing chapters (article creation,
+cross-publisher visibility, internal-article deletion) stays in the web UI, and
+a push that changed the chapter set is rejected with a clear message.
 
 The optimistic-concurrency base is always the **server-reported**
 `contentHash` from pull time — clients never recompute it from local files.

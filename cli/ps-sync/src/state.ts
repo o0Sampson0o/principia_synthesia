@@ -27,6 +27,19 @@ export interface SyncState {
   version: 1;
   /** Keyed by `${publisher}/${slug}`. */
   articles: Record<string, ArticleState>;
+  /** Book structure baselines, keyed by `${publisher}/${bookSlug}`. */
+  books?: Record<string, BookState>;
+}
+
+/** Sync baseline for a book's chapter order + part groupings. */
+export interface BookState {
+  slug: string;
+  publisher: string;
+  path: string;
+  /** Server-reported structure hash at pull time (never recomputed locally). */
+  baseHash: string;
+  /** Hash of the local file's parsed structure at pull time (detects local edits). */
+  baseLocalHash: string;
 }
 
 export function stateKey(publisher: string, slug: string): string {
@@ -35,8 +48,10 @@ export function stateKey(publisher: string, slug: string): string {
 
 export function loadState(root: string): SyncState {
   const path = join(root, STATE_DIR, STATE_FILE);
-  if (!existsSync(path)) return { version: 1, articles: {} };
-  return JSON.parse(readFileSync(path, "utf8")) as SyncState;
+  if (!existsSync(path)) return { version: 1, articles: {}, books: {} };
+  const state = JSON.parse(readFileSync(path, "utf8")) as SyncState;
+  if (!state.books) state.books = {};
+  return state;
 }
 
 export function saveState(root: string, state: SyncState): void {

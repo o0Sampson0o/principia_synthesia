@@ -1,8 +1,9 @@
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
 import { ApiClient, ApiError, ConflictError } from "../api";
 import { loadConfig, resolveToken } from "../config";
+import { parseBookNote, structureLocalHash } from "../book-note";
 import {
   deriveTitle,
   injectPsId,
@@ -181,11 +182,54 @@ export async function push(root: string, argv: string[]): Promise<number> {
     }
   }
 
+  // --- Book structure: reorder / re-part existing chapters ----------------
+  let booksPushed = 0;
+  for (const [key, bst] of Object.entries(state.books ?? {})) {
+    if (!publishers.includes(bst.publisher)) continue;
+    const abs = join(root, bst.path);
+    if (!existsSync(abs)) continue;
+    const parsed = parseBookNote(readFileSync(abs, "utf8"));
+    const localHash = structureLocalHash(parsed.chapters);
+    if (localHash === bst.baseLocalHash) continue; // clean
+
+    if (dryRun) {
+      console.log(`~ would push book structure: ${bst.path}`);
+      booksPushed++;
+      continue;
+    }
+    try {
+      const res = await api.updateBookStructure(
+        bst.publisher,
+        bst.slug,
+        parsed.chapters,
+        bst.baseHash
+      );
+      bst.baseHash = res.structureHash;
+      bst.baseLocalHash = localHash;
+      booksPushed++;
+      console.log(`~ pushed book structure: ${bst.path}`);
+    } catch (err) {
+      if (err instanceof ConflictError) {
+        conflicts++;
+        console.warn(`C ${bst.path} — book reordered remotely since your last pull (pull first)`);
+      } else if (err instanceof ApiError && err.code === "chapter_set_mismatch") {
+        conflicts++;
+        console.warn(
+          `C ${bst.path} — chapters added/removed locally; ps-sync only reorders. ` +
+            `Add/remove chapters in the web UI, then pull.`
+        );
+      } else {
+        throw err;
+      }
+    }
+  }
+
   if (!dryRun) saveState(root, state);
 
   const verb = dryRun ? "would push" : "pushed";
   console.log(
     `\npush done: ${pushed} ${verb}, ${created} created, ${deleted} deleted, ` +
+      `${booksPushed} book structure(s), ` +
       `${pendingNew} new pending --create, ${pendingDelete} pending --delete, ` +
       `${skippedInvalid} skipped (invalid frontmatter), ${conflicts} conflict(s)`
   );

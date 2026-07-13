@@ -517,6 +517,18 @@ export const apiUpdateArticleSchema = z.object({
   editNote: z.string().max(200).optional(),
 });
 
+/** Validates PUT /api/v1/publishers/[publisher]/books/[slug] (reorder/re-part). */
+export const apiUpdateBookStructureSchema = z.object({
+  chapters: z
+    .array(
+      z.object({
+        articleSlug: articleSlugSchema,
+        partTitle: z.string().max(200).nullable().default(null),
+      })
+    )
+    .max(1000),
+});
+
 // ---------------------------------------------------------------------------
 // API tokens (settings UI)
 // ---------------------------------------------------------------------------

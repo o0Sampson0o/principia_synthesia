@@ -51,6 +51,7 @@ export interface RemoteBook {
   slug: string;
   title: string;
   summary: string | null;
+  structureHash: string;
   chapters: Array<{
     position: number;
     partTitle: string | null;
@@ -134,7 +135,7 @@ export class ApiClient {
     if (!res.ok) {
       if (res.status === 412 && json) {
         throw new ConflictError(
-          String(json.remoteContentHash ?? ""),
+          String(json.remoteContentHash ?? json.remoteStructureHash ?? ""),
           (json.remoteUpdatedAt as string | null) ?? null
         );
       }
@@ -195,5 +196,17 @@ export class ApiClient {
 
   getBook(publisher: string, slug: string): Promise<RemoteBook> {
     return this.request("GET", `/api/v1/publishers/${publisher}/books/${slug}`);
+  }
+
+  updateBookStructure(
+    publisher: string,
+    slug: string,
+    chapters: { articleSlug: string; partTitle: string | null }[],
+    baseHash: string
+  ): Promise<{ structureHash: string; updatedAt: string }> {
+    return this.request("PUT", `/api/v1/publishers/${publisher}/books/${slug}`, {
+      body: { chapters },
+      ifMatch: baseHash,
+    });
   }
 }
