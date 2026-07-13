@@ -70,3 +70,6 @@ COPILOT.md
 
 # Image ?
 *.png
+
+# ps-sync npm build output
+/cli/ps-sync/dist/

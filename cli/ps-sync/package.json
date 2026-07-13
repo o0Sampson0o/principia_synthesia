@@ -1,13 +1,38 @@
 {
-  "name": "ps-sync",
+  "name": "principia-sync",
   "version": "0.1.0",
-  "private": true,
   "description": "Sync Principia Synthesia articles to a local folder — editable with any markdown editor — over the /api/v1 sync API.",
   "type": "module",
   "bin": {
-    "ps-sync": "./bin.mjs"
+    "ps-sync": "./dist/ps-sync.mjs",
+    "principia-sync": "./dist/ps-sync.mjs"
   },
-  "dependencies": {
+  "files": [
+    "dist/ps-sync.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "principia-synthesia",
+    "markdown",
+    "obsidian",
+    "sync",
+    "cli"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/o0Sampson0o/principia_synthesia",
+    "directory": "cli/ps-sync"
+  },
+  "scripts": {
+    "build": "node build-npm.mjs",
+    "prepublishOnly": "node build-npm.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
     "gray-matter": "^4.0.3"
   }
 }

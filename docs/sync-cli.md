@@ -68,21 +68,30 @@ The optimistic-concurrency base is always the **server-reported**
 
 Sources live in `cli/ps-sync/src` (only dependency: `gray-matter`).
 
-**Distribution:** `cli/ps-sync/build.mjs` (wired as the app's `prebuild`
-script) esbuild-bundles the CLI into a single self-contained ESM file at
-`public/ps-sync.mjs`, so every deploy serves a CLI matching its own API at
-`https://<server>/ps-sync.mjs`. End users need nothing but Node 18+ — no repo
-checkout, no npm install:
+**Distribution — three ways, one bundle.** `cli/ps-sync/bundle.mjs`
+esbuild-bundles the TypeScript sources (gray-matter inlined) into a single
+self-contained ESM file that needs nothing but Node 18+:
 
-```bash
-# in the folder to sync into (can be, but need not be, an Obsidian vault)
-curl -O https://www.principiasynthesia.org/ps-sync.mjs
-node ps-sync.mjs init
-node ps-sync.mjs pull
-```
+1. **Site download** — `cli/ps-sync/build.mjs` (the app's `prebuild` script)
+   writes `public/ps-sync.mjs` with the producing site's URL baked in, so every
+   deploy serves a CLI matching its own API. A quickstart with the download link
+   is on `/settings/api-tokens`:
+   ```bash
+   curl -O https://www.principiasynthesia.org/ps-sync.mjs
+   node ps-sync.mjs init && node ps-sync.mjs pull
+   ```
+2. **npm** — `cli/ps-sync/package.json` (name `principia-sync`, bins `ps-sync`
+   and `principia-sync`) publishes `dist/ps-sync.mjs` (built by
+   `build-npm.mjs`, no baked server → `init` prompts). `prepublishOnly` runs
+   the build; `npm pack` ships only the bundle + README.
+   ```bash
+   npm i -g principia-sync   # or: npx principia-sync init
+   ps-sync init && ps-sync pull
+   ```
+3. **Dev** — against the repo checkout: `npx tsx cli/ps-sync/src/index.ts`.
 
-A quickstart with the download link is shown on `/settings/api-tokens`.
-For development against the repo checkout: `npx tsx cli/ps-sync/src/index.ts`.
+Self-referencing hint messages adapt to the invocation (`node ps-sync.mjs …`
+for the downloaded file, `ps-sync …` for the installed bin).
 
 - `init` — prompts for server URL + token, validates via `/me`, writes
   `.ps-sync.json` (no secrets) and `.ps-sync/token` (gitignored). Token can
