@@ -10,6 +10,7 @@ import { grammarChecker } from "@/lib/codemirror-grammar";
 import { livePreview } from "@/lib/live-preview";
 import { editorTheme } from "@/lib/live-preview/theme";
 import { slashMenu } from "@/lib/live-preview/slash-menu";
+import { turnIntoKeymap } from "@/lib/live-preview/turn-into";
 import { frontmatterExtent } from "@/lib/live-preview/reveal";
 import CheckMdxButton from "./CheckMdxButton";
 import { findMissingAlt } from "@/lib/alt-text-lint";
@@ -136,6 +137,7 @@ export default forwardRef<ContentEditorRef, {
     EditorView.lineWrapping,
     editorTheme,
     slashMenu,
+    turnIntoKeymap,
     grammarCompartment.of([]),
     modeCompartment.of(livePreview()),
     keymap.of([
