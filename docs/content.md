@@ -70,6 +70,26 @@ switching never reflows the page.
   decorations are view-only.
 - **Source**: plain syntax-highlighted markdown (the same dialect: markdown +
   `MarkdownMath` + `MarkdownWikilink`).
+
+**Notion-style block affordances** (all keep the file plain markdown):
+
+- **Slash menu** (`lib/live-preview/slash-menu.ts`): typing `/` at the start of
+  a line (or after list/quote marks; ignored mid-sentence) opens a searchable
+  block menu (headings, lists, to-do, quote, callout, toggle, code, divider,
+  table, math, wikilink, columns) that inserts the block's markdown.
+- **Turn-into** (`lib/live-preview/turn-into.ts`): `Mod-Alt-0/1/2/3/7/8/9/q`
+  rewrites the current line(s) prefix to paragraph / headings / bullet /
+  numbered / to-do / quote, preserving content and indentation.
+- **Callouts** (`lib/remark-callouts.ts`): `> [!note] Title` GitHub/Obsidian
+  alert syntax → a colored callout box (12+ types, optional title, `+`/`-`
+  foldable). Registered in the article-page and `previewMdx` pipelines; the
+  live editor tints callout lines by type. Degrades to a plain blockquote.
+- **Toggles**: `<details><summary>` render natively through MDX
+  (`allowDangerousHtml`), styled in `.markdown-content`.
+- **Columns** (`lib/remark-columns.ts`, via `remark-directive`):
+  `::::columns` / `:::column{width=N}` → a responsive flex row. The plugin
+  reverts any directive it doesn't handle back to literal text, so inline
+  `:name` sequences (e.g. `12:30`) never corrupt prose.
 - **Preview**: the real thing — the document compiled through the `previewMdx`
   server pipeline and rendered read-only in `.markdown-content`, refreshed on
   every entry into the mode.

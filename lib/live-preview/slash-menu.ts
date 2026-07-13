@@ -51,15 +51,16 @@ function applyBlock(insert: string) {
   };
 }
 
-const OPTIONS: Completion[] = COMMANDS.map((c) => ({
-  label: c.label,
-  detail: c.detail,
-  type: "keyword",
-  // Match against label + hidden keywords without displaying the keywords.
-  apply: applyBlock(c.insert),
-  boost: 0,
-  // Store keywords for the custom filter below.
-  info: c.keywords,
+// Completion objects for display, paired with a hidden keyword blob used only
+// for filtering (kept out of the Completion so it never renders).
+const OPTIONS: { completion: Completion; haystack: string }[] = COMMANDS.map((c) => ({
+  completion: {
+    label: c.label,
+    detail: c.detail,
+    type: "keyword",
+    apply: applyBlock(c.insert),
+  },
+  haystack: `${c.label} ${c.keywords}`.toLowerCase(),
 }));
 
 /**
@@ -78,11 +79,7 @@ export function matchSlashQuery(before: string): { query: string } | null {
 
 /** Filters the block commands by a slash query (label + keyword match). */
 export function filterSlashCommands(query: string): Completion[] {
-  return OPTIONS.filter((o) => {
-    if (!query) return true;
-    const hay = `${o.label} ${o.info ?? ""}`.toLowerCase();
-    return hay.includes(query);
-  }).map(({ info: _info, ...o }) => o); // drop keyword blob before display
+  return OPTIONS.filter((o) => !query || o.haystack.includes(query)).map((o) => o.completion);
 }
 
 function slashSource(context: CompletionContext): CompletionResult | null {
