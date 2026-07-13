@@ -737,6 +737,37 @@ body {
   border: 0;
   border-radius: 0.375rem;
 }
+/* Rendered GFM table (matches .markdown-content table). */
+.cm-lp-table {
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.cm-lp-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+.cm-lp-table thead {
+  border-bottom: 2px solid var(--border);
+}
+.cm-lp-table th {
+  font-size: 0.5625rem;
+  font-family: var(--font-geist-mono), monospace;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  padding: 0.5em 0.875em 0.6em;
+  text-align: left;
+}
+.cm-lp-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.625em 0.875em;
+  vertical-align: top;
+}
+.cm-lp-table tbody tr:last-child td {
+  border-bottom: none;
+}
 .cm-lp-math { cursor: pointer; }
 .cm-lp-math-block {
   display: block;

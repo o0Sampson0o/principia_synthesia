@@ -2,6 +2,7 @@ import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import { livePreviewView } from "./view-plugin";
 import { blockMath } from "./block-math";
+import { blockTable } from "./block-table";
 import { mathTooltip } from "./math-tooltip";
 
 /**
@@ -14,6 +15,7 @@ export function livePreview(): Extension {
     EditorView.editorAttributes.of({ class: "cm-lp-live" }),
     livePreviewView,
     blockMath,
+    blockTable,
     mathTooltip,
   ];
 }
