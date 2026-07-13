@@ -25,6 +25,7 @@ const STATIC_COMMANDS: PageCommand[] = [
   { label: "Pricing", href: "/pricing", keywords: ["plans", "billing", "license"], section: "Pages", requiresAuth: false },
   { label: "Support", href: "/support", keywords: ["help", "contact", "faq"], section: "Pages", requiresAuth: false },
   { label: "Settings", href: "/settings", keywords: ["preferences", "options", "account"], section: "Settings", requiresAuth: true },
+  { label: "Settings: Account", href: "/settings/account", keywords: ["password", "display name", "profile", "credentials"], section: "Settings", requiresAuth: true },
   { label: "Settings: Theme", href: "/settings/theme", keywords: ["color", "palette", "dark mode", "appearance", "tokens"], section: "Settings", requiresAuth: true },
   { label: "Settings: API tokens", href: "/settings/api-tokens", keywords: ["token", "api key", "personal access", "ps-sync", "sync"], section: "Settings", requiresAuth: true },
   { label: "Settings: Onboarding", href: "/settings/onboarding", keywords: ["tour", "replay", "intro", "walkthrough"], section: "Settings", requiresAuth: true },

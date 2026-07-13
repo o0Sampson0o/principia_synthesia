@@ -17,6 +17,7 @@ describe("getPageCommands", () => {
     const commands = getPageCommands("alice");
     const hrefs = commands.map((c) => c.href);
     expect(hrefs).toContain("/settings");
+    expect(hrefs).toContain("/settings/account");
     expect(hrefs).toContain("/settings/theme");
     expect(hrefs).toContain("/settings/api-tokens");
     expect(hrefs).toContain("/settings/onboarding");

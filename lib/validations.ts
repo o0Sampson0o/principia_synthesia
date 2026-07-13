@@ -545,6 +545,21 @@ export const revokeApiTokenSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Account settings
+// ---------------------------------------------------------------------------
+
+/** Validates the display-name update. */
+export const updateDisplayNameSchema = z.object({
+  displayName: z.string().trim().min(1, "Display name is required").max(100, "Display name too long"),
+});
+
+/** Validates a password change (current + new). */
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "New password must be at least 8 characters").max(200),
+});
+
+// ---------------------------------------------------------------------------
 // Article frontmatter metadata
 // ---------------------------------------------------------------------------
 

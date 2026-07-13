@@ -4,6 +4,11 @@ import { redirect } from "next/navigation";
 
 const SECTIONS = [
   {
+    href: "/settings/account",
+    title: "Account",
+    description: "Change your display name and password.",
+  },
+  {
     href: "/settings/theme",
     title: "Theme",
     description: "Customize your light and dark color palettes. Changes preview live.",
