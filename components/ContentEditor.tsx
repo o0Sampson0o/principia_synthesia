@@ -9,6 +9,7 @@ import { MarkdownWikilink } from "@/lib/codemirror-wikilink";
 import { grammarChecker } from "@/lib/codemirror-grammar";
 import { livePreview } from "@/lib/live-preview";
 import { editorTheme } from "@/lib/live-preview/theme";
+import { slashMenu } from "@/lib/live-preview/slash-menu";
 import { frontmatterExtent } from "@/lib/live-preview/reveal";
 import CheckMdxButton from "./CheckMdxButton";
 import { findMissingAlt } from "@/lib/alt-text-lint";
@@ -134,6 +135,7 @@ export default forwardRef<ContentEditorRef, {
     }),
     EditorView.lineWrapping,
     editorTheme,
+    slashMenu,
     grammarCompartment.of([]),
     modeCompartment.of(livePreview()),
     keymap.of([

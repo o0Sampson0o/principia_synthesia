@@ -45,6 +45,33 @@ const chrome = EditorView.theme({
     border: "1px solid var(--border)",
     borderRadius: "0.375rem",
   },
+  // Slash-menu (autocomplete) popup.
+  ".cm-tooltip.cm-tooltip-autocomplete": {
+    boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+    overflow: "hidden",
+  },
+  ".cm-tooltip-autocomplete > ul": {
+    fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+    maxHeight: "18rem",
+  },
+  ".cm-tooltip-autocomplete > ul > li": {
+    padding: "0.3rem 0.7rem",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "1.5rem",
+    alignItems: "baseline",
+  },
+  ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
+    backgroundColor: "color-mix(in srgb, var(--accent) 16%, transparent)",
+    color: "var(--foreground)",
+  },
+  ".cm-completionLabel": { fontSize: "0.875rem" },
+  ".cm-completionDetail": {
+    fontStyle: "normal",
+    fontFamily: "var(--font-geist-mono), monospace",
+    fontSize: "0.75rem",
+    color: "var(--muted-foreground)",
+  },
   // No gutters in either mode: the editor reads like a page, and the text
   // column stays byte-identical when toggling Live/Source. (Grammar
   // diagnostics still underline inline; only the gutter dots are gone.)
