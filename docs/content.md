@@ -86,10 +86,11 @@ switching never reflows the page.
   live editor tints callout lines by type. Degrades to a plain blockquote.
 - **Toggles**: `<details><summary>` render natively through MDX
   (`allowDangerousHtml`), styled in `.markdown-content`.
-- **Columns** (`lib/remark-columns.ts`, via `remark-directive`):
-  `::::columns` / `:::column{width=N}` → a responsive flex row. The plugin
-  reverts any directive it doesn't handle back to literal text, so inline
-  `:name` sequences (e.g. `12:30`) never corrupt prose.
+
+  > Columns were prototyped via `remark-directive` but removed: directive
+  > syntax hooks micromark at the parse level and fragments the colon-heavy
+  > `[[pub:type:slug]]` wikilink syntax, breaking internal links. A colon-safe
+  > columns implementation is deferred.
 - **Preview**: the real thing — the document compiled through the `previewMdx`
   server pipeline and rendered read-only in `.markdown-content`, refreshed on
   every entry into the mode.

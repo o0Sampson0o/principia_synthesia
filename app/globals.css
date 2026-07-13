@@ -646,22 +646,6 @@ body {
 .markdown-content .callout-quote,
 .markdown-content .callout-cite { --callout-accent: var(--muted-foreground); --callout-icon: "❝"; }
 
-/* ─── Columns (:::columns / ::: column) ───────────────────────────── */
-.markdown-content .columns {
-  display: flex;
-  gap: 1.5rem;
-  margin: 1.75em 0;
-}
-.markdown-content .columns > .column {
-  flex: 1 1 0;
-  min-width: 0;
-}
-.markdown-content .columns > .column > :first-child { margin-top: 0; }
-.markdown-content .columns > .column > :last-child { margin-bottom: 0; }
-@media (max-width: 640px) {
-  .markdown-content .columns { flex-direction: column; gap: 0; }
-}
-
 /* ─── Toggles (<details> / <summary>) ─────────────────────────────── */
 .markdown-content details {
   border: 1px solid var(--border);
