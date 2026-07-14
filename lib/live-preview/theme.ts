@@ -45,32 +45,72 @@ const chrome = EditorView.theme({
     border: "1px solid var(--border)",
     borderRadius: "0.375rem",
   },
-  // Slash-menu (autocomplete) popup.
+  // Slash-menu (autocomplete) popup — a command palette. Each row: a bordered
+  // glyph token carrying the block's markdown symbol, the block name, and the
+  // exact syntax it inserts (monospace, right-aligned). The selected row takes
+  // an accent spine + accent-dim fill.
   ".cm-tooltip.cm-tooltip-autocomplete": {
-    boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+    borderRadius: "9px",
+    boxShadow: "0 10px 34px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)",
     overflow: "hidden",
   },
   ".cm-tooltip-autocomplete > ul": {
     fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
-    maxHeight: "18rem",
+    maxHeight: "20rem",
   },
   ".cm-tooltip-autocomplete > ul > li": {
-    padding: "0.3rem 0.7rem",
+    padding: "0.36rem 0.55rem",
     display: "flex",
-    justifyContent: "space-between",
-    gap: "1.5rem",
-    alignItems: "baseline",
+    alignItems: "center",
+    gap: "0.55rem",
+    borderLeft: "2px solid transparent",
   },
   ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
-    backgroundColor: "color-mix(in srgb, var(--accent) 16%, transparent)",
+    backgroundColor: "color-mix(in srgb, var(--accent) 13%, var(--surface))",
+    borderLeftColor: "var(--accent)",
     color: "var(--foreground)",
   },
-  ".cm-completionLabel": { fontSize: "0.875rem" },
+  // The glyph token (CodeMirror's completion "icon" slot, keyed by `type`).
+  ".cm-completionIcon": {
+    display: "grid",
+    placeItems: "center",
+    width: "1.5rem",
+    height: "1.5rem",
+    minWidth: "1.5rem",
+    padding: "0",
+    margin: "0",
+    border: "1px solid var(--border)",
+    borderRadius: "5px",
+    fontFamily: "var(--font-geist-mono), monospace",
+    fontSize: "0.72rem",
+    color: "var(--muted-foreground)",
+    opacity: "1",
+  },
+  // Each block's glyph, keyed by the completion's `type` (see slash-menu.ts).
+  ".cm-completionIcon-h1::after, .cm-completionIcon-h2::after, .cm-completionIcon-h3::after":
+    { content: '"#"' },
+  ".cm-completionIcon-ul::after": { content: '"—"' },
+  ".cm-completionIcon-ol::after": { content: '"1."' },
+  ".cm-completionIcon-todo::after": { content: '"☑"' },
+  ".cm-completionIcon-quote::after": { content: '"❝"' },
+  ".cm-completionIcon-callout::after": { content: '"!"' },
+  ".cm-completionIcon-toggle::after": { content: '"▸"' },
+  ".cm-completionIcon-code::after": { content: '"`"' },
+  ".cm-completionIcon-hr::after": { content: '"···"' },
+  ".cm-completionIcon-table::after": { content: '"▦"' },
+  ".cm-completionIcon-math::after": { content: '"∑"' },
+  ".cm-completionIcon-wikilink::after": { content: '"[["' },
+  ".cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionIcon": {
+    borderColor: "color-mix(in srgb, var(--accent) 45%, var(--border))",
+    color: "var(--accent)",
+  },
+  ".cm-completionLabel": { flex: "1", fontSize: "0.875rem" },
   ".cm-completionDetail": {
     fontStyle: "normal",
     fontFamily: "var(--font-geist-mono), monospace",
-    fontSize: "0.75rem",
+    fontSize: "0.72rem",
     color: "var(--muted-foreground)",
+    marginLeft: "auto",
   },
   // No gutters in either mode: the editor reads like a page, and the text
   // column stays byte-identical when toggling Live/Source. (Grammar

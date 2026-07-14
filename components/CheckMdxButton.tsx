@@ -78,10 +78,13 @@ export default function CheckMdxButton({
           onClick={() => dialogRef.current?.showModal()}
           className="themed-badge"
           style={{
+            fontFamily: "var(--font-geist-mono), monospace",
             fontSize: "0.6875rem",
-            padding: "0.15rem 0.5rem",
+            letterSpacing: "0.03em",
+            padding: "0.2rem 0.55rem",
             color: "var(--color-success)",
-            borderColor: "var(--color-success)",
+            borderColor: "color-mix(in srgb, var(--color-success) 45%, var(--border))",
+            background: "color-mix(in srgb, var(--color-success) 9%, var(--surface))",
           }}
           title="Compiled cleanly — click to see the rendered output"
         >
@@ -94,10 +97,13 @@ export default function CheckMdxButton({
           onClick={() => dialogRef.current?.showModal()}
           className="themed-badge"
           style={{
+            fontFamily: "var(--font-geist-mono), monospace",
             fontSize: "0.6875rem",
-            padding: "0.15rem 0.5rem",
+            letterSpacing: "0.03em",
+            padding: "0.2rem 0.55rem",
             color: "var(--color-error)",
-            borderColor: "var(--color-error)",
+            borderColor: "color-mix(in srgb, var(--color-error) 45%, var(--border))",
+            background: "color-mix(in srgb, var(--color-error) 9%, var(--surface))",
           }}
           title="Compile failed — click for details"
         >

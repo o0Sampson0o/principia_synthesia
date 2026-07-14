@@ -249,7 +249,15 @@ export default forwardRef<ContentEditorRef, {
             onClick={() => setShowAltList((v) => !v)}
             aria-label={`${altFindings.length} image${altFindings.length === 1 ? "" : "s"} missing alt text`}
             className="inline-flex items-center gap-1.5 themed-badge"
-            style={{ fontSize: "0.75rem", padding: "0.25rem 0.625rem", borderColor: "var(--color-warning)", color: "var(--color-warning)" }}
+            style={{
+              fontFamily: "var(--font-geist-mono), monospace",
+              fontSize: "0.6875rem",
+              letterSpacing: "0.03em",
+              padding: "0.24rem 0.6rem",
+              color: "var(--color-warning)",
+              borderColor: "color-mix(in srgb, var(--color-warning) 45%, var(--border))",
+              background: "color-mix(in srgb, var(--color-warning) 9%, var(--surface))",
+            }}
           >
             <span aria-hidden="true">⚠</span>
             {altFindings.length} missing alt
@@ -282,12 +290,19 @@ export default forwardRef<ContentEditorRef, {
                   onClick={() => applyMode(m)}
                   aria-pressed={mode === m}
                   title={`${m === "live" ? "Live preview" : m === "source" ? "Source" : "Rendered preview"} (Ctrl+E cycles)`}
-                  className={`px-2 py-0.5 transition-colors ${
-                    mode === m
-                      ? "themed-accent font-medium"
-                      : "themed-muted themed-hover-foreground"
+                  className={`px-2.5 py-0.5 transition-colors ${
+                    mode === m ? "themed-accent font-semibold" : "themed-muted themed-hover-foreground"
                   }`}
-                  style={{ fontSize: "0.6875rem", textTransform: "capitalize" }}
+                  style={{
+                    fontFamily: "var(--font-geist-mono), monospace",
+                    fontSize: "0.6875rem",
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    background:
+                      mode === m
+                        ? "color-mix(in srgb, var(--accent) 14%, var(--surface))"
+                        : "transparent",
+                  }}
                 >
                   {m}
                 </button>
@@ -298,12 +313,18 @@ export default forwardRef<ContentEditorRef, {
               onClick={toggleGrammar}
               aria-pressed={grammarOn}
               title="Grammar & spell check"
-              className={`text-xs px-2 py-0.5 rounded border transition-colors ${
-                grammarOn
-                  ? "themed-accent-border themed-accent"
-                  : "themed-border themed-muted themed-hover-foreground"
+              className={`px-2.5 py-0.5 rounded-md border transition-colors ${
+                grammarOn ? "themed-accent-border themed-accent" : "themed-border themed-muted themed-hover-foreground"
               }`}
-              style={{ fontSize: "0.6875rem" }}
+              style={{
+                fontFamily: "var(--font-geist-mono), monospace",
+                fontSize: "0.6875rem",
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                background: grammarOn
+                  ? "color-mix(in srgb, var(--accent) 10%, var(--surface))"
+                  : "transparent",
+              }}
             >
               Grammar {grammarOn ? "on" : "off"}
             </button>

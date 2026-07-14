@@ -18,25 +18,27 @@ interface BlockCommand {
   label: string;
   detail: string;
   keywords: string;
+  /** Completion `type` — drives the row's glyph token (see theme.ts). */
+  type: string;
   /** Text inserted in place of the "/…". `$` marks the final cursor position. */
   insert: string;
 }
 
 const COMMANDS: BlockCommand[] = [
-  { label: "Heading 1", detail: "# ", keywords: "h1 title", insert: "# $" },
-  { label: "Heading 2", detail: "## ", keywords: "h2", insert: "## $" },
-  { label: "Heading 3", detail: "### ", keywords: "h3", insert: "### $" },
-  { label: "Bullet list", detail: "- ", keywords: "ul unordered", insert: "- $" },
-  { label: "Numbered list", detail: "1. ", keywords: "ol ordered", insert: "1. $" },
-  { label: "To-do", detail: "- [ ] ", keywords: "task checkbox", insert: "- [ ] $" },
-  { label: "Quote", detail: "> ", keywords: "blockquote", insert: "> $" },
-  { label: "Callout", detail: "> [!note]", keywords: "admonition info note", insert: "> [!note] $\n> " },
-  { label: "Toggle", detail: "collapsible", keywords: "details fold collapse", insert: "<details>\n<summary>$</summary>\n\n\n</details>" },
-  { label: "Code block", detail: "``` ```", keywords: "fence", insert: "```\n$\n```" },
-  { label: "Divider", detail: "———", keywords: "hr rule separator", insert: "---\n\n$" },
-  { label: "Table", detail: "columns", keywords: "grid", insert: "| $ |  |\n| --- | --- |\n|  |  |" },
-  { label: "Math block", detail: "$$ $$", keywords: "latex equation", insert: "$$\n$\n$$" },
-  { label: "Wikilink", detail: "[[…]]", keywords: "link reference", insert: "[[$]]" },
+  { label: "Heading 1", detail: "# ", keywords: "h1 title", type: "h1", insert: "# $" },
+  { label: "Heading 2", detail: "## ", keywords: "h2", type: "h2", insert: "## $" },
+  { label: "Heading 3", detail: "### ", keywords: "h3", type: "h3", insert: "### $" },
+  { label: "Bullet list", detail: "- ", keywords: "ul unordered", type: "ul", insert: "- $" },
+  { label: "Numbered list", detail: "1. ", keywords: "ol ordered", type: "ol", insert: "1. $" },
+  { label: "To-do", detail: "- [ ] ", keywords: "task checkbox", type: "todo", insert: "- [ ] $" },
+  { label: "Quote", detail: "> ", keywords: "blockquote", type: "quote", insert: "> $" },
+  { label: "Callout", detail: "> [!note]", keywords: "admonition info note", type: "callout", insert: "> [!note] $\n> " },
+  { label: "Toggle", detail: "<details>", keywords: "details fold collapse", type: "toggle", insert: "<details>\n<summary>$</summary>\n\n\n</details>" },
+  { label: "Code block", detail: "``` ```", keywords: "fence", type: "code", insert: "```\n$\n```" },
+  { label: "Divider", detail: "---", keywords: "hr rule separator", type: "hr", insert: "---\n\n$" },
+  { label: "Table", detail: "grid", keywords: "columns", type: "table", insert: "| $ |  |\n| --- | --- |\n|  |  |" },
+  { label: "Math block", detail: "$$ $$", keywords: "latex equation", type: "math", insert: "$$\n$\n$$" },
+  { label: "Wikilink", detail: "[[…]]", keywords: "link reference", type: "wikilink", insert: "[[$]]" },
 ];
 
 function applyBlock(insert: string) {
@@ -56,7 +58,7 @@ const OPTIONS: { completion: Completion; haystack: string }[] = COMMANDS.map((c)
   completion: {
     label: c.label,
     detail: c.detail,
-    type: "keyword",
+    type: c.type,
     apply: applyBlock(c.insert),
   },
   haystack: `${c.label} ${c.keywords}`.toLowerCase(),
@@ -95,6 +97,6 @@ function slashSource(context: CompletionContext): CompletionResult | null {
 
 export const slashMenu: Extension = autocompletion({
   override: [slashSource],
-  icons: false,
+  icons: true,
   defaultKeymap: true,
 });
