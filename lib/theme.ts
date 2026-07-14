@@ -2,7 +2,9 @@ import type { ThemeTokens } from "@/db/schema"
 
 /** Default token values for light mode. Used as the fallback when a user has no saved theme. */
 export const defaultLight: ThemeTokens = {
-  background:       "#ffffff",
+  // A faintly cool off-white page ground with pure-white surfaces above it, so
+  // cards/callouts/nav lift off the page instead of relying only on borders.
+  background:       "#f7f7f8",
   foreground:       "#18181b",
   muted:            "#f4f4f5",
   mutedForeground:  "#71717a",
@@ -11,7 +13,7 @@ export const defaultLight: ThemeTokens = {
   accentForeground: "#ffffff",
   link:             "#71717a",
   linkHover:        "#18181b",
-  codeBackground:   "#f4f4f5",
+  codeBackground:   "#f0f0f2",
   surface:          "#ffffff",
   surfaceHover:     "#f4f4f5",
   primaryBtn:       "#18181b",
@@ -23,7 +25,9 @@ export const defaultLight: ThemeTokens = {
 
 /** Default token values for dark mode. Used as the fallback when a user has no saved theme. */
 export const defaultDark: ThemeTokens = {
-  background:       "#09090b",
+  // A near-black page ground with slightly-elevated surfaces, so panels lift
+  // off the background the way white cards do in light mode.
+  background:       "#0b0b0d",
   foreground:       "#fafafa",
   muted:            "#27272a",
   mutedForeground:  "#a1a1aa",
@@ -33,8 +37,8 @@ export const defaultDark: ThemeTokens = {
   link:             "#a1a1aa",
   linkHover:        "#fafafa",
   codeBackground:   "#27272a",
-  surface:          "#09090b",
-  surfaceHover:     "#18181b",
+  surface:          "#151517",
+  surfaceHover:     "#1e1e21",
   primaryBtn:       "#fafafa",
   primaryBtnText:   "#09090b",
   inputBorder:      "#3f3f46",
