@@ -635,6 +635,26 @@ body {
 .markdown-content .callout > :last-child { margin-bottom: 0; }
 .markdown-content .callout p { font-style: normal; }
 
+/* Foldable callout (> [!type]+ / -): a native <details>. The summary title
+   gets a caret that rotates on open; the marker is hidden. */
+.markdown-content details.callout > summary.callout-title {
+  cursor: pointer;
+  list-style: none;
+}
+.markdown-content details.callout > summary.callout-title::-webkit-details-marker { display: none; }
+.markdown-content details.callout > summary.callout-title::after {
+  content: "▶";
+  margin-left: auto;
+  font-size: 0.7em;
+  transition: transform 0.15s ease;
+}
+.markdown-content details.callout[open] > summary.callout-title { margin-bottom: 0.45em; }
+.markdown-content details.callout:not([open]) > summary.callout-title { margin-bottom: 0; }
+.markdown-content details.callout[open] > summary.callout-title::after { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .markdown-content details.callout > summary.callout-title::after { transition: none; }
+}
+
 .callout-note, .callout-info, .callout-abstract,
 .callout-summary, .callout-tldr { --callout-accent: var(--color-info); --callout-icon: "ℹ"; }
 .callout-tip, .callout-hint,

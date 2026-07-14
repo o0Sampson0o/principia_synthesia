@@ -40,12 +40,21 @@ describe("remarkCallouts", () => {
     expect(html).toContain("callout-note");
   });
 
-  it("marks foldable callouts (+/-)", () => {
+  it("renders foldable callouts (+/-) as a native <details>", () => {
     const open = render("> [!faq]+ Q\n> a");
-    expect(open).toContain('data-foldable="true"');
-    expect(open).toContain("callout-open");
+    expect(open).toContain("<details");
+    expect(open).toContain("<summary");
+    expect(open).toContain('class="callout callout-faq"');
+    expect(open).toMatch(/<details[^>]*\sopen[^>]*>/); // + starts open
     const closed = render("> [!faq]- Q\n> a");
-    expect(closed).toContain("callout-collapsed");
+    expect(closed).toContain("<details");
+    expect(closed).not.toMatch(/<details[^>]*\sopen[^>]*>/); // - starts collapsed
+  });
+
+  it("keeps non-foldable callouts as a plain <div> (not collapsible)", () => {
+    const html = render("> [!note] Heads up\n> Body.");
+    expect(html).toContain('<div class="callout callout-note"');
+    expect(html).not.toContain("<details");
   });
 
   it("leaves an ordinary blockquote untouched", () => {

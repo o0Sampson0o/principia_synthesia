@@ -60,24 +60,28 @@ export function remarkCallouts() {
         if (para.children.length === 0) node.children.shift();
       }
 
-      // Title element.
+      // Title element. A foldable callout becomes a native <details>, so its
+      // title is the <summary> that toggles it (no JavaScript); a static
+      // callout keeps a plain paragraph title.
       const titleNode: Paragraph = {
         type: "paragraph",
         children: [{ type: "text", value: title } as Text] as PhrasingContent[],
-        data: { hProperties: { className: ["callout-title"] } },
+        data: {
+          hName: foldable ? "summary" : undefined,
+          hProperties: { className: ["callout-title"] },
+        },
       };
       node.children.unshift(titleNode);
 
-      // Turn the blockquote into a callout div.
-      const className = ["callout", `callout-${type}`];
-      if (foldable) className.push(defaultOpen ? "callout-open" : "callout-collapsed");
+      // Foldable → <details> (collapses natively; `open` set from the +/-
+      // marker); static → <div>.
       node.data = {
         ...node.data,
-        hName: "div",
+        hName: foldable ? "details" : "div",
         hProperties: {
-          className,
+          className: ["callout", `callout-${type}`],
           "data-callout": type,
-          ...(foldable ? { "data-foldable": "true" } : {}),
+          ...(foldable && defaultOpen ? { open: true } : {}),
         },
       };
     });
