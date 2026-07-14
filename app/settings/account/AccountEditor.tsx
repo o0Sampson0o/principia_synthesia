@@ -11,8 +11,8 @@ function Feedback({ result }: { result: ActionResult | null }) {
       style={{
         fontSize: "0.8125rem",
         color: result.ok
-          ? "var(--color-success-border, #15803d)"
-          : "var(--color-warning-border, #b45309)",
+          ? "var(--color-success)"
+          : "var(--color-error)",
       }}
     >
       {result.ok ? result.message : result.error}

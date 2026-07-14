@@ -249,7 +249,7 @@ export default forwardRef<ContentEditorRef, {
             onClick={() => setShowAltList((v) => !v)}
             aria-label={`${altFindings.length} image${altFindings.length === 1 ? "" : "s"} missing alt text`}
             className="inline-flex items-center gap-1.5 themed-badge"
-            style={{ fontSize: "0.75rem", padding: "0.25rem 0.625rem", borderColor: "var(--color-warning-border)", color: "var(--color-warning-border)" }}
+            style={{ fontSize: "0.75rem", padding: "0.25rem 0.625rem", borderColor: "var(--color-warning)", color: "var(--color-warning)" }}
           >
             <span aria-hidden="true">⚠</span>
             {altFindings.length} missing alt
@@ -347,7 +347,7 @@ export default forwardRef<ContentEditorRef, {
                   style={{
                     fontFamily: "var(--font-geist-mono), monospace",
                     fontSize: "0.8125rem",
-                    color: "var(--color-warning-border, #b45309)",
+                    color: "var(--color-error)",
                   }}
                 >
                   {previewState.message}

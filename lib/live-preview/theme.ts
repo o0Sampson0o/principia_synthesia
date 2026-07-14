@@ -102,7 +102,7 @@ const highlight = HighlightStyle.define([
   { tag: t.bracket, color: "var(--muted-foreground)" },
   { tag: t.atom, color: "var(--accent)" },
   { tag: t.number, color: "var(--foreground)", fontWeight: "500" },
-  { tag: t.invalid, color: "var(--color-warning-border, #b45309)" },
+  { tag: t.invalid, color: "var(--color-error)" },
 ]);
 
 export const editorTheme: Extension = [chrome, syntaxHighlighting(highlight)];

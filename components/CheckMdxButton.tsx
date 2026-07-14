@@ -80,8 +80,8 @@ export default function CheckMdxButton({
           style={{
             fontSize: "0.6875rem",
             padding: "0.15rem 0.5rem",
-            color: "var(--color-success-border, #15803d)",
-            borderColor: "var(--color-success-border, #15803d)",
+            color: "var(--color-success)",
+            borderColor: "var(--color-success)",
           }}
           title="Compiled cleanly — click to see the rendered output"
         >
@@ -96,8 +96,8 @@ export default function CheckMdxButton({
           style={{
             fontSize: "0.6875rem",
             padding: "0.15rem 0.5rem",
-            color: "var(--color-warning-border, #b45309)",
-            borderColor: "var(--color-warning-border, #b45309)",
+            color: "var(--color-error)",
+            borderColor: "var(--color-error)",
           }}
           title="Compile failed — click for details"
         >
@@ -133,7 +133,7 @@ export default function CheckMdxButton({
                 style={{
                   fontFamily: "var(--font-geist-mono), monospace",
                   fontSize: "0.8125rem",
-                  color: "var(--color-warning-border, #b45309)",
+                  color: "var(--color-error)",
                 }}
               >
                 {state.message}
