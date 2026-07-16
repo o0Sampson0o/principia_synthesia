@@ -7,6 +7,7 @@ import { books, curriculumEntries, articles, publishers, bookCategories, categor
 import { eq, and, asc, isNull, or, sql, inArray } from "drizzle-orm";
 import Link from "next/link";
 import CategoryPicker from "@/components/CategoryPicker";
+import CurriculumList from "./CurriculumList";
 import {
   updateBook,
   deleteBook,
@@ -106,6 +107,7 @@ export default async function EditBookPage({
     ...partDividers.map((d) => ({ kind: "part" as const, entryId: d.entryId, position: d.position, part: d })),
   ].sort((a, b) => a.position - b.position);
 
+
   // How many books each chapter's article belongs to. A same-publisher
   // standalone article can only be "absorbed" (made internal) when it lives in
   // exactly one book — this one — otherwise absorbing it would orphan it from
@@ -124,6 +126,25 @@ export default async function EditBookPage({
       : [];
   const bookCountByArticle = new Map(
     bookCounts.map((r) => [r.articleId, r.count])
+  );
+
+  const listRows = rows.map((r) =>
+    r.kind === "part"
+      ? { kind: "part" as const, entryId: r.entryId, partTitle: r.part.partTitle }
+      : {
+          kind: "chapter" as const,
+          entryId: r.entryId,
+          articleId: r.chapter.articleId,
+          articleSlug: r.chapter.articleSlug,
+          articleTitle: r.chapter.articleTitle,
+          partTitle: r.chapter.partTitle,
+          isInternal: r.chapter.isInternal,
+          isExternal:
+            r.chapter.articlePublisherSlug !== null &&
+            r.chapter.articlePublisherSlug !== publisherSlug,
+          articlePublisherSlug: r.chapter.articlePublisherSlug,
+          booksCount: bookCountByArticle.get(r.chapter.articleId) ?? 1,
+        }
   );
 
   // Articles available to add (non-internal, non-deleted, owned by this publisher)
@@ -262,211 +283,16 @@ export default async function EditBookPage({
       <section className="mt-10 border-t pt-8">
         <h2 className="text-xl font-semibold themed-heading mb-4">Chapters</h2>
 
-        {rows.length === 0 ? (
-          <p className="text-sm themed-muted mb-6">No chapters yet.</p>
-        ) : (
-          <ol className="space-y-2 mb-6">
-            {rows.map((row, idx) => {
-              const entryIds = rows.map((r) => r.entryId);
-              const swapUp =
-                idx > 0
-                  ? [
-                      ...entryIds.slice(0, idx - 1),
-                      entryIds[idx],
-                      entryIds[idx - 1],
-                      ...entryIds.slice(idx + 1),
-                    ]
-                  : entryIds;
-              const swapDown =
-                idx < rows.length - 1
-                  ? [
-                      ...entryIds.slice(0, idx),
-                      entryIds[idx + 1],
-                      entryIds[idx],
-                      ...entryIds.slice(idx + 2),
-                    ]
-                  : entryIds;
-
-              if (row.kind === "part") {
-                return (
-                  <li key={row.entryId} className="flex items-center gap-2 p-3 border rounded themed-surface border-dashed">
-                    <span className="text-sm themed-muted w-6 shrink-0">&sect;</span>
-                    <form action={renamePartAction} className="flex-1 min-w-0 flex items-center gap-2">
-                      <input type="hidden" name="entryId" value={row.entryId} />
-                      <input type="hidden" name="bookId" value={bookRow.id} />
-                      <input
-                        name="title"
-                        type="text"
-                        required
-                        maxLength={200}
-                        defaultValue={row.part.partTitle ?? ""}
-                        className="themed-input text-sm flex-1 min-w-0 font-medium"
-                        aria-label="Part title"
-                      />
-                      <button type="submit" className="themed-btn-ghost text-xs px-2 py-1">Rename</button>
-                    </form>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {idx > 0 && (
-                        <form action={reorder}>
-                          <input type="hidden" name="bookId" value={bookRow.id} />
-                          <input type="hidden" name="orderedIds" value={JSON.stringify(swapUp)} />
-                          <button type="submit" className="themed-btn-ghost text-xs px-2 py-1" title="Move up">&uarr;</button>
-                        </form>
-                      )}
-                      {idx < rows.length - 1 && (
-                        <form action={reorder}>
-                          <input type="hidden" name="bookId" value={bookRow.id} />
-                          <input type="hidden" name="orderedIds" value={JSON.stringify(swapDown)} />
-                          <button type="submit" className="themed-btn-ghost text-xs px-2 py-1" title="Move down">&darr;</button>
-                        </form>
-                      )}
-                      <form action={removeChapter}>
-                        <input type="hidden" name="id" value={row.entryId} />
-                        <input type="hidden" name="bookId" value={bookRow.id} />
-                        <button type="submit" className="text-xs text-red-500 hover:text-red-700 px-2 py-1" title="Remove part">
-                          Remove
-                        </button>
-                      </form>
-                    </div>
-                  </li>
-                );
-              }
-
-              const ch = row.chapter;
-              const isExternal =
-                ch.articlePublisherSlug !== null &&
-                ch.articlePublisherSlug !== publisherSlug;
-
-              return (
-                <li
-                  key={ch.entryId}
-                  className={`flex items-center gap-2 p-3 border rounded themed-surface ${
-                    isExternal ? "border-l-4 border-l-blue-500" : ""
-                  }`}
-                >
-                  <span className="text-sm themed-muted w-6 shrink-0">{idx + 1}.</span>
-                  <div className="flex-1 min-w-0">
-                    {ch.partTitle && (
-                      <span className="text-xs themed-muted block">{ch.partTitle}</span>
-                    )}
-                    <span className="text-sm font-medium themed-heading truncate block">
-                      {ch.articleTitle}
-                    </span>
-                    <span className="text-xs themed-muted">{ch.articleSlug}</span>
-                    {ch.isInternal && (
-                      <span className="ml-2 themed-badge">
-                        internal
-                      </span>
-                    )}
-                    {isExternal && (
-                      <span
-                        className="ml-2 text-xs px-1.5 py-0.5 rounded themed-tag"
-                        title={`Borrowed from @${ch.articlePublisherSlug}`}
-                      >
-                        external &middot; By{" "}
-                        <Link
-                          href={`/${ch.articlePublisherSlug}`}
-                          className="themed-link"
-                        >
-                          @{ch.articlePublisherSlug}
-                        </Link>
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {ch.isInternal && (
-                      <form action={makeStandalone}>
-                        <input type="hidden" name="articleId" value={ch.articleId} />
-                        <button
-                          type="submit"
-                          className="themed-btn-ghost text-xs px-2 py-1"
-                          title="Make this a standalone article. It stays a chapter here but also gets its own public URL and appears in listings, search and the sitemap. It will no longer be deleted along with the book."
-                        >
-                          Make standalone
-                        </button>
-                      </form>
-                    )}
-                    {!ch.isInternal &&
-                      !isExternal &&
-                      (bookCountByArticle.get(ch.articleId) ?? 1) === 1 && (
-                        <form action={absorb}>
-                          <input type="hidden" name="articleId" value={ch.articleId} />
-                          <input type="hidden" name="bookId" value={bookRow.id} />
-                          <button
-                            type="submit"
-                            className="themed-btn-ghost text-xs px-2 py-1"
-                            title="Make this article internal to this book. It will be removed from your standalone article list, search and the sitemap, its public /articles URL will stop working, and it will be deleted if this book is deleted."
-                          >
-                            Make internal
-                          </button>
-                        </form>
-                      )}
-                    {!ch.isInternal &&
-                      !isExternal &&
-                      (bookCountByArticle.get(ch.articleId) ?? 1) > 1 && (
-                        <span
-                          className="text-xs themed-muted px-2 py-1"
-                          title="This article is used in other books. Remove it from those books first to make it internal to this one."
-                        >
-                          in {bookCountByArticle.get(ch.articleId)} books
-                        </span>
-                      )}
-                    {idx > 0 && (
-                      <form action={reorder}>
-                        <input type="hidden" name="bookId" value={bookRow.id} />
-                        <input
-                          type="hidden"
-                          name="orderedIds"
-                          value={JSON.stringify(swapUp)}
-                        />
-                        <button type="submit" className="themed-btn-ghost text-xs px-2 py-1">
-                          ↑
-                        </button>
-                      </form>
-                    )}
-                    {idx < chapters.length - 1 && (
-                      <form action={reorder}>
-                        <input type="hidden" name="bookId" value={bookRow.id} />
-                        <input
-                          type="hidden"
-                          name="orderedIds"
-                          value={JSON.stringify(swapDown)}
-                        />
-                        <button type="submit" className="themed-btn-ghost text-xs px-2 py-1">
-                          ↓
-                        </button>
-                      </form>
-                    )}
-                    {isExternal ? (
-                      <form action={removeChapter}>
-                        <input type="hidden" name="id" value={ch.entryId} />
-                        <input type="hidden" name="bookId" value={bookRow.id} />
-                        <button
-                          type="submit"
-                          className="themed-btn-ghost text-xs px-2 py-1 text-blue-500"
-                          title="Remove from this book (the original article is not affected)"
-                        >
-                          Unlink
-                        </button>
-                      </form>
-                    ) : (
-                      <form action={removeChapter}>
-                        <input type="hidden" name="id" value={ch.entryId} />
-                        <input type="hidden" name="bookId" value={bookRow.id} />
-                        <button
-                          type="submit"
-                          className="themed-btn-ghost text-xs px-2 py-1 text-red-500"
-                        >
-                          Remove
-                        </button>
-                      </form>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        )}
+        <CurriculumList
+          key={listRows.map((r) => r.entryId).join("-")}
+          bookId={bookRow.id}
+          rows={listRows}
+          reorder={reorder}
+          removeEntry={removeChapter}
+          renamePart={renamePartAction}
+          makeStandalone={makeStandalone}
+          absorb={absorb}
+        />
 
         {/* Add existing article */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
