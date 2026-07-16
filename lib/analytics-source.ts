@@ -55,7 +55,7 @@ function isMastodonHost(hostname: string): boolean {
  * Classify a raw Referer header value into one of five source categories.
  *
  * @param referrer - The raw Referer header value, or null/empty when absent.
- * @param siteHost - The host of the current site (e.g. "principia-synthesia.com").
+ * @param siteHost - The host of the current site (e.g. "www.principiasynthesia.org").
  *                   Used to detect "internal" referrers.
  */
 export function classifyReferrer(

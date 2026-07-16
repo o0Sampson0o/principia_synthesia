@@ -22,6 +22,7 @@ import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-nu
 import { headers } from "next/headers";
 import { classifyReferrer } from "@/lib/analytics-source";
 import { getOrCreateSessionId } from "@/lib/analytics-session";
+import { config } from "@/lib/config";
 
 export default async function ChapterPage({
   params,
@@ -59,9 +60,7 @@ export default async function ChapterPage({
   if (article.isInternal && article.parentBookId !== bookRow.id) notFound();
 
   {
-    const siteHost = new URL(
-      process.env.NEXT_PUBLIC_SITE_URL ?? "https://principia-synthesia.com"
-    ).host;
+    const siteHost = new URL(config.siteUrl).host;
     const [hdrs, sessionId] = await Promise.all([
       headers(),
       getOrCreateSessionId(),
@@ -132,10 +131,9 @@ export default async function ChapterPage({
         )
         .limit(1);
       if (!citeArticleRow) continue;
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://principia-synthesia.com";
       resolvedCitations.set(citeSlug, {
         title: citeArticleRow.title,
-        href: `${siteUrl}/${citePublisherSlug}/articles/${citeArticleSlug}`,
+        href: `${config.siteUrl}/${citePublisherSlug}/articles/${citeArticleSlug}`,
       });
     }
   }

@@ -12,6 +12,7 @@ import { remarkCallouts } from "@/lib/remark-callouts";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
+import { config } from "@/lib/config";
 import { resolvePublisher } from "@/lib/publisher";
 import { canEditContent } from "@/lib/roles";
 import DynamicAnimation from "@/components/DynamicAnimation";
@@ -81,9 +82,7 @@ export default async function ArticlePage({
 
   // Record view with referrer + anonymous session ID (fire-and-forget; ignore errors)
   {
-    const siteHost = new URL(
-      process.env.NEXT_PUBLIC_SITE_URL ?? "https://principia-synthesia.com"
-    ).host;
+    const siteHost = new URL(config.siteUrl).host;
     const [hdrs, sessionId] = await Promise.all([
       headers(),
       getOrCreateSessionId(),
@@ -130,8 +129,7 @@ export default async function ArticlePage({
   const { metadata, body } = parseFrontmatter(content ?? "");
 
   // Citation input computation
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://principia-synthesia.com";
-  const canonicalUrl = `${siteUrl}/${publisherSlug}/articles/${slug}${versionHash ? `?v=${versionHash}` : ""}`;
+  const canonicalUrl = `${config.siteUrl}/${publisherSlug}/articles/${slug}${versionHash ? `?v=${versionHash}` : ""}`;
   const citationPublishedAt = viewingSnapshot ? viewingSnapshot.publishedAt : (article.updatedAt ?? article.createdAt ?? new Date());
 
   // Staleness computation (server-side, not reactive)
@@ -280,10 +278,9 @@ export default async function ArticlePage({
         .limit(1);
       if (!citeArticleRow) continue;
 
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://principia-synthesia.com";
       resolvedCitations.set(citeSlug, {
         title: citeArticleRow.title,
-        href: `${siteUrl}/${citePublisherSlug}/articles/${citeArticleSlug}`,
+        href: `${config.siteUrl}/${citePublisherSlug}/articles/${citeArticleSlug}`,
       });
     }
   }

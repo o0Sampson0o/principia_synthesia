@@ -9,6 +9,7 @@ import EmailVerificationBannerGate from "@/components/EmailVerificationBannerGat
 import OnboardingTourGate from "@/components/OnboardingTourGate";
 import "./globals.css";
 import { getSession } from "@/lib/auth";
+import { config } from "@/lib/config";
 import { db } from "@/db";
 import { userThemes, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -33,6 +34,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(config.siteUrl),
   title: "Principia Synthesia",
   description: "A personal textbook of everything.",
   verification: {

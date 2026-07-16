@@ -6,8 +6,8 @@ import { requireSession } from "@/lib/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { headers } from "next/headers";
 import { rateLimit } from "@/lib/rate-limit";
+import { config } from "@/lib/config";
 
 export async function resendVerificationEmailAction(): Promise<{ sent: boolean }> {
   const session = await requireSession();
@@ -28,12 +28,7 @@ export async function resendVerificationEmailAction(): Promise<{ sent: boolean }
 
   const rawToken = await createVerificationToken(user.id);
 
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.NODE_ENV === "production"
-      ? "https://principia-synthesia.example"
-      : `http://${(await headers()).get("host") ?? "localhost:3000"}`);
-  const verificationUrl = `${siteUrl}/verify-email/${rawToken}`;
+  const verificationUrl = `${config.siteUrl}/verify-email/${rawToken}`;
 
   await sendEmail({
     to: user.email,

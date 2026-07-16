@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createEventSchema } from "./validations";
+import { config } from "@/lib/config";
 
 // ─── Parsed event shape ───────────────────────────────────────────────────────
 
@@ -190,7 +191,7 @@ export async function fetchWikidata(opts: WikidataFetchOptions): Promise<ParseRe
     const resp = await fetchFn(url, {
       headers: {
         Accept: "application/sparql-results+json",
-        "User-Agent": "PrincipiaSynthesia/1.0 (https://principia-synthesia.app)",
+        "User-Agent": `PrincipiaSynthesia/1.0 (${config.siteUrl})`,
       },
     });
     if (!resp.ok) {

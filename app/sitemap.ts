@@ -2,8 +2,9 @@ import type { MetadataRoute } from "next"
 import { db } from "@/db"
 import { articles, books, publishers, resourceVisibility } from "@/db/schema"
 import { eq, and, sql, isNull, or } from "drizzle-orm"
+import { config } from "@/lib/config"
 
-const BASE_URL = "https://principia-synthesia.vercel.app"
+const BASE_URL = config.siteUrl
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Fetch only public articles

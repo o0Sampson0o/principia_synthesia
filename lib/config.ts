@@ -1,4 +1,6 @@
 export const config = {
+  // Canonical origin, never with a trailing slash — callers append paths directly.
+  siteUrl: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.principiasynthesia.org").replace(/\/+$/, ""),
   features: {
     PDF_EXPORT: process.env.PDF_EXPORT === "true",
     EPUB_EXPORT: process.env.EPUB_EXPORT === "true",

@@ -11,6 +11,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { inviteMemberSchema, cancelInvitationSchema } from "@/lib/validations";
 import { sendEmail, buildInvitationEmailHtml } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
+import { config } from "@/lib/config";
 
 const INVITATION_EXPIRY_DAYS = 7;
 
@@ -94,8 +95,7 @@ export async function inviteMember(
     .where(eq(users.id, session.userId))
     .limit(1);
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const acceptUrl = `${siteUrl}/invitations/${rawToken}`;
+  const acceptUrl = `${config.siteUrl}/invitations/${rawToken}`;
 
   await sendEmail({
     to: email,
@@ -251,8 +251,7 @@ export async function resendInvitation(
     .where(eq(users.id, session.userId))
     .limit(1);
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const acceptUrl = `${siteUrl}/invitations/${rawToken}`;
+  const acceptUrl = `${config.siteUrl}/invitations/${rawToken}`;
 
   await sendEmail({
     to: invitation.email,
