@@ -25,13 +25,15 @@ export type CurriculumRow =
 type ServerAction = (formData: FormData) => Promise<void>;
 
 /**
- * Client-side curriculum list: ↑/↓ reorder instantly in local state; nothing
- * touches the server until "Save order" submits the final arrangement in one
- * call. "Cancel" restores the saved order. All other row actions (rename,
- * remove, absorb, make standalone) stay immediate server actions.
+ * Client-side curriculum list. Row CONTENT always renders from the server
+ * props, so immediate actions (rename, remove, absorb, make standalone)
+ * appear as soon as the server action revalidates. Only the ORDER lives in
+ * local state — as an overlay of entry ids, null while pristine — so ↑/↓ are
+ * instant and free, and nothing is written until "Save order" submits the
+ * final arrangement in one call. "Cancel" drops the overlay.
  *
- * The parent keys this component on the saved entry-id order, so a successful
- * save (or any server-side change) remounts it with fresh, clean state.
+ * The parent keys this component on the saved entry-id order, so a save (or
+ * a server-side add/remove) remounts it with a clean overlay.
  */
 export default function CurriculumList({
   bookId,
@@ -50,17 +52,21 @@ export default function CurriculumList({
   makeStandalone: ServerAction;
   absorb: ServerAction;
 }) {
-  const [rows, setRows] = useState(savedRows);
+  const [orderIds, setOrderIds] = useState<number[] | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const byId = new Map(savedRows.map((r) => [r.entryId, r]));
+  const rows =
+    orderIds === null
+      ? savedRows
+      : (orderIds.map((id) => byId.get(id)).filter(Boolean) as CurriculumRow[]);
 
   const dirty = rows.some((r, i) => r.entryId !== savedRows[i]?.entryId);
 
   function move(idx: number, delta: -1 | 1) {
-    setRows((prev) => {
-      const next = [...prev];
-      [next[idx], next[idx + delta]] = [next[idx + delta], next[idx]];
-      return next;
-    });
+    const next = rows.map((r) => r.entryId);
+    [next[idx], next[idx + delta]] = [next[idx + delta], next[idx]];
+    setOrderIds(next);
   }
 
   function saveOrder() {
@@ -93,7 +99,7 @@ export default function CurriculumList({
           </button>
           <button
             type="button"
-            onClick={() => setRows(savedRows)}
+            onClick={() => setOrderIds(null)}
             disabled={isPending}
             className="themed-btn-ghost text-xs px-3 py-1.5 disabled:opacity-50"
           >
