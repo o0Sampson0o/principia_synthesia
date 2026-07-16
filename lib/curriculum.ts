@@ -1,6 +1,22 @@
 import { db } from "@/db";
-import { curriculumEntries } from "@/db/schema";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { articles, books, curriculumEntries } from "@/db/schema";
+import { and, asc, eq, isNotNull, isNull, notExists, sql } from "drizzle-orm";
+
+/**
+ * SQL condition: the article's parent book, if it has one, is not sitting in
+ * the bin. Internal articles are only reachable through their book, so while
+ * the book is soft-deleted its chapters must be invisible everywhere — the
+ * sync API included — or "binned" and "gone" stop meaning the same thing.
+ * Articles with no parent book always pass.
+ */
+export function parentBookNotBinned() {
+  return notExists(
+    db
+      .select({ one: sql`1` })
+      .from(books)
+      .where(and(eq(books.id, articles.parentBookId), isNotNull(books.deletedAt)))
+  );
+}
 
 /**
  * Stamps standalone part-divider rows (curriculum entries with a NULL

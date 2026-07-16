@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
+import { parentBookNotBinned } from "@/lib/curriculum";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { authorizePublisherRequest } from "@/lib/api-v1";
 import { computeContentHash, createArticleCore } from "@/lib/articles-write";
@@ -48,6 +49,7 @@ export async function GET(
         eq(articles.ownerType, auth.ownerType),
         eq(articles.ownerId, auth.ownerId),
         isNull(articles.deletedAt),
+        parentBookNotBinned(),
         ...(sinceDate ? [gt(articles.updatedAt, sinceDate)] : [])
       )
     )

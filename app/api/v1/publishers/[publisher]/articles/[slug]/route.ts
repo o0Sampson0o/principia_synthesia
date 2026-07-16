@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
+import { parentBookNotBinned } from "@/lib/curriculum";
 import { and, eq, isNull } from "drizzle-orm";
 import {
   authorizePublisherRequest,
@@ -30,7 +31,8 @@ async function findArticle(
         eq(articles.slug, slug),
         eq(articles.ownerType, ownerType),
         eq(articles.ownerId, ownerId),
-        isNull(articles.deletedAt)
+        isNull(articles.deletedAt),
+        parentBookNotBinned()
       )
     )
     .limit(1);
