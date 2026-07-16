@@ -17,6 +17,8 @@ import {
   addExternalArticle,
   promoteArticleToStandalone,
   absorbArticleIntoBook,
+  addPart,
+  renamePart,
 } from "../../actions";
 
 export default async function EditBookPage({
@@ -91,6 +93,19 @@ export default async function EditBookPage({
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 
+  // Standalone part dividers (entries with no article). Merged with chapters
+  // into one position-ordered list so both reorder through the same entryIds.
+  const partDividers = await db
+    .select({ entryId: curriculumEntries.id, position: curriculumEntries.position, partTitle: curriculumEntries.partTitle })
+    .from(curriculumEntries)
+    .where(and(eq(curriculumEntries.bookId, bookRow.id), isNull(curriculumEntries.articleId)))
+    .orderBy(asc(curriculumEntries.position));
+
+  const rows = [
+    ...chapters.map((c) => ({ kind: "chapter" as const, entryId: c.entryId, position: c.position, chapter: c })),
+    ...partDividers.map((d) => ({ kind: "part" as const, entryId: d.entryId, position: d.position, part: d })),
+  ].sort((a, b) => a.position - b.position);
+
   // How many books each chapter's article belongs to. A same-publisher
   // standalone article can only be "absorbed" (made internal) when it lives in
   // exactly one book — this one — otherwise absorbing it would orphan it from
@@ -158,6 +173,16 @@ export default async function EditBookPage({
   async function makeStandalone(formData: FormData): Promise<void> {
     "use server";
     await promoteArticleToStandalone(publisherSlug, formData);
+  }
+
+  async function addPartAction(formData: FormData): Promise<void> {
+    "use server";
+    await addPart(publisherSlug, formData);
+  }
+
+  async function renamePartAction(formData: FormData): Promise<void> {
+    "use server";
+    await renamePart(publisherSlug, formData);
   }
 
   async function absorb(formData: FormData): Promise<void> {
@@ -237,12 +262,12 @@ export default async function EditBookPage({
       <section className="mt-10 border-t pt-8">
         <h2 className="text-xl font-semibold themed-heading mb-4">Chapters</h2>
 
-        {chapters.length === 0 ? (
+        {rows.length === 0 ? (
           <p className="text-sm themed-muted mb-6">No chapters yet.</p>
         ) : (
           <ol className="space-y-2 mb-6">
-            {chapters.map((ch, idx) => {
-              const entryIds = chapters.map((c) => c.entryId);
+            {rows.map((row, idx) => {
+              const entryIds = rows.map((r) => r.entryId);
               const swapUp =
                 idx > 0
                   ? [
@@ -253,7 +278,7 @@ export default async function EditBookPage({
                     ]
                   : entryIds;
               const swapDown =
-                idx < chapters.length - 1
+                idx < rows.length - 1
                   ? [
                       ...entryIds.slice(0, idx),
                       entryIds[idx + 1],
@@ -262,6 +287,52 @@ export default async function EditBookPage({
                     ]
                   : entryIds;
 
+              if (row.kind === "part") {
+                return (
+                  <li key={row.entryId} className="flex items-center gap-2 p-3 border rounded themed-surface border-dashed">
+                    <span className="text-sm themed-muted w-6 shrink-0">&sect;</span>
+                    <form action={renamePartAction} className="flex-1 min-w-0 flex items-center gap-2">
+                      <input type="hidden" name="entryId" value={row.entryId} />
+                      <input type="hidden" name="bookId" value={bookRow.id} />
+                      <input
+                        name="title"
+                        type="text"
+                        required
+                        maxLength={200}
+                        defaultValue={row.part.partTitle ?? ""}
+                        className="themed-input text-sm flex-1 min-w-0 font-medium"
+                        aria-label="Part title"
+                      />
+                      <button type="submit" className="themed-btn-ghost text-xs px-2 py-1">Rename</button>
+                    </form>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {idx > 0 && (
+                        <form action={reorder}>
+                          <input type="hidden" name="bookId" value={bookRow.id} />
+                          <input type="hidden" name="orderedIds" value={JSON.stringify(swapUp)} />
+                          <button type="submit" className="themed-btn-ghost text-xs px-2 py-1" title="Move up">&uarr;</button>
+                        </form>
+                      )}
+                      {idx < rows.length - 1 && (
+                        <form action={reorder}>
+                          <input type="hidden" name="bookId" value={bookRow.id} />
+                          <input type="hidden" name="orderedIds" value={JSON.stringify(swapDown)} />
+                          <button type="submit" className="themed-btn-ghost text-xs px-2 py-1" title="Move down">&darr;</button>
+                        </form>
+                      )}
+                      <form action={removeChapter}>
+                        <input type="hidden" name="id" value={row.entryId} />
+                        <input type="hidden" name="bookId" value={bookRow.id} />
+                        <button type="submit" className="text-xs text-red-500 hover:text-red-700 px-2 py-1" title="Remove part">
+                          Remove
+                        </button>
+                      </form>
+                    </div>
+                  </li>
+                );
+              }
+
+              const ch = row.chapter;
               const isExternal =
                 ch.articlePublisherSlug !== null &&
                 ch.articlePublisherSlug !== publisherSlug;
@@ -403,7 +474,7 @@ export default async function EditBookPage({
             <h3 className="text-sm font-semibold themed-secondary mb-3">Add existing article</h3>
             <form action={addChapter} className="space-y-2">
               <input type="hidden" name="bookId" value={bookRow.id} />
-              <input type="hidden" name="position" value={chapters.length} />
+              <input type="hidden" name="position" value={rows.length} />
               <select name="articleId" required className="themed-input text-sm">
                 <option value="">Select an article…</option>
                 {availableArticles
@@ -414,12 +485,6 @@ export default async function EditBookPage({
                     </option>
                   ))}
               </select>
-              <input
-                name="partTitle"
-                type="text"
-                placeholder="Part title (optional)"
-                className="themed-input text-sm"
-              />
               <button type="submit" className="themed-btn-accent rounded text-sm">
                 Add chapter
               </button>
@@ -432,7 +497,7 @@ export default async function EditBookPage({
             </h3>
             <form action={newInternalArticle} className="space-y-2">
               <input type="hidden" name="bookId" value={bookRow.id} />
-              <input type="hidden" name="position" value={chapters.length} />
+              <input type="hidden" name="position" value={rows.length} />
               <input
                 name="title"
                 type="text"
@@ -451,17 +516,36 @@ export default async function EditBookPage({
                 className="themed-input text-sm"
               />
               <p className="text-xs themed-muted">Must start with &ldquo;article-&rdquo; (e.g. article-intro).</p>
-              <input
-                name="partTitle"
-                type="text"
-                placeholder="Part title (optional)"
-                className="themed-input text-sm"
-              />
               <button type="submit" className="themed-btn-accent rounded text-sm">
                 Create chapter
               </button>
             </form>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <h3 className="text-sm font-semibold themed-secondary mb-3">
+            Add part
+          </h3>
+          <p className="text-xs themed-muted mb-3">
+            A part is a standalone section heading. Chapters listed after it
+            belong to that part until the next one. Reorder it like any chapter.
+          </p>
+          <form action={addPartAction} className="flex gap-2">
+            <input type="hidden" name="bookId" value={bookRow.id} />
+            <input type="hidden" name="position" value={rows.length} />
+            <input
+              name="title"
+              type="text"
+              required
+              maxLength={200}
+              placeholder="Part I: Foundations"
+              className="themed-input text-sm flex-1"
+            />
+            <button type="submit" className="themed-btn-accent rounded text-sm">
+              Add part
+            </button>
+          </form>
         </div>
 
         <div className="mt-6">
@@ -475,7 +559,7 @@ export default async function EditBookPage({
           </p>
           <form action={addExternal} className="space-y-2">
             <input type="hidden" name="bookId" value={bookRow.id} />
-            <input type="hidden" name="position" value={chapters.length} />
+            <input type="hidden" name="position" value={rows.length} />
             <input
               name="targetPublisher"
               type="text"
@@ -490,12 +574,6 @@ export default async function EditBookPage({
               placeholder="article-my-chapter"
               pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
               title="Article slug, e.g. article-intro"
-              className="themed-input text-sm"
-            />
-            <input
-              name="partTitle"
-              type="text"
-              placeholder="Part title (optional)"
               className="themed-input text-sm"
             />
             <button type="submit" className="themed-btn-accent rounded text-sm">

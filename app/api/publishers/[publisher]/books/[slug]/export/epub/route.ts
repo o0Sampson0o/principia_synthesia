@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import { withPartTitles } from "@/lib/curriculum";
 import { articles, books, curriculumEntries, events, publishers, resourceVisibility } from "@/db/schema";
 import { eq, asc, and, isNull, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -56,7 +57,8 @@ export async function GET(
     .from(curriculumEntries)
     .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
     .where(eq(curriculumEntries.bookId, bookRow.id))
-    .orderBy(asc(curriculumEntries.position));
+    .orderBy(asc(curriculumEntries.position))
+    .then((rows) => withPartTitles(rows, bookRow.id));
 
   if (entries.length === 0) return new NextResponse("Book not found", { status: 404 });
 

@@ -2334,6 +2334,16 @@ $$`;
   console.log("    event-maxwells-treatise-1873     → article-maxwells-equations");
   console.log("    event-special-relativity-1905    → article-special-relativity, article-general-relativity");
 
+  // Convert legacy partTitle-on-chapter seed data into first-class part
+  // divider rows (same transform as migration 0020; idempotent because the
+  // final UPDATE leaves no chapter rows carrying a partTitle).
+  await db.execute(sql`UPDATE curriculum_entries SET position = position * 2 + 1 WHERE part_title IS NOT NULL AND article_id IS NOT NULL`);
+  await db.execute(sql`INSERT INTO curriculum_entries (book_id, article_id, position, part_title)
+    SELECT book_id, NULL, position - 1, part_title FROM curriculum_entries
+    WHERE part_title IS NOT NULL AND article_id IS NOT NULL`);
+  await db.execute(sql`UPDATE curriculum_entries SET part_title = NULL WHERE article_id IS NOT NULL`);
+  console.log("  Converted part titles to divider entries");
+
   process.exit(0);
 }
 

@@ -270,7 +270,10 @@ export const curriculumEntries = pgTable(
   {
     id: serial("id").primaryKey(),
     bookId: integer("book_id").notNull().references(() => books.id, { onDelete: "cascade" }),
-    articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+    // NULL articleId marks a part divider: a standalone, reorderable "Part"
+    // heading row whose title lives in partTitle. Chapter rows have an
+    // articleId and (post-migration 0020) a NULL partTitle.
+    articleId: integer("article_id").references(() => articles.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
     partTitle: text("part_title"),
   },

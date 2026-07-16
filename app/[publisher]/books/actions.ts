@@ -27,8 +27,11 @@ import {
   addExternalArticleSchema,
   promoteArticleSchema,
   absorbArticleSchema,
+  addPartSchema,
+  renamePartSchema,
 } from "@/lib/validations";
 import { resolvePublisher } from "@/lib/publisher";
+import { withPartTitles } from "@/lib/curriculum";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -135,7 +138,6 @@ export async function upsertCurriculumEntry(publisherSlug: string, formData: For
     bookId: formData.get("bookId"),
     articleId: formData.get("articleId"),
     position: formData.get("position"),
-    partTitle: formData.get("partTitle") || null,
   });
 
   const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
@@ -172,7 +174,7 @@ export async function upsertCurriculumEntry(publisherSlug: string, formData: For
   if (existing[0]) {
     await db
       .update(curriculumEntries)
-      .set({ position: validated.position, partTitle: validated.partTitle })
+      .set({ position: validated.position })
       .where(eq(curriculumEntries.id, existing[0].id));
   } else {
     await db.insert(curriculumEntries).values(validated);
@@ -194,7 +196,6 @@ export async function addExternalArticle(
     targetPublisher: formData.get("targetPublisher"),
     articleSlug: formData.get("articleSlug"),
     position: formData.get("position"),
-    partTitle: formData.get("partTitle") || null,
   });
 
   // 3a. Verify the book belongs to this publisher.
@@ -270,7 +271,6 @@ export async function addExternalArticle(
     bookId: validated.bookId,
     articleId: article.id,
     position: validated.position,
-    partTitle: validated.partTitle,
   });
 
   // 9. Revalidate book pages.
@@ -299,6 +299,13 @@ export async function removeCurriculumEntry(publisherSlug: string, formData: For
     .limit(1);
 
   if (entry) {
+    if (entry.articleId === null) {
+      // Part divider: nothing else hangs off it, just remove the row.
+      await db.delete(curriculumEntries).where(eq(curriculumEntries.id, validated.id));
+      revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+      revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+      return;
+    }
     const [article] = await db
       .select({ isInternal: articles.isInternal })
       .from(articles)
@@ -349,6 +356,67 @@ export async function reorderChapters(publisherSlug: string, formData: FormData)
 }
 
 // ---------------------------------------------------------------------------
+// Part dividers
+// ---------------------------------------------------------------------------
+
+/**
+ * Adds a standalone part divider (curriculum entry with a NULL articleId) at
+ * the given position — usually the end of the list. Reorderable and removable
+ * exactly like a chapter entry.
+ */
+export async function addPart(publisherSlug: string, formData: FormData) {
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  const validated = addPartSchema.parse({
+    bookId: formData.get("bookId"),
+    title: formData.get("title"),
+    position: formData.get("position"),
+  });
+
+  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
+    .limit(1);
+  if (!book) throw new Error("Book not found");
+
+  await db.insert(curriculumEntries).values({
+    bookId: validated.bookId,
+    articleId: null,
+    position: validated.position,
+    partTitle: validated.title,
+  });
+
+  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+}
+
+export async function renamePart(publisherSlug: string, formData: FormData) {
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  const validated = renamePartSchema.parse({
+    entryId: formData.get("entryId"),
+    bookId: formData.get("bookId"),
+    title: formData.get("title"),
+  });
+
+  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
+    .limit(1);
+  if (!book) throw new Error("Book not found");
+
+  await db
+    .update(curriculumEntries)
+    .set({ partTitle: validated.title })
+    .where(and(
+      eq(curriculumEntries.id, validated.entryId),
+      eq(curriculumEntries.bookId, validated.bookId),
+      isNull(curriculumEntries.articleId)
+    ));
+
+  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+}
+
+// ---------------------------------------------------------------------------
 // Internal articles
 // ---------------------------------------------------------------------------
 
@@ -360,7 +428,6 @@ export async function createInternalArticle(publisherSlug: string, formData: For
     title: formData.get("title"),
     slug: formData.get("slug"),
     position: formData.get("position"),
-    partTitle: formData.get("partTitle") || null,
   });
 
   const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
@@ -390,7 +457,6 @@ export async function createInternalArticle(publisherSlug: string, formData: For
       bookId: validated.bookId,
       articleId: article.id,
       position: validated.position,
-      partTitle: validated.partTitle,
     });
   });
 
@@ -599,7 +665,7 @@ export async function snapshotBook(publisherSlug: string, bookId: number, note?:
     .select({
       position: curriculumEntries.position,
       partTitle: curriculumEntries.partTitle,
-      articleId: curriculumEntries.articleId,
+      articleId: articles.id,
       slug: articles.slug,
       title: articles.title,
       content: articles.content,
@@ -607,7 +673,8 @@ export async function snapshotBook(publisherSlug: string, bookId: number, note?:
     .from(curriculumEntries)
     .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
     .where(eq(curriculumEntries.bookId, bookId))
-    .orderBy(asc(curriculumEntries.position));
+    .orderBy(asc(curriculumEntries.position))
+    .then((rows) => withPartTitles(rows, bookId));
 
   await db.transaction(async (tx) => {
     const [snapshot] = await tx

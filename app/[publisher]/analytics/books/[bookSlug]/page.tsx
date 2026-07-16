@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
+import { withPartTitles } from "@/lib/curriculum";
 import { books, curriculumEntries, articles } from "@/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
@@ -46,7 +47,7 @@ export default async function BookAnalyticsPage({
     .select({
       position: curriculumEntries.position,
       partTitle: curriculumEntries.partTitle,
-      articleId: curriculumEntries.articleId,
+      articleId: articles.id,
       articleSlug: articles.slug,
       articleTitle: articles.title,
       deletedAt: articles.deletedAt,
@@ -59,7 +60,8 @@ export default async function BookAnalyticsPage({
         isNull(articles.deletedAt)
       )
     )
-    .orderBy(curriculumEntries.position);
+    .orderBy(curriculumEntries.position)
+    .then((rows) => withPartTitles(rows, bookRow.id));
 
   const DAYS = 30;
   const dailyViewsPerArticle: DailyViewRow[][] = await Promise.all(

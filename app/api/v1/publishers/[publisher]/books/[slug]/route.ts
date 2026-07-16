@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
+import { withPartTitles } from "@/lib/curriculum";
 import { articles, books, curriculumEntries } from "@/db/schema";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import {
@@ -55,7 +56,8 @@ export async function GET(
       and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt))
     )
     .where(eq(curriculumEntries.bookId, book.id))
-    .orderBy(asc(curriculumEntries.position));
+    .orderBy(asc(curriculumEntries.position))
+    .then((rows) => withPartTitles(rows, book.id));
 
   const structureHash = computeStructureHash(
     chapters.map((c) => ({ articleSlug: c.articleSlug, partTitle: c.partTitle }))

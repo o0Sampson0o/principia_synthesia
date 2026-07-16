@@ -68,6 +68,22 @@ export default async function BookPage({
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 
+  // Standalone part dividers (entries with no article), interleaved with the
+  // chapters by position. Chapter numbering skips them.
+  const partDividers = await db
+    .select({ id: curriculumEntries.id, position: curriculumEntries.position, partTitle: curriculumEntries.partTitle })
+    .from(curriculumEntries)
+    .where(and(eq(curriculumEntries.bookId, bookRow.id), isNull(curriculumEntries.articleId)))
+    .orderBy(asc(curriculumEntries.position));
+
+  let chapterNo = 0;
+  const listing = [
+    ...entries.map((e) => ({ kind: "chapter" as const, position: e.position, entry: e })),
+    ...partDividers.map((d) => ({ kind: "part" as const, position: d.position, part: d })),
+  ]
+    .sort((a, b) => a.position - b.position)
+    .map((item) => (item.kind === "chapter" ? { ...item, no: ++chapterNo } : item));
+
   return (
     <main className="w-full max-w-4xl mx-auto px-5 py-12 sm:py-16">
 
@@ -118,11 +134,19 @@ export default async function BookPage({
       <hr className="themed-hr" />
 
       {/* ── Chapters ── */}
-      {entries.length === 0 ? (
+      {listing.length === 0 ? (
         <p className="themed-muted mt-8" style={{ fontSize: "0.9375rem" }}>No chapters yet.</p>
       ) : (
         <div className="ps-content-box mt-0 border-t-0 rounded-none rounded-b-lg">
-          {entries.map((e, idx) => {
+          {listing.map((item) => {
+            if (item.kind === "part") {
+              return (
+                <div key={`part-${item.part.id}`} className="ps-content-row">
+                  <p className="ps-eyebrow-muted">{item.part.partTitle}</p>
+                </div>
+              );
+            }
+            const e = item.entry;
             const isExternal = e.articlePublisherSlug !== null && e.articlePublisherSlug !== publisherSlug;
             return (
               <div key={e.id} className="ps-content-row flex-col items-start gap-0.5">
@@ -131,7 +155,7 @@ export default async function BookPage({
                 )}
                 <div className="flex items-baseline gap-3 w-full min-w-0">
                   <span className="tabular-nums shrink-0" style={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>
-                    {String(idx + 1).padStart(2, "0")}
+                    {String(item.no).padStart(2, "0")}
                   </span>
                   <Link href={`/${publisherSlug}/books/${bookSlug}/${e.articleSlug}`} className="ps-list-link flex-1 min-w-0">
                     {e.articleTitle}

@@ -171,7 +171,7 @@ describe("addExternalArticle", () => {
 
     expect(mockInsert).toHaveBeenCalled();
     expect(mockInsertValues).toHaveBeenCalledWith(
-      expect.objectContaining({ bookId: 5, articleId: 7, position: 0, partTitle: null })
+      expect.objectContaining({ bookId: 5, articleId: 7, position: 0 })
     );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/publisher-a/books/book-x");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/publisher-a/books/book-x/edit");

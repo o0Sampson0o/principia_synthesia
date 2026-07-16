@@ -139,7 +139,6 @@ export const upsertCurriculumEntrySchema = z.object({
   bookId: z.coerce.number().int().positive("Invalid book ID"),
   articleId: z.coerce.number().int().positive("Invalid article ID"),
   position: z.coerce.number().int().min(0, "Position must be non-negative"),
-  partTitle: z.string().max(200, "Part title too long").optional().nullable(),
 });
 
 /**
@@ -159,7 +158,6 @@ export const createInternalArticleSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title too long"),
   slug: articleSlugSchema,
   position: z.coerce.number().int().min(0, "Position must be non-negative"),
-  partTitle: z.string().max(200, "Part title too long").optional().nullable(),
 });
 
 /**
@@ -173,7 +171,22 @@ export const addExternalArticleSchema = z.object({
   targetPublisher: publisherSlugSchema,
   articleSlug: articleSlugSchema,
   position: z.coerce.number().int().min(0, "Position must be non-negative"),
-  partTitle: z.string().max(200, "Part title too long").optional().nullable(),
+});
+
+/**
+ * Part dividers: standalone "Part" heading rows in a book's curriculum
+ * (curriculum entries with a NULL articleId).
+ */
+export const addPartSchema = z.object({
+  bookId: z.coerce.number().int().positive("Invalid book ID"),
+  title: z.string().min(1, "Part title is required").max(200, "Part title too long"),
+  position: z.coerce.number().int().min(0, "Position must be non-negative"),
+});
+
+export const renamePartSchema = z.object({
+  entryId: z.coerce.number().int().positive("Invalid entry ID"),
+  bookId: z.coerce.number().int().positive("Invalid book ID"),
+  title: z.string().min(1, "Part title is required").max(200, "Part title too long"),
 });
 
 /**

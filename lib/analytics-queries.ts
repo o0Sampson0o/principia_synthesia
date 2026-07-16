@@ -195,7 +195,9 @@ export async function getPerBookStats(
     .from(curriculumEntries)
     .where(
       sql`${curriculumEntries.bookId} = ANY(ARRAY[${sql.join(bookIds.map((id) => sql`${id}`), sql`, `)}]::int[])`
-    );
+    )
+    // Part dividers carry no article and therefore no stats
+    .then((rows) => rows.filter((r): r is { bookId: number; articleId: number } => r.articleId !== null));
 
   if (entryRows.length === 0) {
     return bookRows.map((b) => ({

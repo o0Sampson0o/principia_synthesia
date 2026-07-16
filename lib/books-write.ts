@@ -93,6 +93,8 @@ export async function loadBookStructure(
     })
     .from(curriculumEntries)
     .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
+    // Part dividers (articleId NULL) are excluded by the inner join and folded
+    // back onto chapters below, so callers keep the legacy chapters shape.
     .where(eq(curriculumEntries.bookId, book.id))
     .orderBy(asc(curriculumEntries.position));
 
@@ -136,12 +138,26 @@ export async function updateBookStructureCore(input: UpdateBookStructureInput): 
   const now = new Date();
 
   await db.transaction(async (tx) => {
-    for (let i = 0; i < input.chapters.length; i++) {
-      const chapter = input.chapters[i];
+    // Dividers are rebuilt wholesale from the pushed structure: drop the
+    // existing ones, then interleave a fresh divider row before each chapter
+    // that starts a part. Chapter entries themselves are only repositioned.
+    await tx
+      .delete(curriculumEntries)
+      .where(and(eq(curriculumEntries.bookId, current.bookId), isNull(curriculumEntries.articleId)));
+    let pos = 0;
+    for (const chapter of input.chapters) {
       const entry = entryBySlug.get(chapter.articleSlug)!;
+      if (chapter.partTitle) {
+        await tx.insert(curriculumEntries).values({
+          bookId: current.bookId,
+          articleId: null,
+          position: pos++,
+          partTitle: chapter.partTitle,
+        });
+      }
       await tx
         .update(curriculumEntries)
-        .set({ position: i, partTitle: chapter.partTitle })
+        .set({ position: pos++, partTitle: null })
         .where(eq(curriculumEntries.id, entry.entryId));
     }
     await tx.update(books).set({ updatedAt: now }).where(eq(books.id, current.bookId));
