@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
 import { books, curriculumEntries, articles, publishers, bookCategories, categories } from "@/db/schema";
-import { eq, and, asc, isNull, or, sql } from "drizzle-orm";
+import { eq, and, asc, isNull, or, sql, inArray } from "drizzle-orm";
 import Link from "next/link";
 import CategoryPicker from "@/components/CategoryPicker";
 import {
@@ -15,6 +15,8 @@ import {
   createInternalArticle,
   reorderChapters,
   addExternalArticle,
+  promoteArticleToStandalone,
+  absorbArticleIntoBook,
 } from "../../actions";
 
 export default async function EditBookPage({
@@ -88,6 +90,26 @@ export default async function EditBookPage({
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 
+  // How many books each chapter's article belongs to. A same-publisher
+  // standalone article can only be "absorbed" (made internal) when it lives in
+  // exactly one book — this one — otherwise absorbing it would orphan it from
+  // its other books.
+  const chapterArticleIds = chapters.map((c) => c.articleId);
+  const bookCounts =
+    chapterArticleIds.length > 0
+      ? await db
+          .select({
+            articleId: curriculumEntries.articleId,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(curriculumEntries)
+          .where(inArray(curriculumEntries.articleId, chapterArticleIds))
+          .groupBy(curriculumEntries.articleId)
+      : [];
+  const bookCountByArticle = new Map(
+    bookCounts.map((r) => [r.articleId, r.count])
+  );
+
   // Articles available to add (non-internal, non-deleted, owned by this publisher)
   const availableArticles = await db
     .select({ id: articles.id, slug: articles.slug, title: articles.title })
@@ -130,6 +152,16 @@ export default async function EditBookPage({
   async function addExternal(formData: FormData): Promise<void> {
     "use server";
     await addExternalArticle(publisherSlug, formData);
+  }
+
+  async function makeStandalone(formData: FormData): Promise<void> {
+    "use server";
+    await promoteArticleToStandalone(publisherSlug, formData);
+  }
+
+  async function absorb(formData: FormData): Promise<void> {
+    "use server";
+    await absorbArticleIntoBook(publisherSlug, formData);
   }
 
   return (
@@ -270,6 +302,43 @@ export default async function EditBookPage({
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    {ch.isInternal && (
+                      <form action={makeStandalone}>
+                        <input type="hidden" name="articleId" value={ch.articleId} />
+                        <button
+                          type="submit"
+                          className="themed-btn-ghost text-xs px-2 py-1"
+                          title="Make this a standalone article. It stays a chapter here but also gets its own public URL and appears in listings, search and the sitemap. It will no longer be deleted along with the book."
+                        >
+                          Make standalone
+                        </button>
+                      </form>
+                    )}
+                    {!ch.isInternal &&
+                      !isExternal &&
+                      (bookCountByArticle.get(ch.articleId) ?? 1) === 1 && (
+                        <form action={absorb}>
+                          <input type="hidden" name="articleId" value={ch.articleId} />
+                          <input type="hidden" name="bookId" value={bookRow.id} />
+                          <button
+                            type="submit"
+                            className="themed-btn-ghost text-xs px-2 py-1"
+                            title="Make this article internal to this book. It will be removed from your standalone article list, search and the sitemap, its public /articles URL will stop working, and it will be deleted if this book is deleted."
+                          >
+                            Make internal
+                          </button>
+                        </form>
+                      )}
+                    {!ch.isInternal &&
+                      !isExternal &&
+                      (bookCountByArticle.get(ch.articleId) ?? 1) > 1 && (
+                        <span
+                          className="text-xs themed-muted px-2 py-1"
+                          title="This article is used in other books. Remove it from those books first to make it internal to this one."
+                        >
+                          in {bookCountByArticle.get(ch.articleId)} books
+                        </span>
+                      )}
                     {idx > 0 && (
                       <form action={reorder}>
                         <input type="hidden" name="bookId" value={bookRow.id} />

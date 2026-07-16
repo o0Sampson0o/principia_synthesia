@@ -176,6 +176,26 @@ export const addExternalArticleSchema = z.object({
   partTitle: z.string().max(200, "Part title too long").optional().nullable(),
 });
 
+/**
+ * Validates form data for promoting an internal (book-only) article into a
+ * standalone article. The article keeps its curriculum entry; only its
+ * `isInternal`/`parentBookId` flags flip.
+ */
+export const promoteArticleSchema = z.object({
+  articleId: z.coerce.number().int().positive("Invalid article ID"),
+});
+
+/**
+ * Validates form data for absorbing a standalone article into a book, making
+ * it an internal (book-only) article owned by that book. Only allowed when the
+ * article is a chapter in exactly one book (the target) owned by the same
+ * publisher — enforced in the server action.
+ */
+export const absorbArticleSchema = z.object({
+  articleId: z.coerce.number().int().positive("Invalid article ID"),
+  bookId: z.coerce.number().int().positive("Invalid book ID"),
+});
+
 // ---------------------------------------------------------------------------
 // Visibility + access grant schemas
 // ---------------------------------------------------------------------------

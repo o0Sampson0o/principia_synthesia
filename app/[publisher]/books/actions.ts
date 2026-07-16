@@ -8,6 +8,7 @@ import {
   bookSnapshots,
   bookSnapshotEntries,
   publishers,
+  resourceVisibility,
 } from "@/db/schema";
 import { eq, asc, and, isNull } from "drizzle-orm";
 import { setContentTags } from "@/lib/content-tags";
@@ -24,6 +25,8 @@ import {
   removeCurriculumEntrySchema,
   createInternalArticleSchema,
   addExternalArticleSchema,
+  promoteArticleSchema,
+  absorbArticleSchema,
 } from "@/lib/validations";
 import { resolvePublisher } from "@/lib/publisher";
 
@@ -385,6 +388,190 @@ export async function createInternalArticle(publisherSlug: string, formData: For
 
   revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
   redirect(`/${publisherSlug}/books/${book.slug}/edit`);
+}
+
+/**
+ * Internal → Standalone. Flips an internal (book-only) article into a
+ * standalone article. The curriculum entry is kept, so it stays a chapter of
+ * the book; it simply also becomes independently addressable at
+ * /:publisher/articles/:slug and shows up in listings, search and the sitemap.
+ *
+ * No slug work is needed: internal and standalone articles already share one
+ * per-publisher slug namespace (unique(ownerType, ownerId, slug)), so the row
+ * keeps its already-unique slug.
+ */
+export async function promoteArticleToStandalone(
+  publisherSlug: string,
+  formData: FormData
+) {
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  const { articleId } = promoteArticleSchema.parse({
+    articleId: formData.get("articleId"),
+  });
+
+  // The article must be internal and owned by this publisher.
+  const [article] = await db
+    .select({
+      id: articles.id,
+      slug: articles.slug,
+      isInternal: articles.isInternal,
+      parentBookId: articles.parentBookId,
+    })
+    .from(articles)
+    .where(
+      and(
+        eq(articles.id, articleId),
+        eq(articles.ownerType, ownerType),
+        eq(articles.ownerId, ownerId)
+      )
+    )
+    .limit(1);
+  if (!article) throw new Error("Article not found");
+  if (!article.isInternal) throw new Error("Article is already standalone");
+
+  // Resolve the parent book (for visibility carry-over + revalidation).
+  const parentBookId = article.parentBookId;
+  const [book] = parentBookId
+    ? await db
+        .select({ id: books.id, slug: books.slug })
+        .from(books)
+        .where(eq(books.id, parentBookId))
+        .limit(1)
+    : [];
+
+  // Flip the flags. The article now stands on its own (no longer
+  // cascade-deletes with the book).
+  await db
+    .update(articles)
+    .set({ isInternal: false, parentBookId: null, updatedAt: new Date() })
+    .where(eq(articles.id, articleId));
+
+  // Carry the book's visibility onto the now-public article so we don't
+  // accidentally expose a chapter of a private/org-only book. Default
+  // (absent row) is public, so we only need to act when the book is restricted.
+  if (book) {
+    const [bookVis] = await db
+      .select({ visibility: resourceVisibility.visibility })
+      .from(resourceVisibility)
+      .where(
+        and(
+          eq(resourceVisibility.resourceType, "book"),
+          eq(resourceVisibility.ownerType, ownerType),
+          eq(resourceVisibility.ownerId, ownerId),
+          eq(resourceVisibility.resourceKey, book.slug)
+        )
+      )
+      .limit(1);
+
+    if (bookVis && bookVis.visibility !== "public") {
+      await db
+        .insert(resourceVisibility)
+        .values({
+          resourceType: "article",
+          ownerType,
+          ownerId,
+          resourceKey: article.slug,
+          visibility: bookVis.visibility,
+        })
+        .onConflictDoUpdate({
+          target: [
+            resourceVisibility.resourceType,
+            resourceVisibility.ownerType,
+            resourceVisibility.ownerId,
+            resourceVisibility.resourceKey,
+          ],
+          set: { visibility: bookVis.visibility, updatedAt: new Date() },
+        });
+    }
+  }
+
+  if (book) {
+    revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+    revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+    revalidatePath(`/${publisherSlug}/books/${book.slug}/${article.slug}`);
+  }
+  revalidatePath(`/${publisherSlug}/articles`);
+  revalidatePath(`/${publisherSlug}/articles/${article.slug}`);
+  revalidatePath(`/${publisherSlug}`);
+}
+
+/**
+ * Standalone → Internal. Absorbs a standalone article into a book, making it an
+ * internal (book-only) article. Only permitted when the article is owned by the
+ * same publisher as the book AND is a chapter in exactly one book (the target).
+ * After this the article disappears from standalone listings/search/sitemap,
+ * its /:publisher/articles/:slug URL 404s, and it cascade-deletes with the book.
+ */
+export async function absorbArticleIntoBook(
+  publisherSlug: string,
+  formData: FormData
+) {
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  const { articleId, bookId } = absorbArticleSchema.parse({
+    articleId: formData.get("articleId"),
+    bookId: formData.get("bookId"),
+  });
+
+  // The target book must belong to this publisher.
+  const [book] = await db
+    .select({ id: books.id, slug: books.slug })
+    .from(books)
+    .where(
+      and(
+        eq(books.id, bookId),
+        eq(books.ownerType, ownerType),
+        eq(books.ownerId, ownerId)
+      )
+    )
+    .limit(1);
+  if (!book) throw new Error("Book not found");
+
+  // The article must be standalone and owned by this publisher (never absorb
+  // another publisher's borrowed article — that would change ownership).
+  const [article] = await db
+    .select({
+      id: articles.id,
+      slug: articles.slug,
+      isInternal: articles.isInternal,
+    })
+    .from(articles)
+    .where(
+      and(
+        eq(articles.id, articleId),
+        eq(articles.ownerType, ownerType),
+        eq(articles.ownerId, ownerId),
+        isNull(articles.deletedAt)
+      )
+    )
+    .limit(1);
+  if (!article) throw new Error("Article not found");
+  if (article.isInternal) throw new Error("Article is already internal");
+
+  // The article must be a chapter in exactly one book, and that book must be
+  // the target. Otherwise absorbing it would orphan it from the other books.
+  const entries = await db
+    .select({ bookId: curriculumEntries.bookId })
+    .from(curriculumEntries)
+    .where(eq(curriculumEntries.articleId, articleId));
+  if (entries.length !== 1 || entries[0].bookId !== bookId) {
+    throw new Error(
+      "This article is used in other books. Remove it from those books before making it internal to this one."
+    );
+  }
+
+  await db
+    .update(articles)
+    .set({ isInternal: true, parentBookId: bookId, updatedAt: new Date() })
+    .where(eq(articles.id, articleId));
+
+  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/${article.slug}`);
+  revalidatePath(`/${publisherSlug}/articles`);
+  revalidatePath(`/${publisherSlug}/articles/${article.slug}`);
+  revalidatePath(`/${publisherSlug}`);
 }
 
 // ---------------------------------------------------------------------------
