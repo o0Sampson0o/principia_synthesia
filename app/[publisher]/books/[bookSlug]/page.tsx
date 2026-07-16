@@ -24,7 +24,7 @@ export default async function BookPage({
   const [bookRow] = await db
     .select()
     .from(books)
-    .where(and(eq(books.slug, bookSlug), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .where(and(eq(books.slug, bookSlug), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
   if (!bookRow) notFound();
 

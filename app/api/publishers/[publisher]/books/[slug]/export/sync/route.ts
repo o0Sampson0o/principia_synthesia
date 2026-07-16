@@ -33,7 +33,7 @@ export async function GET(
   const [bookRow] = await db
     .select({ id: books.id, title: books.title })
     .from(books)
-    .where(and(eq(books.slug, bookSlug), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .where(and(eq(books.slug, bookSlug), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
   if (!bookRow) return new NextResponse("Not found", { status: 404 });
 

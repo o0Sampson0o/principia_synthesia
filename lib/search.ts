@@ -182,7 +182,7 @@ export async function searchAll(
           and(eq(books.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, books.ownerId))
         )
       )
-      .where(bookConditions.length ? and(...bookConditions) : undefined)
+      .where(and(isNull(books.deletedAt), ...bookConditions))
       .limit(20),
 
     objectConditions.length

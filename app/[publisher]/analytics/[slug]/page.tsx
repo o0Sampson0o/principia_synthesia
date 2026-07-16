@@ -48,7 +48,7 @@ export default async function ArticleAnalyticsPage({
     const [entry] = await db
       .select({ bookSlug: books.slug })
       .from(curriculumEntries)
-      .innerJoin(books, eq(books.id, curriculumEntries.bookId))
+      .innerJoin(books, and(eq(books.id, curriculumEntries.bookId), isNull(books.deletedAt)))
       .where(eq(curriculumEntries.articleId, articleRow.id))
       .limit(1);
     if (entry) {

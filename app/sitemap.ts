@@ -52,7 +52,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       )
     )
     .where(
-      or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
+      and(
+        isNull(books.deletedAt),
+        or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
+      )
     )
 
   // Build publisher slug lookup

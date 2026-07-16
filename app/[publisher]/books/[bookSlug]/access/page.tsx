@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
 import { books, resourceVisibility, accessGrants, users, organizations } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { setBookVisibility, addBookGrant, removeBookGrant } from "./actions";
 
@@ -29,7 +29,7 @@ export default async function BookAccessPage({
   const [book] = await db
     .select({ id: books.id, title: books.title })
     .from(books)
-    .where(and(eq(books.slug, bookSlug), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .where(and(eq(books.slug, bookSlug), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
 
   if (!book) notFound();

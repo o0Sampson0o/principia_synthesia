@@ -34,7 +34,8 @@ export default async function BookAnalyticsPage({
       and(
         eq(books.slug, bookSlug),
         eq(books.ownerType, ownerType),
-        eq(books.ownerId, ownerId)
+        eq(books.ownerId, ownerId),
+        isNull(books.deletedAt)
       )
     )
     .limit(1);

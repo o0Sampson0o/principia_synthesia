@@ -44,7 +44,8 @@ export default async function EditBookPage({
       and(
         eq(books.slug, bookSlug),
         eq(books.ownerType, ownerType),
-        eq(books.ownerId, ownerId)
+        eq(books.ownerId, ownerId),
+        isNull(books.deletedAt)
       )
     )
     .limit(1);
@@ -507,8 +508,8 @@ export default async function EditBookPage({
       <section className="mt-12 border-t border-red-200 pt-8">
         <h2 className="text-lg font-semibold text-red-600 mb-2">Danger zone</h2>
         <p className="text-sm themed-muted mb-4">
-          Deleting a book is permanent and cannot be undone. All curriculum entries and internal
-          articles will be removed.
+          Deleting a book moves it to the bin for 30 days, then it is permanently removed
+          along with its curriculum entries and internal articles.
         </p>
         <form action={deleteBook.bind(null, publisherSlug)}>
           <input type="hidden" name="bookId" value={bookRow.id} />

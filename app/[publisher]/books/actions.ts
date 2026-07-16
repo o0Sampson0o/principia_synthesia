@@ -70,10 +70,18 @@ export async function deleteBook(publisherSlug: string, formData: FormData) {
 
   const validated = deleteBookSchema.parse({ bookId: formData.get("bookId") });
 
-  // Cascade deletes: curriculumEntries, bookSnapshots, pdfCaches, internal articles
-  await db.delete(books).where(
-    and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId))
-  );
+  // Soft delete: stamping deletedAt hides the book (and with it every chapter,
+  // snapshot and curriculum entry, which are only reachable through it) while
+  // keeping all rows intact for restore from the bin. The real DELETE — whose
+  // FK cascades take curriculumEntries, bookSnapshots, pdfCaches and internal
+  // articles with it — happens in the prune cron after 30 days, or via
+  // "Delete forever" in the bin.
+  await db
+    .update(books)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId))
+    );
 
   revalidatePath(`/${publisherSlug}`);
   redirect(`/${publisherSlug}`);
@@ -106,7 +114,7 @@ export async function updateBook(publisherSlug: string, formData: FormData) {
       summary: validated.summary,
       updatedAt: new Date()
     })
-    .where(and(eq(books.id, validated.id), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)));
+    .where(and(eq(books.id, validated.id), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)));
 
   await setContentTags("book", validated.id, categorySlugs, session.userId);
 
@@ -131,7 +139,7 @@ export async function upsertCurriculumEntry(publisherSlug: string, formData: For
   });
 
   const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
   if (!book) throw new Error("Book not found");
 
@@ -191,7 +199,7 @@ export async function addExternalArticle(
 
   // 3a. Verify the book belongs to this publisher.
   const [ownedBook] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
   if (!ownedBook) throw new Error("Book not found");
 
@@ -279,7 +287,7 @@ export async function removeCurriculumEntry(publisherSlug: string, formData: For
   });
 
   const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
   if (!book) throw new Error("Book not found");
 
@@ -316,7 +324,7 @@ export async function reorderCurriculumEntries(
   const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .where(and(eq(books.id, bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
   if (!book) throw new Error("Book not found");
 
@@ -356,7 +364,7 @@ export async function createInternalArticle(publisherSlug: string, formData: For
   });
 
   const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
   if (!book) throw new Error("Book not found");
 
@@ -522,7 +530,8 @@ export async function absorbArticleIntoBook(
       and(
         eq(books.id, bookId),
         eq(books.ownerType, ownerType),
-        eq(books.ownerId, ownerId)
+        eq(books.ownerId, ownerId),
+        isNull(books.deletedAt)
       )
     )
     .limit(1);
@@ -582,7 +591,7 @@ export async function snapshotBook(publisherSlug: string, bookId: number, note?:
   const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .where(and(eq(books.id, bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
   if (!book) throw new Error("Book not found");
 

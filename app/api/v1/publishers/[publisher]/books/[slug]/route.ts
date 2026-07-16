@@ -33,7 +33,7 @@ export async function GET(
     .select({ id: books.id, slug: books.slug, title: books.title, summary: books.summary })
     .from(books)
     .where(
-      and(eq(books.slug, slug), eq(books.ownerType, auth.ownerType), eq(books.ownerId, auth.ownerId))
+      and(eq(books.slug, slug), eq(books.ownerType, auth.ownerType), eq(books.ownerId, auth.ownerId), isNull(books.deletedAt))
     )
     .limit(1);
   if (!book) {

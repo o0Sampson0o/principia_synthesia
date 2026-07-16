@@ -127,6 +127,7 @@ export const books = pgTable(
       .notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   (t) => [
     unique().on(t.ownerType, t.ownerId, t.slug),

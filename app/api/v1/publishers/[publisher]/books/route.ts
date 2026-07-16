@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { books } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { authorizePublisherRequest } from "@/lib/api-v1";
 
 /**
@@ -26,7 +26,7 @@ export async function GET(
       updatedAt: books.updatedAt,
     })
     .from(books)
-    .where(and(eq(books.ownerType, auth.ownerType), eq(books.ownerId, auth.ownerId)))
+    .where(and(eq(books.ownerType, auth.ownerType), eq(books.ownerId, auth.ownerId), isNull(books.deletedAt)))
     .orderBy(books.slug);
 
   return NextResponse.json({ books: rows });

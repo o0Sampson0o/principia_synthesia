@@ -183,7 +183,7 @@ export async function getPerBookStats(
   const bookRows = await db
     .select({ id: books.id, slug: books.slug, title: books.title })
     .from(books)
-    .where(and(eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)));
+    .where(and(eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)));
 
   if (bookRows.length === 0) return [];
 

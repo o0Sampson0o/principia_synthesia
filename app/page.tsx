@@ -36,7 +36,7 @@ export default async function HomePage() {
         and(eq(articles.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
       )
     )
-    .leftJoin(books, eq(books.id, articles.parentBookId))
+    .leftJoin(books, and(eq(books.id, articles.parentBookId), isNull(books.deletedAt)))
     .where(
       and(
         sql`${articles.metadata}->>'status' = 'published'`,

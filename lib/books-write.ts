@@ -79,7 +79,7 @@ export async function loadBookStructure(
   const [book] = await db
     .select({ id: books.id, updatedAt: books.updatedAt })
     .from(books)
-    .where(and(eq(books.slug, bookSlug), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId)))
+    .where(and(eq(books.slug, bookSlug), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
   if (!book) return null;
 
