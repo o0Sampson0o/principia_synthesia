@@ -5,6 +5,8 @@ import { Component, ReactNode } from "react";
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  /** Show the technical error message (editors only — readers get calm copy). */
+  showDetails?: boolean;
 }
 
 interface State {
@@ -30,18 +32,24 @@ export default class MdxErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback || (
-          <div className="border border-red-200 dark:border-red-800 rounded-lg p-4 bg-red-50 bg-opacity-50 dark:bg-red-950 dark:bg-opacity-10">
-            <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">
-              Failed to render content
+          <div className="themed-surface border themed-border rounded-lg px-4 py-3 text-sm">
+            <p className="mb-1 ps-mono-micro" style={{ color: "var(--color-error)" }}>
+              Display error
             </p>
-            <details>
-              <summary className="text-xs themed-muted cursor-pointer themed-hover-foreground">
-                Error details
-              </summary>
-              <pre className="mt-2 text-xs text-red-500 dark:text-red-400 whitespace-pre-wrap font-mono">
-                {this.state.error?.message}
-              </pre>
-            </details>
+            <p className="themed-secondary">
+              This article&rsquo;s content couldn&rsquo;t be displayed — its source contains a
+              formatting error. The rest of the page still works.
+            </p>
+            {this.props.showDetails && (
+              <details className="mt-2">
+                <summary className="text-xs themed-muted cursor-pointer themed-hover-foreground">
+                  Technical details (visible to editors only)
+                </summary>
+                <pre className="mt-2 text-xs themed-muted whitespace-pre-wrap font-mono">
+                  {this.state.error?.message}
+                </pre>
+              </details>
+            )}
           </div>
         )
       );

@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import { formatDate } from "@/lib/format-date";
 import { events, eventArticles, publishers } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import Link from "next/link";
@@ -52,11 +53,7 @@ export default async function RelatedEvents({
             </Link>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs themed-muted">
-                {new Date(e.eventDate).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                {formatDate(e.eventDate)}
               </span>
               {e.category && <span className="themed-tag text-xs">{e.category}</span>}
             </div>

@@ -25,7 +25,8 @@ export default function Cite({ number, resolvedHref, resolvedTitle }: Props) {
       <sup
         title="Cited article not found"
         className="font-mono text-xs"
-        style={{ color: "var(--color-warning)" }}
+        // Mixed toward ink so the tiny superscript clears AA contrast
+        style={{ color: "color-mix(in srgb, var(--color-warning) 70%, var(--foreground))" }}
       >
         <span className="sr-only">Cited article not found</span>
         <span aria-hidden="true">[?]</span>

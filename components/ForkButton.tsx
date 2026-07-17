@@ -20,7 +20,11 @@ function SubmitButton() {
       disabled={pending}
       title={FORK_HINT}
       className="ps-quiet-action disabled:opacity-50"
-      style={{ fontSize: "0.8125rem" }}
+      onClick={(e) => {
+        // The consequence must be visible, not tooltip-only: forking
+        // immediately creates an article under the reader's name.
+        if (!window.confirm(`Fork this article? ${FORK_HINT}.`)) e.preventDefault();
+      }}
     >
       {pending ? "Forking…" : "Fork"}
     </button>
@@ -40,7 +44,6 @@ export default function ForkButton({
         href={`/login?redirect=${encodeURIComponent(articlePath)}`}
         title={`${FORK_HINT} — requires signing in`}
         className="ps-quiet-action inline-block"
-        style={{ fontSize: "0.8125rem" }}
       >
         Fork
       </Link>

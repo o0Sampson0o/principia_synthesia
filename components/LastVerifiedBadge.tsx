@@ -1,3 +1,5 @@
+import { formatDate } from "@/lib/format-date";
+
 type BadgeProps = {
   lastVerifiedAt: Date | null;
   isPublished: boolean;
@@ -11,11 +13,7 @@ type BadgeProps = {
 export default function LastVerifiedBadge({ lastVerifiedAt, isPublished }: BadgeProps) {
   if (!isPublished || !lastVerifiedAt) return null;
 
-  const formatted = new Date(lastVerifiedAt).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const formatted = formatDate(lastVerifiedAt);
 
   return <span className="themed-muted ps-mono-meta">verified {formatted}</span>;
 }

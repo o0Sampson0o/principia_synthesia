@@ -11,6 +11,8 @@ interface ArticleMetadataDisplayProps {
   metadata: ArticleMetadata;
   categories?: Category[];
   publisherSlug?: string;
+  /** The header summary, when one rendered — a duplicate description is suppressed. */
+  renderedSummary?: string | null;
 }
 
 /**
@@ -21,8 +23,11 @@ interface ArticleMetadataDisplayProps {
 export default function ArticleMetadataDisplay({
   metadata,
   categories = [],
+  renderedSummary = null,
 }: ArticleMetadataDisplayProps) {
-  const showDescription = metadata.description.trim().length > 0;
+  const showDescription =
+    metadata.description.trim().length > 0 &&
+    metadata.description.trim() !== renderedSummary?.trim();
   const showStatus = metadata.status !== "published";
   const showTags = categories.length > 0;
 
@@ -31,16 +36,7 @@ export default function ArticleMetadataDisplay({
   return (
     <div className="mt-4 space-y-3">
       {showStatus && (
-        <span
-          className="inline-block themed-muted ps-mono-micro"
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: "9999px",
-            padding: "0.125rem 0.5rem",
-          }}
-        >
-          {metadata.status}
-        </span>
+        <span className="themed-muted ps-mono-micro ps-status-pill">{metadata.status}</span>
       )}
       {showDescription && (
         <p className="text-sm themed-muted">{metadata.description}</p>

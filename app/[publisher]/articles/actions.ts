@@ -25,6 +25,7 @@ import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
 import rehypeKatex from "rehype-katex";
+import rehypeSlug from "rehype-slug";
 import rehypeStringify from "rehype-stringify";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import { remarkCallouts } from "@/lib/remark-callouts";
@@ -47,6 +48,7 @@ export async function previewMdx(
       .use(remarkQuoteAttribution)
       .use(remarkWikilinks)
       .use(remarkRehype, { allowDangerousHtml: true })
+      .use(rehypeSlug)
       .use(rehypeKatex)
       .use(rehypeStringify, { allowDangerousHtml: true })
       .process(source);

@@ -424,7 +424,11 @@ body {
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
-.markdown-content h2 {
+/* .md-h2-demoted / .md-h3-demoted: authored ##/### render one element
+   lower (h3/h4) to keep the outline correct under the .md-h1 demotion,
+   with these classes preserving their original visual scale. */
+.markdown-content h2,
+.markdown-content .md-h2-demoted {
   font-family: var(--font-playfair), Georgia, serif;
   font-size: clamp(1.5rem, 2.5vw, 1.625rem); /* floor: Playfair Threshold */
   font-weight: 500;
@@ -434,7 +438,8 @@ body {
   margin-top: 2.25em;
   margin-bottom: 0.5em;
 }
-.markdown-content h3 {
+.markdown-content h3:not(.md-h2-demoted),
+.markdown-content .md-h3-demoted {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   font-size: 1.0625rem;
   font-weight: 600;
@@ -444,7 +449,7 @@ body {
   margin-top: 2em;
   margin-bottom: 0.4em;
 }
-.markdown-content h4 {
+.markdown-content h4:not(.md-h3-demoted) {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   font-size: 0.875rem;
   font-weight: 600;
@@ -454,6 +459,62 @@ body {
   margin-top: 1.75em;
   margin-bottom: 0.4em;
 }
+
+/* ─── Section anchors + table of contents ────────────────────────── */
+/* Quiet "§" self-link on each heading; revealed on hover or focus. */
+.markdown-content [id] { scroll-margin-top: 5rem; }
+.md-anchor {
+  margin-left: 0.4em;
+  font-size: 0.75em;
+  font-weight: 400;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+:is(h2, h3, h4):hover > .md-anchor,
+.md-anchor:focus-visible {
+  opacity: 0.6;
+}
+.md-anchor:hover { opacity: 1; }
+
+/* Collapsible contents block above the prose */
+.md-toc {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0;
+  margin-bottom: 2.5rem;
+}
+.md-toc summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.md-toc summary::-webkit-details-marker { display: none; }
+.md-toc summary::after {
+  content: "+";
+  color: var(--muted-foreground);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+}
+.md-toc[open] summary::after { content: "−"; }
+.md-toc ol {
+  list-style: none;
+  margin: 0.75rem 0 0.25rem;
+  padding: 0;
+}
+.md-toc li { margin: 0.35rem 0; }
+.md-toc a {
+  color: var(--secondary-text);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 0.15s;
+}
+.md-toc a:hover { color: var(--foreground); }
+.md-toc [data-depth="2"] { padding-left: 1.25rem; }
+.md-toc [data-depth="3"] { padding-left: 2.5rem; }
 
 /* Body */
 .markdown-content p {
@@ -1516,6 +1577,14 @@ body::-webkit-scrollbar-corner,
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+/* Status pill — compose with .ps-mono-micro for the type treatment */
+.ps-status-pill {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
 }
 
 /* ─── Quiet text action with a real touch target ─────────────────── */

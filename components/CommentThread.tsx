@@ -7,6 +7,7 @@ import { GUEST_EDIT_WINDOW_MS, getGuestTokenHash } from "@/lib/comments";
 import { buildTree, pruneDeleted, type TreeNode } from "@/lib/comment-tree";
 import { createComment, deleteComment, editComment } from "@/app/[publisher]/comments/actions";
 import type { CommentSubject } from "@/lib/validations";
+import { formatDate } from "@/lib/format-date";
 import CommentForm from "./CommentForm";
 import ConfirmButton from "./ConfirmButton";
 import SectionHeader from "./SectionHeader";
@@ -45,9 +46,6 @@ interface Props {
   session: SessionPayload | null;
 }
 
-function formatDate(d: Date): string {
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
 
 // ---------------------------------------------------------------------------
 // CommentNode sub-component
@@ -87,14 +85,7 @@ function CommentNodeView({
               {node.updatedAt.getTime() !== node.createdAt.getTime() && <span> · edited</span>}
             </span>
             {node.isPending && (
-              <span
-                className="themed-muted ps-mono-micro"
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: "9999px",
-                  padding: "0.125rem 0.5rem",
-                }}
-              >
+              <span className="themed-muted ps-mono-micro ps-status-pill">
                 awaiting moderation
               </span>
             )}

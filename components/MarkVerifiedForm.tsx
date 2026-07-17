@@ -10,7 +10,6 @@ function SubmitButton() {
       type="submit"
       disabled={pending}
       className="ps-quiet-action"
-      style={{ fontSize: "0.8125rem" }}
       onClick={(e) => {
         // Stamps a public "last verified" date — confirm before it fires.
         if (!window.confirm("Mark this article as verified today?")) e.preventDefault();

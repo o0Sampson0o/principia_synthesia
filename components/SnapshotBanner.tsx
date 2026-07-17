@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatDate } from "@/lib/format-date";
 
 type Props = {
   publisherSlug: string;
@@ -13,11 +14,7 @@ export default function SnapshotBanner({
   shortHash,
   publishedAt,
 }: Props) {
-  const formatted = new Date(publishedAt).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  const formatted = formatDate(publishedAt);
 
   return (
     <div role="status" className="mb-6 themed-surface border themed-border rounded-lg px-4 py-3 text-sm">

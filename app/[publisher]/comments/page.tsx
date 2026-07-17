@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { formatDate } from "@/lib/format-date";
 import Link from "next/link";
 import { db } from "@/db";
 import { articles, books, comments } from "@/db/schema";
@@ -24,12 +25,6 @@ interface QueueRow {
   subjectTitle: string;
   subjectHref: string | null;
 }
-
-const monoMeta = {
-  fontSize: "0.6875rem",
-  fontFamily: "ui-monospace, monospace",
-  letterSpacing: "0.05em",
-} as const;
 
 // ---------------------------------------------------------------------------
 // Moderation queue (publisher editors only)
@@ -157,17 +152,7 @@ export default async function CommentsModerationPage({
           >
             {pendingCount}
           </p>
-          <p
-            className="themed-muted mt-1"
-            style={{
-              fontSize: "0.5625rem",
-              fontFamily: "ui-monospace, monospace",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-            }}
-          >
-            awaiting review
-          </p>
+          <p className="themed-muted mt-1 ps-mono-micro">awaiting review</p>
         </div>
       </div>
 
@@ -203,9 +188,7 @@ export default async function CommentsModerationPage({
       {/* ── Queue ────────────────────────────────────────────────── */}
       <div className="flex items-baseline justify-between pb-3 border-b themed-border mb-2">
         <p className="ps-eyebrow-muted">Review queue</p>
-        <span className="themed-muted" style={monoMeta}>
-          {rows.length}
-        </span>
+        <span className="themed-muted ps-mono-meta">{rows.length}</span>
       </div>
 
       {rows.length === 0 ? (
@@ -226,22 +209,10 @@ export default async function CommentsModerationPage({
                 {/* Meta line */}
                 <div className="flex items-baseline gap-x-3 gap-y-1 flex-wrap">
                   <span className="text-sm font-medium themed-heading">{row.authorName}</span>
-                  <span className="themed-muted" style={monoMeta}>
-                    {row.createdAt.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
+                  <span className="themed-muted ps-mono-meta">{formatDate(row.createdAt)}</span>
                   <span
+                    className="ps-mono-micro ps-status-pill"
                     style={{
-                      ...monoMeta,
-                      fontSize: "0.5625rem",
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      border: "1px solid var(--border)",
-                      borderRadius: "9999px",
-                      padding: "0.125rem 0.5rem",
                       color:
                         row.status === "spam" ? "var(--color-error)" : "var(--muted-foreground)",
                     }}

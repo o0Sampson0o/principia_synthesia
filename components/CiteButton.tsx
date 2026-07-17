@@ -15,7 +15,6 @@ export default function CiteButton(props: Props) {
         type="button"
         onClick={() => setOpen(true)}
         className="ps-quiet-action"
-        style={{ fontSize: "0.8125rem" }}
       >
         Cite
       </button>

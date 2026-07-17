@@ -11,6 +11,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
+import rehypeSlug from "rehype-slug";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import { remarkCallouts } from "@/lib/remark-callouts";
 import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
@@ -26,7 +27,9 @@ import { classifyReferrer } from "@/lib/analytics-source";
 import { getOrCreateSessionId } from "@/lib/analytics-session";
 import { config } from "@/lib/config";
 import CommentThread from "@/components/CommentThread";
-import MdH1 from "@/components/MdH1";
+import { MdH1, MdH2, MdH3 } from "@/components/MdHeadings";
+import ArticleToc from "@/components/ArticleToc";
+import { extractToc } from "@/lib/article-toc";
 
 export default async function ChapterPage({
   params,
@@ -105,6 +108,7 @@ export default async function ChapterPage({
   const nextSlug = currentIdx < allEntries.length - 1 ? allEntries[currentIdx + 1].articleSlug : null;
 
   const { metadata, body } = parseFrontmatter(article.content ?? "");
+  const toc = extractToc(body);
 
   const { slugToNumber, orderedSlugs } = buildCitationIndex(body);
   const resolvedCitations = new Map<string, ResolvedCitation>();
@@ -227,16 +231,17 @@ export default async function ChapterPage({
 
       {/* ── Prose ────────────────────────────────────────────────── */}
       <div className="max-w-3xl mx-auto px-5 py-10 sm:py-14">
+        <ArticleToc entries={toc} />
         <div className="markdown-content">
           <MDXRemote
             source={renderedBody}
             options={{
               mdxOptions: {
                 remarkPlugins: [remarkMath, remarkGfm, remarkCallouts, remarkQuoteAttribution, remarkWikilinks, [remarkCiteNumbering, { slugToNumber, resolved: resolvedCitations }]],
-                rehypePlugins: [rehypeKatex],
+                rehypePlugins: [rehypeSlug, rehypeKatex],
               },
             }}
-            components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite, h1: MdH1 }}
+            components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite, h1: MdH1, h2: MdH2, h3: MdH3 }}
           />
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import { formatDate } from "@/lib/format-date";
 import { articles, categories, articleCategories, articleViews, publishers, users } from "@/db/schema";
 import { eq, and, desc, isNull, inArray, or, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -9,6 +10,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
+import rehypeSlug from "rehype-slug";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import { remarkCallouts } from "@/lib/remark-callouts";
 import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
@@ -37,8 +39,10 @@ import ForksList from "@/components/ForksList";
 import Cite from "@/components/Cite";
 import BibliographySection from "@/components/BibliographySection";
 import CommentThread from "@/components/CommentThread";
-import MdH1 from "@/components/MdH1";
+import { MdH1, MdH2, MdH3 } from "@/components/MdHeadings";
 import MdxErrorBoundary from "@/components/MdxErrorBoundary";
+import ArticleToc from "@/components/ArticleToc";
+import { extractToc } from "@/lib/article-toc";
 import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
 import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-numbering";
 
@@ -175,6 +179,7 @@ export default async function ArticlePage({
     updatedAt: article.updatedAt,
   };
   const { metadata, body } = parseFrontmatter(content ?? "");
+  const toc = extractToc(body);
 
   // Citation input computation
   const canonicalUrl = `${config.siteUrl}/${publisherSlug}/articles/${slug}${versionHash ? `?v=${versionHash}` : ""}`;
@@ -397,18 +402,18 @@ export default async function ArticlePage({
           {viewingSnapshot ? (
             // A snapshot has one truthful date: when it was published.
             <span className="ps-meta-item themed-muted ps-mono-meta">
-              {viewingSnapshot.publishedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              {formatDate(viewingSnapshot.publishedAt)}
             </span>
           ) : (
             <>
               {createdAt && (
                 <span className="ps-meta-item themed-muted ps-mono-meta">
-                  {createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  {formatDate(createdAt)}
                 </span>
               )}
               {updatedAt && updatedAt.getTime() !== createdAt?.getTime() && (
                 <span className="ps-meta-item themed-muted ps-mono-meta">
-                  updated {updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  updated {formatDate(updatedAt)}
                 </span>
               )}
               <span className="ps-meta-item">
@@ -430,37 +435,30 @@ export default async function ArticlePage({
             />
           </span>
           {!viewingSnapshot && (
-            <span className="ps-meta-item">
+            // div, not span: ForkButton renders a <form> (flow content)
+            <div className="ps-meta-item">
               <ForkButton
                 sourcePublisherSlug={publisherSlug}
                 sourceArticleSlug={slug}
                 isAuthenticated={!!session}
               />
-            </span>
+            </div>
           )}
           {isEditor && !viewingSnapshot && (
             <>
               <span className="ps-meta-item">
-                <Link
-                  href={`/${publisherSlug}/articles/${slug}/edit`}
-                  className="ps-quiet-action inline-block"
-                  style={{ fontSize: "0.8125rem" }}
-                >
+                <Link href={`/${publisherSlug}/articles/${slug}/edit`} className="ps-quiet-action inline-block">
                   Edit
                 </Link>
               </span>
               <span className="ps-meta-item">
-                <Link
-                  href={`/${publisherSlug}/articles/${slug}/versions`}
-                  className="ps-quiet-action inline-block"
-                  style={{ fontSize: "0.8125rem" }}
-                >
+                <Link href={`/${publisherSlug}/articles/${slug}/versions`} className="ps-quiet-action inline-block">
                   Versions
                 </Link>
               </span>
-              <span className="ps-meta-item">
+              <div className="ps-meta-item">
                 <MarkVerifiedForm publisherSlug={publisherSlug} articleId={article.id} />
-              </span>
+              </div>
             </>
           )}
         </div>
@@ -469,10 +467,11 @@ export default async function ArticlePage({
           metadata={metadata}
           categories={articleCats}
           publisherSlug={publisherSlug}
+          renderedSummary={summary}
         />
       </header>
 
-      {isStale && !viewingSnapshot && <StaleWarningBanner staleMonths={staleMonths} />}
+      {isStale && <StaleWarningBanner staleMonths={staleMonths} />}
 
       {forkSource && (
         <ForkLineageHeader
@@ -483,7 +482,9 @@ export default async function ArticlePage({
         />
       )}
 
-      <MdxErrorBoundary>
+      <ArticleToc entries={toc} />
+
+      <MdxErrorBoundary showDetails={isEditor}>
       <div className="markdown-content">
         <MDXRemote
           source={renderedBody}
@@ -497,10 +498,10 @@ export default async function ArticlePage({
                 remarkWikilinks,
                 [remarkCiteNumbering, { slugToNumber, resolved: resolvedCitations }],
               ],
-              rehypePlugins: [rehypeKatex],
+              rehypePlugins: [rehypeSlug, rehypeKatex],
             },
           }}
-          components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite, h1: MdH1 }}
+          components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite, h1: MdH1, h2: MdH2, h3: MdH3 }}
         />
       </div>
       </MdxErrorBoundary>

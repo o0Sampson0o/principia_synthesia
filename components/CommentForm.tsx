@@ -68,7 +68,21 @@ export default function CommentForm({
   const [open, setOpen] = useState(!compact);
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+
+  // Keyboard users must never lose their place: focus moves into the
+  // textarea when a compact form opens, and back to the trigger on close.
+  // prevOpen guards the initial mount — only user-driven toggles move focus.
+  const prevOpen = useRef(open);
+  useEffect(() => {
+    if (!compact || prevOpen.current === open) return;
+    prevOpen.current = open;
+    const root = containerRef.current;
+    if (!root) return;
+    if (open) root.querySelector("textarea")?.focus();
+    else root.querySelector("button")?.focus();
+  }, [open, compact]);
 
   // Guests posting a new comment supply a display name; remember it locally.
   const needsGuestFields = !session && !isEdit;
@@ -85,9 +99,11 @@ export default function CommentForm({
 
   if (compact && !open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="ps-quiet-action">
-        {isEdit ? "Edit" : "Reply"}
-      </button>
+      <div ref={containerRef} style={{ display: "contents" }}>
+        <button type="button" onClick={() => setOpen(true)} className="ps-quiet-action">
+          {isEdit ? "Edit" : "Reply"}
+        </button>
+      </div>
     );
   }
 
@@ -113,6 +129,7 @@ export default function CommentForm({
   }
 
   return (
+    <div ref={containerRef} style={{ display: "contents" }}>
     <form
       ref={formRef}
       action={handleAction}
@@ -197,5 +214,6 @@ export default function CommentForm({
         )}
       </div>
     </form>
+    </div>
   );
 }
