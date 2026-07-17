@@ -7,6 +7,7 @@ import { GUEST_EDIT_WINDOW_MS, getGuestTokenHash } from "@/lib/comments";
 import { buildTree, pruneDeleted, type TreeNode } from "@/lib/comment-tree";
 import { createComment, deleteComment, editComment } from "@/app/[publisher]/comments/actions";
 import type { CommentSubject } from "@/lib/validations";
+import Link from "next/link";
 import { formatDate } from "@/lib/format-date";
 import CommentForm from "./CommentForm";
 import ConfirmButton from "./ConfirmButton";
@@ -44,6 +45,14 @@ interface Props {
   ownerType: "user" | "org";
   ownerId: number;
   session: SessionPayload | null;
+  /**
+   * Archived-snapshot mode: the thread stays visible (it belongs to the
+   * article, not the version) but composing, replying, editing, and
+   * deleting are disabled; a note points to the live version instead.
+   */
+  readOnly?: boolean;
+  /** Where the live discussion happens; shown in the read-only note. */
+  liveHref?: string;
 }
 
 
@@ -55,6 +64,7 @@ function CommentNodeView({
   node,
   session,
   depth,
+  readOnly,
   boundCreate,
   boundDelete,
   boundEdit,
@@ -62,6 +72,7 @@ function CommentNodeView({
   node: CommentNode;
   session: SessionPayload | null;
   depth: number;
+  readOnly: boolean;
   boundCreate: (formData: FormData) => Promise<void | { error: string }>;
   boundDelete: (formData: FormData) => Promise<void>;
   boundEdit: (formData: FormData) => Promise<void | { error: string }>;
@@ -99,6 +110,7 @@ function CommentNodeView({
           </p>
 
           {/* Quiet action row — always visible (touch devices have no hover) */}
+          {!readOnly && (
           <div className="flex items-center gap-2 mt-1" style={{ fontSize: "0.75rem" }}>
             {depth < 5 && !node.isPending && (
               <CommentForm action={boundCreate} parentId={node.id} session={session} compact />
@@ -125,6 +137,7 @@ function CommentNodeView({
               </form>
             )}
           </div>
+          )}
         </div>
       )}
 
@@ -136,6 +149,7 @@ function CommentNodeView({
               node={reply}
               session={session}
               depth={depth + 1}
+              readOnly={readOnly}
               boundCreate={boundCreate}
               boundDelete={boundDelete}
               boundEdit={boundEdit}
@@ -167,6 +181,8 @@ export default async function CommentThread({
   ownerType,
   ownerId,
   session,
+  readOnly = false,
+  liveHref,
 }: Props) {
   const [isEditor, guestHash] = await Promise.all([
     canEditContent(session, ownerType, ownerId),
@@ -242,15 +258,27 @@ export default async function CommentThread({
         }
       />
 
-      {/* Top-level comment form — guests welcome */}
-      <div className="mt-6">
-        <CommentForm action={boundCreate} session={session} />
-      </div>
+      {readOnly ? (
+        <p className="mt-6 text-sm themed-muted">
+          You are reading an archived version — the discussion continues on the{" "}
+          <Link href={liveHref ?? "#"} className="themed-link">
+            current version
+          </Link>
+          .
+        </p>
+      ) : (
+        /* Top-level comment form — guests welcome */
+        <div className="mt-6">
+          <CommentForm action={boundCreate} session={session} />
+        </div>
+      )}
 
       {tree.length === 0 ? (
-        <p className="mt-8 text-sm italic themed-muted">
-          No comments yet — yours could open the discussion.
-        </p>
+        !readOnly && (
+          <p className="mt-8 text-sm italic themed-muted">
+            No comments yet — yours could open the discussion.
+          </p>
+        )
       ) : (
         <div className="mt-10">
           {tree.map((node, i) => (
@@ -263,6 +291,7 @@ export default async function CommentThread({
                 node={node}
                 session={session}
                 depth={0}
+                readOnly={readOnly}
                 boundCreate={boundCreate}
                 boundDelete={boundDelete}
                 boundEdit={boundEdit}

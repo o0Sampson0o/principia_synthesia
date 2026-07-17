@@ -42,6 +42,7 @@ import CommentThread from "@/components/CommentThread";
 import { MdH1, MdH2, MdH3 } from "@/components/MdHeadings";
 import MdxErrorBoundary from "@/components/MdxErrorBoundary";
 import ArticleToc from "@/components/ArticleToc";
+import ContinueReading from "@/components/ContinueReading";
 import { extractToc } from "@/lib/article-toc";
 import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
 import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-numbering";
@@ -515,6 +516,20 @@ export default async function ArticlePage({
 
       <ForksList forks={forksWithPublisher} totalCount={forksCount} />
 
+      {/* Post-article pathway — live corpus navigation, hidden on archived views */}
+      {!viewingSnapshot && (
+        <Suspense fallback={null}>
+          <ContinueReading
+            articleId={article.id}
+            ownerType={ownerType as "user" | "org"}
+            ownerId={ownerId}
+            publisherSlug={publisherSlug}
+            categoryIds={articleCats.map((c) => c.id)}
+            session={session}
+          />
+        </Suspense>
+      )}
+
       <Suspense fallback={null}>
         <CommentThread
           publisherSlug={publisherSlug}
@@ -523,6 +538,8 @@ export default async function ArticlePage({
           ownerType={ownerType as "user" | "org"}
           ownerId={ownerId}
           session={session}
+          readOnly={!!viewingSnapshot}
+          liveHref={`/${publisherSlug}/articles/${slug}`}
         />
       </Suspense>
 
