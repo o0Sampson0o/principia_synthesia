@@ -1,4 +1,5 @@
 import type { ResolvedCitation } from "@/lib/remark-cite-numbering";
+import SectionHeader from "./SectionHeader";
 
 interface Props {
   orderedSlugs: string[];
@@ -12,11 +13,12 @@ interface Props {
 export default function BibliographySection({ orderedSlugs, resolved }: Props) {
   if (orderedSlugs.length === 0) return null;
 
+  const n = orderedSlugs.length;
   return (
-    <section className="mt-12 pt-6 border-t themed-border" aria-label="Bibliography">
-      <h2 className="text-lg font-semibold mb-4">References</h2>
-      <ol className="list-decimal list-inside space-y-2 text-sm">
-        {orderedSlugs.map((slug, i) => {
+    <section className="mt-16">
+      <SectionHeader title="References" count={`${n} ${n === 1 ? "source" : "sources"}`} />
+      <ol className="list-decimal list-inside space-y-2 text-sm mt-4">
+        {orderedSlugs.map((slug) => {
           const entry = resolved.get(slug);
           return (
             <li key={slug}>
@@ -25,8 +27,10 @@ export default function BibliographySection({ orderedSlugs, resolved }: Props) {
                   {entry.title}
                 </a>
               ) : (
-                <span className="opacity-60 italic">
-                  [{i + 1}] Unknown article: {slug}
+                // Slug only in title (for editors hunting the broken ref);
+                // readers just see that the reference is unavailable.
+                <span className="opacity-60 italic" title={slug}>
+                  Unresolved reference
                 </span>
               )}
             </li>

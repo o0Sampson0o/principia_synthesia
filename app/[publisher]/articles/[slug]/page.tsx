@@ -1,7 +1,9 @@
 import { db } from "@/db";
 import { articles, categories, articleCategories, articleViews, publishers, users } from "@/db/schema";
-import { eq, and, count, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, inArray, or, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { Suspense } from "react";
 import { headers } from "next/headers";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkMath from "remark-math";
@@ -22,7 +24,7 @@ import MdxParagraph from "@/components/MdxParagraph";
 import ArticleMetadataDisplay from "@/components/ArticleMetadata";
 import { parseFrontmatter } from "@/lib/frontmatter";
 import RelatedEvents from "@/components/RelatedEvents";
-import LastVerifiedBadge from "@/components/LastVerifiedBadge";
+import LastVerifiedBadge, { StaleWarningBanner } from "@/components/LastVerifiedBadge";
 import MarkVerifiedForm from "@/components/MarkVerifiedForm";
 import SnapshotBanner from "@/components/SnapshotBanner";
 import { getSnapshotByShortHash } from "@/lib/article-snapshots";
@@ -35,8 +37,52 @@ import ForksList from "@/components/ForksList";
 import Cite from "@/components/Cite";
 import BibliographySection from "@/components/BibliographySection";
 import CommentThread from "@/components/CommentThread";
+import MdH1 from "@/components/MdH1";
+import MdxErrorBoundary from "@/components/MdxErrorBoundary";
 import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
 import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-numbering";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ publisher: string; slug: string }>;
+}): Promise<Metadata> {
+  const { publisher: publisherSlug, slug } = await params;
+
+  const pub = await resolvePublisher(publisherSlug);
+  if (!pub) return {};
+  const ownerType = pub.kind;
+  const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
+
+  const [article] = await db
+    .select({ title: articles.title, summary: articles.summary, isInternal: articles.isInternal })
+    .from(articles)
+    .where(
+      and(
+        eq(articles.slug, slug),
+        eq(articles.ownerType, ownerType),
+        eq(articles.ownerId, ownerId),
+        isNull(articles.deletedAt)
+      )
+    )
+    .limit(1);
+  if (!article || article.isInternal) return {};
+
+  // Same visibility gate as the page — private articles stay untitled.
+  const session = await getSession();
+  if (!(await canView({ type: "article", ownerType, ownerId, slug }, session))) return {};
+
+  const title = `${article.title} — ${pub.displayName}`;
+  const description = article.summary ?? undefined;
+  const url = `${config.siteUrl}/${publisherSlug}/articles/${slug}`;
+
+  return {
+    title: article.title,
+    description,
+    openGraph: { title, description, url, type: "article", siteName: "Principia Synthesia" },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 export default async function ArticlePage({
   params,
@@ -192,97 +238,109 @@ export default async function ArticlePage({
     }
   }
 
-  // Forks list: articles that forked from this article
-  const FORKS_LIMIT = 10;
-  const [forksCountRow, forksRows] = await Promise.all([
-    db
-      .select({ total: count(articles.id) })
-      .from(articles)
-      .where(and(eq(articles.forkedFromId, article.id), isNull(articles.deletedAt))),
-    db
-      .select({
-        id: articles.id,
-        slug: articles.slug,
-        title: articles.title,
-        ownerType: articles.ownerType,
-        ownerId: articles.ownerId,
-      })
-      .from(articles)
-      .where(and(eq(articles.forkedFromId, article.id), isNull(articles.deletedAt)))
-      .orderBy(desc(articles.createdAt))
-      .limit(FORKS_LIMIT),
-  ]);
-  const forksCount = Number(forksCountRow[0]?.total ?? 0);
-
-  // Resolve publisher slugs for forks — batch join via publishers + users
-  const forksWithPublisher: Array<{
-    id: number;
-    slug: string;
-    title: string;
-    publisherSlug: string;
-    authorDisplayName: string;
-  }> = [];
-
-  for (const fork of forksRows) {
-    const [forkPubRow] = await db
-      .select({ slug: publishers.slug, userDisplayName: users.displayName })
-      .from(publishers)
-      .leftJoin(users, eq(publishers.userId, users.id))
-      .where(
-        fork.ownerType === "user"
-          ? eq(publishers.userId, fork.ownerId)
-          : eq(publishers.orgId, fork.ownerId)
+  // Forks list: all articles forked from this one, with their publisher
+  // resolved in the same query (previously an N+1 loop).
+  const forksRows = await db
+    .select({
+      id: articles.id,
+      slug: articles.slug,
+      title: articles.title,
+      publisherSlug: publishers.slug,
+      userDisplayName: users.displayName,
+    })
+    .from(articles)
+    .leftJoin(
+      publishers,
+      or(
+        and(eq(articles.ownerType, sql`'user'`), eq(publishers.userId, articles.ownerId)),
+        and(eq(articles.ownerType, sql`'org'`), eq(publishers.orgId, articles.ownerId))
       )
-      .limit(1);
-    if (forkPubRow) {
-      forksWithPublisher.push({
-        id: fork.id,
-        slug: fork.slug,
-        title: fork.title,
-        publisherSlug: forkPubRow.slug,
-        authorDisplayName: forkPubRow.userDisplayName ?? forkPubRow.slug,
-      });
-    }
-  }
+    )
+    .leftJoin(users, eq(publishers.userId, users.id))
+    .where(and(eq(articles.forkedFromId, article.id), isNull(articles.deletedAt)))
+    .orderBy(desc(articles.createdAt));
 
-  // Build citation index for <Cite> components in the article body
+  const forksWithPublisher = forksRows
+    .filter((f) => f.publisherSlug !== null)
+    .map((f) => ({
+      id: f.id,
+      slug: f.slug,
+      title: f.title,
+      publisherSlug: f.publisherSlug!,
+      authorDisplayName: f.userDisplayName ?? f.publisherSlug!,
+    }));
+  const forksCount = forksWithPublisher.length;
+
+  // Build citation index for <Cite> components in the article body.
+  // Two batched queries total (previously two queries *per* citation).
   const { slugToNumber, orderedSlugs } = buildCitationIndex(body);
   const resolvedCitations = new Map<string, ResolvedCitation>();
   if (orderedSlugs.length > 0) {
-    for (const citeSlug of orderedSlugs) {
-      const slashIdx = citeSlug.indexOf("/");
-      if (slashIdx === -1) continue;
-      const citePublisherSlug = citeSlug.slice(0, slashIdx);
-      const citeArticleSlug = citeSlug.slice(slashIdx + 1);
+    const parsed = orderedSlugs
+      .map((citeSlug) => {
+        const slashIdx = citeSlug.indexOf("/");
+        if (slashIdx === -1) return null;
+        return {
+          citeSlug,
+          publisherSlug: citeSlug.slice(0, slashIdx),
+          articleSlug: citeSlug.slice(slashIdx + 1),
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
 
-      const [citePubRow] = await db
-        .select({ kind: publishers.kind, userId: publishers.userId, orgId: publishers.orgId })
-        .from(publishers)
-        .where(eq(publishers.slug, citePublisherSlug))
-        .limit(1);
-      if (!citePubRow) continue;
+    const pubRows = parsed.length
+      ? await db
+          .select({
+            slug: publishers.slug,
+            kind: publishers.kind,
+            userId: publishers.userId,
+            orgId: publishers.orgId,
+          })
+          .from(publishers)
+          .where(inArray(publishers.slug, [...new Set(parsed.map((p) => p.publisherSlug))]))
+      : [];
+    const pubBySlug = new Map(pubRows.map((p) => [p.slug, p]));
 
-      const citeOwnerType = citePubRow.kind;
-      const citeOwnerId = citeOwnerType === "user" ? citePubRow.userId : citePubRow.orgId;
+    const articleConds = parsed.flatMap((p) => {
+      const citePub = pubBySlug.get(p.publisherSlug);
+      if (!citePub) return [];
+      const citeOwnerId = citePub.kind === "user" ? citePub.userId : citePub.orgId;
+      if (citeOwnerId === null) return [];
+      return [
+        and(
+          eq(articles.ownerType, citePub.kind),
+          eq(articles.ownerId, citeOwnerId),
+          eq(articles.slug, p.articleSlug),
+          isNull(articles.deletedAt)
+        ),
+      ];
+    });
+
+    const citeArticleRows = articleConds.length
+      ? await db
+          .select({
+            ownerType: articles.ownerType,
+            ownerId: articles.ownerId,
+            slug: articles.slug,
+            title: articles.title,
+          })
+          .from(articles)
+          .where(or(...articleConds))
+      : [];
+    const titleByOwnerSlug = new Map(
+      citeArticleRows.map((a) => [`${a.ownerType}:${a.ownerId}:${a.slug}`, a.title])
+    );
+
+    for (const p of parsed) {
+      const citePub = pubBySlug.get(p.publisherSlug);
+      if (!citePub) continue;
+      const citeOwnerId = citePub.kind === "user" ? citePub.userId : citePub.orgId;
       if (citeOwnerId === null) continue;
-
-      const [citeArticleRow] = await db
-        .select({ id: articles.id, title: articles.title })
-        .from(articles)
-        .where(
-          and(
-            eq(articles.ownerType, citeOwnerType),
-            eq(articles.ownerId, citeOwnerId),
-            eq(articles.slug, citeArticleSlug),
-            isNull(articles.deletedAt)
-          )
-        )
-        .limit(1);
-      if (!citeArticleRow) continue;
-
-      resolvedCitations.set(citeSlug, {
-        title: citeArticleRow.title,
-        href: `${config.siteUrl}/${citePublisherSlug}/articles/${citeArticleSlug}`,
+      const title = titleByOwnerSlug.get(`${citePub.kind}:${citeOwnerId}:${p.articleSlug}`);
+      if (title === undefined) continue;
+      resolvedCitations.set(p.citeSlug, {
+        title,
+        href: `${config.siteUrl}/${p.publisherSlug}/articles/${p.articleSlug}`,
       });
     }
   }
@@ -308,13 +366,14 @@ export default async function ArticlePage({
       )}
 
       <header className="mb-10">
-        {/* Breadcrumb */}
-        <Link
-          href={`/${publisherSlug}`}
-          className="ps-eyebrow inline-block mb-6 hover:opacity-70 transition-opacity"
-        >
-          {pub.displayName}
-        </Link>
+        <nav aria-label="Breadcrumb" className="mb-6">
+          <Link
+            href={`/${publisherSlug}`}
+            className="ps-eyebrow inline-block hover:opacity-70 transition-opacity"
+          >
+            {pub.displayName}
+          </Link>
+        </nav>
 
         <h1
           className="ps-display themed-heading mb-5"
@@ -332,61 +391,77 @@ export default async function ArticlePage({
           </p>
         )}
 
-        {/* Meta line */}
-        <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: "0.8125rem" }}>
-          {createdAt && (
-            <span className="themed-muted">
-              {createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+        {/* Meta line — facts first (mono voice), then actions.
+            Dot separators come from .ps-meta-item CSS. */}
+        <div className="ps-meta-row">
+          {viewingSnapshot ? (
+            // A snapshot has one truthful date: when it was published.
+            <span className="ps-meta-item themed-muted ps-mono-meta">
+              {viewingSnapshot.publishedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </span>
-          )}
-          {updatedAt && updatedAt.getTime() !== createdAt?.getTime() && (
+          ) : (
             <>
-              <span className="themed-muted opacity-30">·</span>
-              <span className="themed-muted">
-                Updated {updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              {createdAt && (
+                <span className="ps-meta-item themed-muted ps-mono-meta">
+                  {createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </span>
+              )}
+              {updatedAt && updatedAt.getTime() !== createdAt?.getTime() && (
+                <span className="ps-meta-item themed-muted ps-mono-meta">
+                  updated {updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </span>
+              )}
+              <span className="ps-meta-item">
+                <LastVerifiedBadge
+                  lastVerifiedAt={lastVerifiedAt}
+                  isPublished={metadata.status === "published"}
+                />
               </span>
             </>
           )}
-          {isEditor && !viewingSnapshot && (
-            <>
-              <span className="themed-muted opacity-30">·</span>
-              <Link href={`/${publisherSlug}/articles/${slug}/edit`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors">
-                Edit
-              </Link>
-              <span className="themed-muted opacity-30">·</span>
-              <Link href={`/${publisherSlug}/articles/${slug}/versions`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors">
-                Versions
-              </Link>
-              <span className="themed-muted opacity-30">·</span>
-              <MarkVerifiedForm publisherSlug={publisherSlug} articleId={article.id} />
-            </>
-          )}
-          <span className="themed-muted opacity-30">·</span>
-          <CiteButton
-            authorDisplayName={pub.displayName}
-            authorPublisherSlug={publisherSlug}
-            title={title}
-            publishedAt={citationPublishedAt}
-            url={canonicalUrl}
-            versionHash={versionHash ?? null}
-          />
+          <span className="ps-meta-item">
+            <CiteButton
+              authorDisplayName={pub.displayName}
+              authorPublisherSlug={publisherSlug}
+              title={title}
+              publishedAt={citationPublishedAt}
+              url={canonicalUrl}
+              versionHash={versionHash ?? null}
+            />
+          </span>
           {!viewingSnapshot && (
-            <>
-              <span className="themed-muted opacity-30">·</span>
+            <span className="ps-meta-item">
               <ForkButton
                 sourcePublisherSlug={publisherSlug}
                 sourceArticleSlug={slug}
                 isAuthenticated={!!session}
               />
-            </>
+            </span>
           )}
-          {!viewingSnapshot && (
-            <LastVerifiedBadge
-              lastVerifiedAt={lastVerifiedAt}
-              isPublished={metadata.status === "published"}
-              isStale={isStale}
-              staleMonths={staleMonths}
-            />
+          {isEditor && !viewingSnapshot && (
+            <>
+              <span className="ps-meta-item">
+                <Link
+                  href={`/${publisherSlug}/articles/${slug}/edit`}
+                  className="ps-quiet-action inline-block"
+                  style={{ fontSize: "0.8125rem" }}
+                >
+                  Edit
+                </Link>
+              </span>
+              <span className="ps-meta-item">
+                <Link
+                  href={`/${publisherSlug}/articles/${slug}/versions`}
+                  className="ps-quiet-action inline-block"
+                  style={{ fontSize: "0.8125rem" }}
+                >
+                  Versions
+                </Link>
+              </span>
+              <span className="ps-meta-item">
+                <MarkVerifiedForm publisherSlug={publisherSlug} articleId={article.id} />
+              </span>
+            </>
           )}
         </div>
 
@@ -397,6 +472,8 @@ export default async function ArticlePage({
         />
       </header>
 
+      {isStale && !viewingSnapshot && <StaleWarningBanner staleMonths={staleMonths} />}
+
       {forkSource && (
         <ForkLineageHeader
           originalTitle={forkSource.title}
@@ -406,6 +483,7 @@ export default async function ArticlePage({
         />
       )}
 
+      <MdxErrorBoundary>
       <div className="markdown-content">
         <MDXRemote
           source={renderedBody}
@@ -422,24 +500,30 @@ export default async function ArticlePage({
               rehypePlugins: [rehypeKatex],
             },
           }}
-          components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite }}
+          components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite, h1: MdH1 }}
         />
       </div>
+      </MdxErrorBoundary>
 
       <BibliographySection orderedSlugs={orderedSlugs} resolved={resolvedCitations} />
 
-      <RelatedEvents articleId={article.id} />
+      {/* Self-fetching sections stream in after the prose */}
+      <Suspense fallback={null}>
+        <RelatedEvents articleId={article.id} />
+      </Suspense>
 
       <ForksList forks={forksWithPublisher} totalCount={forksCount} />
 
-      <CommentThread
-        publisherSlug={publisherSlug}
-        subject={{ kind: "article", slug }}
-        subjectId={{ articleId: article.id }}
-        ownerType={ownerType as "user" | "org"}
-        ownerId={ownerId}
-        session={session}
-      />
+      <Suspense fallback={null}>
+        <CommentThread
+          publisherSlug={publisherSlug}
+          subject={{ kind: "article", slug }}
+          subjectId={{ articleId: article.id }}
+          ownerType={ownerType as "user" | "org"}
+          ownerId={ownerId}
+          session={session}
+        />
+      </Suspense>
 
     </main>
   );

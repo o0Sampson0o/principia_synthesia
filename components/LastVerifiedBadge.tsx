@@ -1,16 +1,14 @@
-type Props = {
+type BadgeProps = {
   lastVerifiedAt: Date | null;
   isPublished: boolean;
-  isStale: boolean;
-  staleMonths: number;
 };
 
-export default function LastVerifiedBadge({
-  lastVerifiedAt,
-  isPublished,
-  isStale,
-  staleMonths,
-}: Props) {
+/**
+ * Inline "Last verified" fact for the article meta row. The page-level
+ * staleness warning is the separate StaleWarningBanner below — the two were
+ * split so a block panel never renders inside the flex meta row.
+ */
+export default function LastVerifiedBadge({ lastVerifiedAt, isPublished }: BadgeProps) {
   if (!isPublished || !lastVerifiedAt) return null;
 
   const formatted = new Date(lastVerifiedAt).toLocaleDateString("en-US", {
@@ -19,28 +17,24 @@ export default function LastVerifiedBadge({
     year: "numeric",
   });
 
+  return <span className="themed-muted ps-mono-meta">verified {formatted}</span>;
+}
+
+/**
+ * Page-level staleness notice, rendered as a block sibling of the article
+ * header (never inside the meta row).
+ */
+export function StaleWarningBanner({ staleMonths }: { staleMonths: number }) {
   return (
-    <>
-      <span className="text-xs themed-muted">Last verified: {formatted}</span>
-      {isStale && (
-        <div className="mt-4 themed-surface border themed-border rounded-lg px-4 py-3 text-sm">
-          <p
-            className="themed-muted mb-1"
-            style={{
-              fontSize: "0.5625rem",
-              fontFamily: "ui-monospace, monospace",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-            }}
-          >
-            Unverified
-          </p>
-          <p className="themed-secondary">
-            This article has not been verified by its author in over {staleMonths} months.
-            Information may be out of date.
-          </p>
-        </div>
-      )}
-    </>
+    <div
+      role="note"
+      className="mb-6 themed-surface border themed-border rounded-lg px-4 py-3 text-sm"
+    >
+      <p className="themed-muted mb-1 ps-mono-micro">Unverified</p>
+      <p className="themed-secondary">
+        This article has not been verified by its author in over {staleMonths} months.
+        Information may be out of date.
+      </p>
+    </div>
   );
 }

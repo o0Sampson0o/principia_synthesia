@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { events, eventArticles, publishers } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import Link from "next/link";
+import SectionHeader from "./SectionHeader";
 
 export default async function RelatedEvents({
   articleId,
@@ -35,9 +36,12 @@ export default async function RelatedEvents({
   if (rows.length === 0) return null;
 
   return (
-    <section className="mt-10 pt-8 border-t themed-border">
-      <h2 className="text-lg font-semibold themed-heading mb-4">Related events</h2>
-      <ul className="space-y-3">
+    <section className="mt-16">
+      <SectionHeader
+        title="Related events"
+        count={`${rows.length} ${rows.length === 1 ? "event" : "events"}`}
+      />
+      <ul className="space-y-3 mt-4">
         {rows.map((e) => (
           <li key={e.id} className="space-y-0.5">
             <Link
@@ -54,11 +58,7 @@ export default async function RelatedEvents({
                   year: "numeric",
                 })}
               </span>
-              {e.category && (
-                <span className="text-xs px-2 py-0.5 rounded-full themed-surface border themed-border themed-secondary">
-                  {e.category}
-                </span>
-              )}
+              {e.category && <span className="themed-tag text-xs">{e.category}</span>}
             </div>
           </li>
         ))}

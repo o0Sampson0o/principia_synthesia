@@ -9,7 +9,12 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="themed-btn-ghost text-xs px-3 py-1"
+      className="ps-quiet-action"
+      style={{ fontSize: "0.8125rem" }}
+      onClick={(e) => {
+        // Stamps a public "last verified" date — confirm before it fires.
+        if (!window.confirm("Mark this article as verified today?")) e.preventDefault();
+      }}
     >
       {pending ? "Marking…" : "Mark as verified"}
     </button>

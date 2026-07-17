@@ -24,9 +24,11 @@ export default function Cite({ number, resolvedHref, resolvedTitle }: Props) {
     return (
       <sup
         title="Cited article not found"
-        className="text-amber-600 dark:text-amber-400 font-mono text-xs"
+        className="font-mono text-xs"
+        style={{ color: "var(--color-warning)" }}
       >
-        [?]
+        <span className="sr-only">Cited article not found</span>
+        <span aria-hidden="true">[?]</span>
       </sup>
     );
   }

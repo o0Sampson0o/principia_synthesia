@@ -206,44 +206,44 @@ describe("createComment (guest)", () => {
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 
-  it("rejects when the rate limit is exceeded", async () => {
+  it("returns a rate-limit error when the limit is exceeded", async () => {
     mockRateLimit.mockReturnValue(false);
     queueSelects([articleRow]);
 
-    await expect(
-      createComment(
-        "alice",
-        { kind: "article", slug: "on-motion" },
-        makeFormData({ body: "Hi", guestName: "Bob" })
-      )
-    ).rejects.toThrow(/Too many comments/);
+    const result = await createComment(
+      "alice",
+      { kind: "article", slug: "on-motion" },
+      makeFormData({ body: "Hi", guestName: "Bob" })
+    );
+
+    expect(result).toEqual({ error: expect.stringMatching(/commenting quickly/) });
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
-  it("rejects when Turnstile verification fails", async () => {
+  it("returns a verification error when Turnstile fails", async () => {
     mockVerifyTurnstile.mockResolvedValue(false);
     queueSelects([articleRow]);
 
-    await expect(
-      createComment(
-        "alice",
-        { kind: "article", slug: "on-motion" },
-        makeFormData({ body: "Hi", guestName: "Bob" })
-      )
-    ).rejects.toThrow(/Verification failed/);
+    const result = await createComment(
+      "alice",
+      { kind: "article", slug: "on-motion" },
+      makeFormData({ body: "Hi", guestName: "Bob" })
+    );
+
+    expect(result).toEqual({ error: expect.stringMatching(/verify you're human/) });
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
-  it("rejects guests without a display name", async () => {
+  it("returns a name error for guests without a display name", async () => {
     queueSelects([articleRow]);
 
-    await expect(
-      createComment(
-        "alice",
-        { kind: "article", slug: "on-motion" },
-        makeFormData({ body: "Hi" })
-      )
-    ).rejects.toThrow();
+    const result = await createComment(
+      "alice",
+      { kind: "article", slug: "on-motion" },
+      makeFormData({ body: "Hi" })
+    );
+
+    expect(result).toEqual({ error: expect.stringMatching(/add your name/) });
     expect(mockInsert).not.toHaveBeenCalled();
   });
 

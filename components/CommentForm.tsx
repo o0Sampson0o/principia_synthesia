@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import type { SessionPayload } from "@/lib/auth";
 import TurnstileWidget from "./TurnstileWidget";
@@ -34,7 +35,7 @@ function SubmitButton({ label, compact }: { label: string; compact?: boolean }) 
 
 interface CommentFormProps {
   /** Bound server action (publisherSlug + subject already curried in) */
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<void | { error: string }>;
   /** Set when this form is a reply to an existing comment */
   parentId?: number;
   /** Set when this form is editing an existing comment */
@@ -67,6 +68,7 @@ export default function CommentForm({
   const [open, setOpen] = useState(!compact);
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const pathname = usePathname();
 
   // Guests posting a new comment supply a display name; remember it locally.
   const needsGuestFields = !session && !isEdit;
@@ -83,12 +85,7 @@ export default function CommentForm({
 
   if (compact && !open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="themed-muted themed-hover-foreground transition-colors"
-        style={{ fontSize: "0.75rem" }}
-      >
+      <button type="button" onClick={() => setOpen(true)} className="ps-quiet-action">
         {isEdit ? "Edit" : "Reply"}
       </button>
     );
@@ -101,8 +98,13 @@ export default function CommentForm({
       localStorage.setItem(GUEST_NAME_KEY, name);
     }
     try {
-      await action(formData);
+      const result = await action(formData);
+      if (result && typeof result === "object" && "error" in result) {
+        setError(result.error);
+        return;
+      }
     } catch {
+      // Unexpected failure (network, redacted server error)
       setError("Could not post your comment. Please try again.");
       return;
     }
@@ -128,7 +130,11 @@ export default function CommentForm({
               <input type="text" name="website" tabIndex={-1} autoComplete="off" />
             </label>
           </div>
+          <label className="sr-only" htmlFor={`guest-name-${parentId ?? "root"}`}>
+            Your name
+          </label>
           <input
+            id={`guest-name-${parentId ?? "root"}`}
             type="text"
             name="guestName"
             placeholder="Your name"
@@ -136,12 +142,16 @@ export default function CommentForm({
             minLength={2}
             maxLength={50}
             className="w-full themed-input rounded-md"
-            style={{ fontSize: "0.875rem", padding: "0.5rem 0.75rem", marginBottom: "0.5rem" }}
+            style={{ padding: "0.5rem 0.75rem", marginBottom: "0.5rem" }}
           />
         </>
       )}
 
+      <label className="sr-only" htmlFor={`comment-body-${commentId ?? parentId ?? "root"}`}>
+        {isEdit ? "Edit your comment" : parentId ? "Your reply" : "Your comment"}
+      </label>
       <textarea
+        id={`comment-body-${commentId ?? parentId ?? "root"}`}
         name="body"
         defaultValue={initialBody}
         placeholder={
@@ -152,7 +162,7 @@ export default function CommentForm({
         maxLength={session ? 10000 : 5000}
         rows={compact ? 2 : 4}
         className="w-full themed-input rounded-md resize-y"
-        style={{ fontSize: "0.875rem", padding: "0.5rem 0.75rem", lineHeight: 1.6 }}
+        style={{ padding: "0.5rem 0.75rem", lineHeight: 1.6 }}
       />
 
       {needsGuestFields && <TurnstileWidget />}
@@ -169,19 +179,17 @@ export default function CommentForm({
           compact={compact}
         />
         {compact && (
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="themed-muted themed-hover-foreground transition-colors"
-            style={{ fontSize: "0.75rem" }}
-          >
+          <button type="button" onClick={() => setOpen(false)} className="ps-quiet-action">
             Cancel
           </button>
         )}
         {needsGuestFields && !compact && (
           <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
             Commenting as a guest —{" "}
-            <Link href="/login" className="themed-accent underline underline-offset-2">
+            <Link
+              href={`/login?redirect=${encodeURIComponent(pathname)}`}
+              className="themed-accent underline underline-offset-2"
+            >
               sign in
             </Link>{" "}
             to comment as yourself.

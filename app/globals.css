@@ -50,6 +50,8 @@ body {
   border-radius: 0.375rem;
   padding: 0.5rem 1rem;
   width: 100%;
+  /* Class-level (not inline) so the mobile 1rem iOS-zoom guard can override */
+  font-size: 0.875rem;
   transition: border-color 0.15s;
   outline: none;
 }
@@ -405,7 +407,10 @@ body {
 
 /* Headings — h1/h2 use Playfair Display for editorial weight;
    h3/h4 stay in Geist Sans for denser sub-section labels */
-.markdown-content h1 {
+/* .md-h1: authored `#` headings render as <h2 class="md-h1"> so the page
+   title stays the document's only h1 while the visual scale is preserved. */
+.markdown-content h1,
+.markdown-content .md-h1 {
   font-family: var(--font-playfair), Georgia, serif;
   font-size: clamp(1.625rem, 3.5vw, 2.25rem);
   font-weight: 500;
@@ -421,7 +426,7 @@ body {
 }
 .markdown-content h2 {
   font-family: var(--font-playfair), Georgia, serif;
-  font-size: clamp(1.25rem, 2.5vw, 1.625rem);
+  font-size: clamp(1.5rem, 2.5vw, 1.625rem); /* floor: Playfair Threshold */
   font-weight: 500;
   letter-spacing: -0.025em;
   line-height: 1.25;
@@ -735,7 +740,7 @@ body {
 }
 .cm-line.cm-lp-h2 {
   font-family: var(--font-playfair), Georgia, serif;
-  font-size: clamp(1.25rem, 2.5vw, 1.625rem);
+  font-size: clamp(1.5rem, 2.5vw, 1.625rem); /* floor: Playfair Threshold */
   font-weight: 500;
   letter-spacing: -0.025em;
   line-height: 1.4;
@@ -1224,7 +1229,7 @@ body::-webkit-scrollbar-corner,
 .tour-highlight {
   position: relative;
   z-index: 50;
-  box-shadow: 0 0 0 4px rgb(59 130 246 / 0.6),
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 60%, transparent),
               0 0 0 9999px rgb(0 0 0 / 0.4);
   border-radius: 6px;
   transition: box-shadow 0.15s ease-out;
@@ -1300,7 +1305,9 @@ body::-webkit-scrollbar-corner,
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--accent);
+  /* Nudged toward ink so 11px eyebrows clear AA contrast in both modes
+     (raw --accent sits at ~4.3:1 on the light page ground). */
+  color: color-mix(in srgb, var(--accent) 75%, var(--foreground));
 }
 
 /* Muted small-caps eyebrow (section labels) */
@@ -1469,7 +1476,64 @@ body::-webkit-scrollbar-corner,
 @media (max-width: 639px) {
   .ps-hero { letter-spacing: -0.02em; }
   .ps-content-row { padding: 0.875rem 1rem; }
+  /* 9px mono table headers are below the legibility floor on phones */
+  .markdown-content th { font-size: 0.6875rem; }
 }
+
+/* ─── Article meta row ───────────────────────────────────────────── */
+/* Dot separators live in CSS with empty alt text: silent to screen
+   readers, never a dangling first "·", and dropped entirely on narrow
+   screens where the row wraps into stacked lines. */
+.ps-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.3rem;
+  font-size: 0.8125rem;
+}
+.ps-meta-item { display: inline-flex; align-items: center; }
+.ps-meta-item + .ps-meta-item::before {
+  content: "·" / "";
+  color: var(--muted-foreground);
+  opacity: 0.5;
+  margin-right: 0.75rem;
+}
+@media (max-width: 480px) {
+  .ps-meta-item + .ps-meta-item::before { content: none; }
+}
+
+/* ─── Mono metadata label (the Mono Fact Rule) ───────────────────── */
+/* Dates, counts, versions, statuses — facts about the system, set in a
+   quiet mono voice. The uppercase micro variant marks statuses. */
+.ps-mono-meta {
+  font-size: 0.6875rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.05em;
+}
+.ps-mono-micro {
+  font-size: 0.5625rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ─── Quiet text action with a real touch target ─────────────────── */
+/* Visually a small text link; negative margins keep the enlarged hit
+   area from inflating the layout. */
+.ps-quiet-action {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  background: none;
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0.625rem 0.5rem;
+  margin: -0.5rem -0.375rem;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.ps-quiet-action:hover { color: var(--foreground); }
+.ps-quiet-action-danger:hover { color: var(--color-error); }
 
 /* ─── Accessibility: focus + reduced motion (systemic) ───────────── */
 /* Keyboard focus ring for anything interactive that doesn't define its

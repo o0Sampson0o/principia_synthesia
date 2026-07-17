@@ -27,12 +27,6 @@ export default function ForkLineageHeader({
         &ldquo;{originalTitle}&rdquo;
       </Link>
       <span className="opacity-70"> by {originalAuthorDisplayName}</span>
-      <Link
-        href={`/${originalPublisherSlug}/articles/${originalArticleSlug}`}
-        className="themed-link ml-2 text-xs opacity-70 hover:opacity-100"
-      >
-        [link to original &rarr;]
-      </Link>
     </div>
   );
 }

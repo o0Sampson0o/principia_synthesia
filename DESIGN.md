@@ -111,8 +111,16 @@ A restrained, ink-on-fog palette where the only voice with color is the accent.
 - **Hero** (500, clamp to ≤4.5rem, line-height 1.02, letter-spacing -0.04em): page-level heroes only (`.ps-hero`); `text-wrap: balance`.
 - **Display** (500, clamp(1.75rem, 4vw, 2.75rem), line-height 1.12, letter-spacing -0.03em): page titles, publisher names, article titles (`.ps-display`).
 - **Body** (400, 1rem, line-height 1.6–1.65): prose and UI text; reading column capped at `max-w-3xl` (~68ch).
-- **Label / mono metadata** (400, 0.6875rem, letter-spacing 0.05em): dates, counts. The smaller uppercase variant (0.5625rem, tracking 0.1em) marks statuses and section micro-labels.
+- **Label / mono metadata** (400, 0.6875rem, letter-spacing 0.05em, `.ps-mono-meta`): dates, counts. The uppercase micro variant (`.ps-mono-micro`, 0.5625rem, tracking 0.1em) marks statuses and section micro-labels.
 - **Eyebrow** (0.6875rem, tracking 0.1em, uppercase): accent-colored section pre-label (`.ps-eyebrow`); muted variant for column headers.
+
+### UI type scale (the working ramp)
+UI text steps between Body and the mono labels are drawn from this ramp —
+values off it are drift: **1.125 / 1.0625 / 1 / 0.9375 / 0.875 / 0.8125 /
+0.75 / 0.6875 / 0.625 / 0.5625 rem**. The article summary sits at 1.0625rem
+deliberately (a dek, not body). Sizes below 0.5625rem are permitted only as
+micro-labels inside dense data visualizations (timeline ticks, SVG bar
+labels) where the value also appears elsewhere at a legible size.
 
 ### Named Rules
 **The Playfair Threshold Rule.** Playfair Display appears only at display sizes (≥1.5rem). It is forbidden in buttons, labels, body text, or data — working UI is always Geist.

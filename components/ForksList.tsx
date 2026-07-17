@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SectionHeader from "./SectionHeader";
 
 interface Fork {
   id: number;
@@ -13,37 +14,55 @@ interface Props {
   totalCount: number;
 }
 
+/** How many forks show before the rest collapse behind a disclosure. */
+const VISIBLE_FORKS = 10;
+
+function ForkItem({ fork }: { fork: Fork }) {
+  return (
+    <li className="text-sm">
+      <Link
+        href={`/${fork.publisherSlug}/articles/${fork.slug}`}
+        className="themed-link hover:underline"
+      >
+        {fork.title}
+      </Link>
+      <span className="themed-muted ml-1">by {fork.authorDisplayName}</span>
+    </li>
+  );
+}
+
 /**
- * Lists up to 10 forks of the current article.
- * Rendered by the article page as a server component.
+ * Lists forks of the current article. The first ten render inline; the rest
+ * sit behind a native <details> disclosure so no fork is ever unreachable.
  */
 export default function ForksList({ forks, totalCount }: Props) {
   if (totalCount === 0) return null;
 
-  const hiddenCount = totalCount - forks.length;
+  const visible = forks.slice(0, VISIBLE_FORKS);
+  const overflow = forks.slice(VISIBLE_FORKS);
 
   return (
-    <section className="mt-8">
-      <h2 className="text-lg font-semibold mb-3">
-        {totalCount === 1 ? "1 fork" : `${totalCount} forks`}
-      </h2>
-      <ul className="space-y-2">
-        {forks.map((fork) => (
-          <li key={fork.id} className="text-sm">
-            <Link
-              href={`/${fork.publisherSlug}/articles/${fork.slug}`}
-              className="themed-link hover:underline"
-            >
-              {fork.title}
-            </Link>
-            <span className="opacity-60 ml-1">by {fork.authorDisplayName}</span>
-          </li>
+    <section className="mt-16">
+      <SectionHeader
+        title="Forks"
+        count={`${totalCount} ${totalCount === 1 ? "fork" : "forks"}`}
+      />
+      <ul className="space-y-2 mt-4">
+        {visible.map((fork) => (
+          <ForkItem key={fork.id} fork={fork} />
         ))}
       </ul>
-      {hiddenCount > 0 && (
-        <p className="text-sm opacity-60 mt-2">
-          &hellip; and {hiddenCount} more {hiddenCount === 1 ? "fork" : "forks"}
-        </p>
+      {overflow.length > 0 && (
+        <details className="mt-2">
+          <summary className="text-sm themed-muted cursor-pointer themed-hover-foreground transition-colors">
+            Show {overflow.length} more {overflow.length === 1 ? "fork" : "forks"}
+          </summary>
+          <ul className="space-y-2 mt-2">
+            {overflow.map((fork) => (
+              <ForkItem key={fork.id} fork={fork} />
+            ))}
+          </ul>
+        </details>
       )}
     </section>
   );

@@ -8,6 +8,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { canEditContent } from "@/lib/roles";
 import type { CommentSubject } from "@/lib/validations";
 import { deleteComment, moderateComment, setGuestModeration } from "./actions";
+import ConfirmButton from "@/components/ConfirmButton";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -312,13 +313,12 @@ export default async function CommentsModerationPage({
                   )}
                   <form action={boundDelete}>
                     <input type="hidden" name="commentId" value={row.id} />
-                    <button
-                      type="submit"
-                      className="themed-muted transition-colors hover:text-[var(--color-error)]"
-                      style={{ fontSize: "0.75rem" }}
+                    <ConfirmButton
+                      message="Delete this comment? This cannot be undone."
+                      className="ps-quiet-action ps-quiet-action-danger"
                     >
                       Delete
-                    </button>
+                    </ConfirmButton>
                   </form>
                 </div>
               </div>

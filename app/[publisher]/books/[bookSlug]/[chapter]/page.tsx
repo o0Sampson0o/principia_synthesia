@@ -26,6 +26,7 @@ import { classifyReferrer } from "@/lib/analytics-source";
 import { getOrCreateSessionId } from "@/lib/analytics-session";
 import { config } from "@/lib/config";
 import CommentThread from "@/components/CommentThread";
+import MdH1 from "@/components/MdH1";
 
 export default async function ChapterPage({
   params,
@@ -235,7 +236,7 @@ export default async function ChapterPage({
                 rehypePlugins: [rehypeKatex],
               },
             }}
-            components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite }}
+            components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite, h1: MdH1 }}
           />
         </div>
       </div>

@@ -200,18 +200,25 @@ async function isOwningGuest(comment: {
 // createComment
 // ---------------------------------------------------------------------------
 
+/** User-facing failure from createComment; thrown errors stay for security violations. */
+export type CreateCommentResult = { error: string } | undefined;
+
 /**
  * Post a new comment (or reply) on an article/chapter or book.
  *
  * Logged-in users post as `approved`. Guests pass the spam gauntlet —
  * honeypot, per-IP rate limits, Cloudflare Turnstile — and land in the
  * moderation queue (`pending`) unless the publisher allows unmoderated guests.
+ *
+ * Expected user-facing failures (rate limit, verification, validation) are
+ * *returned* as `{ error }` rather than thrown: thrown Server Action errors
+ * are redacted in production, so the form could never show a useful message.
  */
 export async function createComment(
   publisherSlug: string,
   subject: CommentSubject,
   formData: FormData
-): Promise<void> {
+): Promise<CreateCommentResult> {
   const session = await getSession();
   const resolved = await resolveSubject(publisherSlug, subject, session);
 
@@ -251,7 +258,11 @@ export async function createComment(
   let pending = false;
 
   if (session) {
-    const validated = createCommentSchema.parse(raw);
+    const parsed = createCommentSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { error: "Comments must be between 1 and 10,000 characters." };
+    }
+    const validated = parsed.data;
     const [inserted] = await db
       .insert(comments)
       .values({
@@ -266,20 +277,32 @@ export async function createComment(
     insertedId = inserted.id;
     authorName = session.userSlug;
   } else {
-    const validated = guestCommentSchema.parse(raw);
+    const parsed = guestCommentSchema.safeParse(raw);
+    if (!parsed.success) {
+      const field = parsed.error.issues[0]?.path[0];
+      return {
+        error:
+          field === "guestName"
+            ? "Please add your name (2–50 characters)."
+            : "Guest comments must be between 1 and 5,000 characters.",
+      };
+    }
+    const validated = parsed.data;
 
     const ipHash = await getClientIpHash();
     if (
       !rateLimit(`comment:minute:${ipHash}`, 3, 60_000) ||
       !rateLimit(`comment:day:${ipHash}`, 20, 24 * 60 * 60_000)
     ) {
-      throw new Error("Too many comments — please try again later");
+      return { error: "You're commenting quickly — please wait a moment and try again." };
     }
 
     const turnstileOk = await verifyTurnstile(
       formData.get("cf-turnstile-response") as string | null
     );
-    if (!turnstileOk) throw new Error("Verification failed — please try again");
+    if (!turnstileOk) {
+      return { error: "We couldn't verify you're human — please retry the check below." };
+    }
 
     const guestTokenHash = await getGuestTokenHash({ mint: true });
     pending = !resolved.pub.allowUnmoderatedGuests;

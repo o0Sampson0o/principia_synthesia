@@ -31,7 +31,14 @@ export default function ArticleMetadataDisplay({
   return (
     <div className="mt-4 space-y-3">
       {showStatus && (
-        <span className="inline-block text-xs px-2 py-0.5 rounded uppercase tracking-wider bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
+        <span
+          className="inline-block themed-muted ps-mono-micro"
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: "9999px",
+            padding: "0.125rem 0.5rem",
+          }}
+        >
           {metadata.status}
         </span>
       )}

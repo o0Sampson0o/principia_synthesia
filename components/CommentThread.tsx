@@ -8,6 +8,8 @@ import { buildTree, pruneDeleted, type TreeNode } from "@/lib/comment-tree";
 import { createComment, deleteComment, editComment } from "@/app/[publisher]/comments/actions";
 import type { CommentSubject } from "@/lib/validations";
 import CommentForm from "./CommentForm";
+import ConfirmButton from "./ConfirmButton";
+import SectionHeader from "./SectionHeader";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,16 +45,6 @@ interface Props {
   session: SessionPayload | null;
 }
 
-// ---------------------------------------------------------------------------
-// Shared metadata styles (Precision Editorial mono labels)
-// ---------------------------------------------------------------------------
-
-const monoMeta = {
-  fontSize: "0.6875rem",
-  fontFamily: "ui-monospace, monospace",
-  letterSpacing: "0.05em",
-} as const;
-
 function formatDate(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
@@ -72,9 +64,9 @@ function CommentNodeView({
   node: CommentNode;
   session: SessionPayload | null;
   depth: number;
-  boundCreate: (formData: FormData) => Promise<void>;
+  boundCreate: (formData: FormData) => Promise<void | { error: string }>;
   boundDelete: (formData: FormData) => Promise<void>;
-  boundEdit: (formData: FormData) => Promise<void>;
+  boundEdit: (formData: FormData) => Promise<void | { error: string }>;
 }) {
   const isDeleted = node.deletedAt !== null;
 
@@ -90,20 +82,14 @@ function CommentNodeView({
           {/* Byline — name carries the weight, date recedes into mono */}
           <div className="flex items-baseline gap-x-3 gap-y-1 flex-wrap">
             <span className="text-sm font-medium themed-heading">{node.authorName}</span>
-            <span className="themed-muted" style={monoMeta}>
+            <span className="themed-muted ps-mono-meta">
               {formatDate(node.createdAt)}
-              {node.updatedAt.getTime() !== node.createdAt.getTime() && (
-                <span aria-label="edited"> · edited</span>
-              )}
+              {node.updatedAt.getTime() !== node.createdAt.getTime() && <span> · edited</span>}
             </span>
             {node.isPending && (
               <span
-                className="themed-muted"
+                className="themed-muted ps-mono-micro"
                 style={{
-                  ...monoMeta,
-                  fontSize: "0.5625rem",
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
                   border: "1px solid var(--border)",
                   borderRadius: "9999px",
                   padding: "0.125rem 0.5rem",
@@ -121,11 +107,8 @@ function CommentNodeView({
             {node.body}
           </p>
 
-          {/* Quiet action row */}
-          <div
-            className="flex items-center gap-4 mt-1.5 opacity-70 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
-            style={{ fontSize: "0.75rem" }}
-          >
+          {/* Quiet action row — always visible (touch devices have no hover) */}
+          <div className="flex items-center gap-2 mt-1" style={{ fontSize: "0.75rem" }}>
             {depth < 5 && !node.isPending && (
               <CommentForm action={boundCreate} parentId={node.id} session={session} compact />
             )}
@@ -142,13 +125,12 @@ function CommentNodeView({
             {node.canDelete && (
               <form action={boundDelete}>
                 <input type="hidden" name="commentId" value={node.id} />
-                <button
-                  type="submit"
-                  className="themed-muted transition-colors hover:text-[var(--color-error)]"
-                  style={{ fontSize: "0.75rem" }}
+                <ConfirmButton
+                  message="Delete this comment? This cannot be undone."
+                  className="ps-quiet-action ps-quiet-action-danger"
                 >
                   Delete
-                </button>
+                </ConfirmButton>
               </form>
             )}
           </div>
@@ -258,17 +240,16 @@ export default async function CommentThread({
 
   return (
     <section className="mt-16">
-      {/* Section rule + eyebrow header, per list-section convention */}
-      <div className="flex items-baseline justify-between pb-3 border-b themed-border">
-        <p className="ps-eyebrow">Discussion</p>
-        <span className="themed-muted" style={monoMeta}>
-          {visibleCount === 0
+      <SectionHeader
+        title="Discussion"
+        count={
+          visibleCount === 0
             ? "no comments"
             : visibleCount === 1
             ? "1 comment"
-            : `${visibleCount} comments`}
-        </span>
-      </div>
+            : `${visibleCount} comments`
+        }
+      />
 
       {/* Top-level comment form — guests welcome */}
       <div className="mt-6">

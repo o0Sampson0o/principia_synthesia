@@ -10,13 +10,17 @@ interface Props {
   isAuthenticated: boolean;
 }
 
+const FORK_HINT = "Create your own editable copy of this article under your name";
+
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
-      className="themed-btn-secondary text-sm px-3 py-1 rounded disabled:opacity-50"
+      title={FORK_HINT}
+      className="ps-quiet-action disabled:opacity-50"
+      style={{ fontSize: "0.8125rem" }}
     >
       {pending ? "Forking…" : "Fork"}
     </button>
@@ -28,10 +32,17 @@ export default function ForkButton({
   sourceArticleSlug,
   isAuthenticated,
 }: Props) {
+  const articlePath = `/${sourcePublisherSlug}/articles/${sourceArticleSlug}`;
+
   if (!isAuthenticated) {
     return (
-      <Link href="/login" className="themed-link text-sm">
-        Fork (sign in)
+      <Link
+        href={`/login?redirect=${encodeURIComponent(articlePath)}`}
+        title={`${FORK_HINT} — requires signing in`}
+        className="ps-quiet-action inline-block"
+        style={{ fontSize: "0.8125rem" }}
+      >
+        Fork
       </Link>
     );
   }
