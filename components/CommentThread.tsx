@@ -4,6 +4,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import type { SessionPayload } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { GUEST_EDIT_WINDOW_MS, getGuestTokenHash } from "@/lib/comments";
+import { buildTree, pruneDeleted, type TreeNode } from "@/lib/comment-tree";
 import { createComment, deleteComment, editComment } from "@/app/[publisher]/comments/actions";
 import type { CommentSubject } from "@/lib/validations";
 import CommentForm from "./CommentForm";
@@ -25,9 +26,7 @@ interface CommentRow {
   deletedAt: Date | null;
 }
 
-interface CommentNode extends CommentRow {
-  replies: CommentNode[];
-}
+type CommentNode = TreeNode<CommentRow>;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -42,34 +41,6 @@ interface Props {
   ownerType: "user" | "org";
   ownerId: number;
   session: SessionPayload | null;
-}
-
-// ---------------------------------------------------------------------------
-// Tree builder
-// ---------------------------------------------------------------------------
-
-function buildTree(rows: CommentRow[]): CommentNode[] {
-  const nodeMap = new Map<number, CommentNode>();
-  for (const row of rows) {
-    nodeMap.set(row.id, { ...row, replies: [] });
-  }
-
-  const roots: CommentNode[] = [];
-  for (const node of nodeMap.values()) {
-    if (node.parentId === null) {
-      roots.push(node);
-    } else {
-      const parent = nodeMap.get(node.parentId);
-      if (parent) {
-        parent.replies.push(node);
-      } else {
-        // Orphaned reply (parent hidden or hard-deleted) — attach to root
-        roots.push(node);
-      }
-    }
-  }
-
-  return roots;
 }
 
 // ---------------------------------------------------------------------------
@@ -245,7 +216,7 @@ export default async function CommentThread({
     });
   }
 
-  const tree = buildTree(visible);
+  const tree = pruneDeleted(buildTree(visible));
 
   // Bind server actions to the publisher + subject context
   const boundCreate = createComment.bind(null, publisherSlug, subject);
