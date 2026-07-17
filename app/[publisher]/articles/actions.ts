@@ -28,6 +28,7 @@ import rehypeKatex from "rehype-katex";
 import rehypeStringify from "rehype-stringify";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import { remarkCallouts } from "@/lib/remark-callouts";
+import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
 
 // ---------------------------------------------------------------------------
 // Preview compilation (server-side — eliminates unsafe-eval in the browser)
@@ -43,6 +44,7 @@ export async function previewMdx(
       .use(remarkMath)
       .use(remarkGfm)
       .use(remarkCallouts)
+      .use(remarkQuoteAttribution)
       .use(remarkWikilinks)
       .use(remarkRehype, { allowDangerousHtml: true })
       .use(rehypeKatex)

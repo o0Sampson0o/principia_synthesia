@@ -12,6 +12,8 @@ import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
+import { remarkCallouts } from "@/lib/remark-callouts";
+import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
 import DynamicAnimation from "@/components/DynamicAnimation";
 import ArticleImage from "@/components/ArticleImage";
 import MdxParagraph from "@/components/MdxParagraph";
@@ -228,7 +230,7 @@ export default async function ChapterPage({
             source={renderedBody}
             options={{
               mdxOptions: {
-                remarkPlugins: [remarkMath, remarkGfm, remarkWikilinks, [remarkCiteNumbering, { slugToNumber, resolved: resolvedCitations }]],
+                remarkPlugins: [remarkMath, remarkGfm, remarkCallouts, remarkQuoteAttribution, remarkWikilinks, [remarkCiteNumbering, { slugToNumber, resolved: resolvedCitations }]],
                 rehypePlugins: [rehypeKatex],
               },
             }}

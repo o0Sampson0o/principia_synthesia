@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import { remarkCallouts } from "@/lib/remark-callouts";
+import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
@@ -413,6 +414,7 @@ export default async function ArticlePage({
                 remarkMath,
                 remarkGfm,
                 remarkCallouts,
+                remarkQuoteAttribution,
                 remarkWikilinks,
                 [remarkCiteNumbering, { slugToNumber, resolved: resolvedCitations }],
               ],

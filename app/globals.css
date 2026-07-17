@@ -510,6 +510,15 @@ body {
 }
 .markdown-content blockquote p { margin-bottom: 0.5em; }
 .markdown-content blockquote p:last-child { margin-bottom: 0; }
+/* Quote source (`> --- Author`, lifted out by remark-quote-attribution) */
+.markdown-content blockquote .quote-attribution {
+  display: block;
+  text-align: right;
+  font-style: normal;
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+  margin-top: 0.6em;
+}
 
 /* Inline code */
 .markdown-content code {
