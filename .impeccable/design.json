@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-17T00:00:00Z",
+  "title": "Design System: Principia Synthesia",
+  "extensions": {
+    "colorMeta": {
+      "quiet-iris": {
+        "role": "primary",
+        "displayName": "Quiet Iris",
+        "canonical": "#6366f1",
+        "darkVariant": "#818cf8",
+        "tonalRamp": ["#1e1b4b", "#312e81", "#4338ca", "#4f46e5", "#6366f1", "#818cf8", "#a5b4fc", "#e0e7ff"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#18181b",
+        "darkVariant": "#fafafa",
+        "tonalRamp": ["#09090b", "#18181b", "#27272a", "#3f3f46", "#71717a", "#a1a1aa", "#d4d4d8", "#fafafa"]
+      },
+      "page-ground": {
+        "role": "neutral",
+        "displayName": "Page Ground",
+        "canonical": "#f7f7f8",
+        "darkVariant": "#0b0b0d",
+        "tonalRamp": ["#0b0b0d", "#151517", "#27272a", "#52525b", "#a1a1aa", "#e4e4e7", "#f4f4f5", "#f7f7f8"]
+      },
+      "surface-white": {
+        "role": "neutral",
+        "displayName": "Surface White",
+        "canonical": "#ffffff",
+        "darkVariant": "#151517",
+        "tonalRamp": ["#151517", "#1e1e21", "#3f3f46", "#71717a", "#d4d4d8", "#f4f4f5", "#fafafa", "#ffffff"]
+      },
+      "mist": {
+        "role": "neutral",
+        "displayName": "Mist",
+        "canonical": "#f4f4f5",
+        "darkVariant": "#27272a",
+        "tonalRamp": ["#18181b", "#27272a", "#3f3f46", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7", "#f4f4f5"]
+      },
+      "graphite": {
+        "role": "neutral",
+        "displayName": "Graphite",
+        "canonical": "#71717a",
+        "darkVariant": "#a1a1aa",
+        "tonalRamp": ["#18181b", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#f4f4f5"]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#e4e4e7",
+        "darkVariant": "#3f3f46",
+        "tonalRamp": ["#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7", "#f4f4f5"]
+      },
+      "error-red": {
+        "role": "semantic",
+        "displayName": "Error Red",
+        "canonical": "#ef4444",
+        "darkVariant": "#f87171",
+        "tonalRamp": ["#450a0a", "#7f1d1d", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"]
+      },
+      "success-green": {
+        "role": "semantic",
+        "displayName": "Success Green",
+        "canonical": "#16a34a",
+        "darkVariant": "#4ade80",
+        "tonalRamp": ["#052e16", "#14532d", "#15803d", "#16a34a", "#22c55e", "#4ade80", "#86efac", "#dcfce7"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display (Playfair)", "purpose": "Page titles, publisher names, article titles. Never below 1.5rem (The Playfair Threshold Rule)." },
+      "body": { "displayName": "Body (Geist Sans)", "purpose": "All prose and working UI text. Reading column max-w-3xl, line-height ≥1.6." },
+      "label": { "displayName": "Mono metadata", "purpose": "Dates, counts, statuses, slugs. Uppercase micro variant at 0.5625rem/0.1em tracking." }
+    },
+    "shadows": [
+      { "name": "floating-overlay", "value": "0 10px 34px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)", "purpose": "Context menus and dialogs only — nothing resting in the page flow casts a shadow (The Hairline Rule)." }
+    ],
+    "motion": [
+      { "name": "state-ease", "value": "150ms ease / opacity+color only", "purpose": "Default for hover and state transitions; no choreography, no bounce." },
+      { "name": "bar-ease", "value": "transform 0.3s ease", "purpose": "Data bars animate via scaleX, never width." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one standard primary action across the app (themed-btn-accent rounded-lg).",
+      "html": "<button class=\"ds-btn-primary\">Post comment</button>",
+      "css": ".ds-btn-primary { background: var(--accent, #6366f1); color: var(--accent-foreground, #ffffff); border: none; border-radius: 0.5rem; padding: 0.5rem 1.25rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: opacity 0.15s; } .ds-btn-primary:hover { opacity: 0.85; } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent, #6366f1); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions — hairline border, ink text.",
+      "html": "<button class=\"ds-btn-outline\">Require approval</button>",
+      "css": ".ds-btn-outline { background: var(--surface, #ffffff); color: var(--foreground, #18181b); border: 1px solid var(--border, #e4e4e7); border-radius: 0.5rem; padding: 0.4375rem 1rem; font-size: 0.8125rem; cursor: pointer; transition: border-color 0.15s; } .ds-btn-outline:hover { border-color: var(--input-focus-border, #a1a1aa); } .ds-btn-outline:focus-visible { outline: 2px solid var(--accent, #6366f1); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Standard field — hairline stroke, focus border shift.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Your name\" />",
+      "css": ".ds-input { background: var(--surface, #ffffff); color: var(--foreground, #18181b); border: 1px solid var(--input-border, #e4e4e7); border-radius: 0.375rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; width: 100%; } .ds-input:focus { outline: none; border-color: var(--input-focus-border, #a1a1aa); } .ds-input::placeholder { color: var(--muted-foreground, #71717a); }"
+    },
+    {
+      "name": "Tag Pill",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Outlined pill for tags; uppercase mono micro variant for statuses.",
+      "html": "<span class=\"ds-tag\">analysis</span> <span class=\"ds-tag ds-tag-status\">pending</span>",
+      "css": ".ds-tag { display: inline-block; border: 1px solid var(--border, #e4e4e7); border-radius: 9999px; padding: 0.125rem 0.5rem; font-size: 0.75rem; color: var(--muted-foreground, #71717a); } .ds-tag-status { font-family: ui-monospace, monospace; font-size: 0.5625rem; letter-spacing: 0.1em; text-transform: uppercase; }"
+    },
+    {
+      "name": "List Row",
+      "kind": "custom",
+      "refersTo": "list-row",
+      "description": "The signature anti-card: hairline-divided row with hover fill and trailing arrow.",
+      "html": "<div class=\"ds-row\"><div><p class=\"ds-row-title\">On the Motion of Bodies</p><p class=\"ds-row-meta\">jul 17, 2026 · 4 comments</p></div><span class=\"ds-row-arrow\">→</span></div>",
+      "css": ".ds-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.875rem 0.5rem; border-bottom: 1px solid var(--border, #e4e4e7); transition: background 0.15s; cursor: pointer; } .ds-row:hover { background: var(--surface, #f4f4f5); } .ds-row-title { font-size: 0.9375rem; font-weight: 500; color: var(--foreground, #18181b); margin: 0; } .ds-row-meta { font-family: ui-monospace, monospace; font-size: 0.6875rem; letter-spacing: 0.05em; color: var(--muted-foreground, #71717a); margin: 0.25rem 0 0; } .ds-row-arrow { opacity: 0; transition: opacity 0.15s; color: var(--muted-foreground, #71717a); } .ds-row:hover .ds-row-arrow { opacity: 0.5; }"
+    },
+    {
+      "name": "Eyebrow Header",
+      "kind": "custom",
+      "refersTo": "eyebrow",
+      "description": "Accent section pre-label with mono count on a hairline rule.",
+      "html": "<div class=\"ds-section-head\"><span class=\"ds-eyebrow\">Discussion</span><span class=\"ds-count\">3 comments</span></div>",
+      "css": ".ds-section-head { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border, #e4e4e7); } .ds-eyebrow { font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent, #6366f1); } .ds-count { font-family: ui-monospace, monospace; font-size: 0.6875rem; letter-spacing: 0.05em; color: var(--muted-foreground, #71717a); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Library",
+    "overview": "Hushed authority, knowledge at rest, comfort measured in hours rather than glances. Playfair Display carries editorial weight at display sizes; Geist Sans does the working text; a monospace whisper handles dates, counts, and slugs. Depth comes from hairline borders and surface tone, never decoration. The single indigo accent — Quiet Iris — speaks rarely, which is why it is heard.",
+    "keyCharacteristics": [
+      "Serif gravitas at display sizes only; sans for all working UI",
+      "One accent, used at ≤10% of any screen",
+      "Depth = 1px hairline + surface tone; shadows reserved for floating overlays",
+      "Monospace micro-labels for metadata",
+      "Built for the long session: generous line-height, restrained motion, WCAG AA contrast"
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Quiet Iris appears on at most 10% of any screen — primary actions, selection, focus. Everything else is ink, graphite, and tone.", "section": "colors" },
+      { "name": "The Token Rule", "body": "Every color goes through a CSS custom property. Hardcoding a hex in a component is prohibited; users retheme all 15 tokens.", "section": "colors" },
+      { "name": "The Playfair Threshold Rule", "body": "Playfair Display appears only at display sizes (≥1.5rem). It is forbidden in buttons, labels, body text, or data.", "section": "typography" },
+      { "name": "The Mono Fact Rule", "body": "Numbers about the system (counts, dates, versions, statuses) render in the mono metadata style, never bold.", "section": "typography" },
+      { "name": "The Hairline Rule", "body": "If an element rests in the page flow, its depth budget is one 1px border and one surface-tone step. A resting card with a shadow is drift.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do route every color through the theme tokens; the 15-token light/dark system is the single source of truth.",
+      "Do pair themed-btn-accent with rounded-lg — that pairing IS the primary button.",
+      "Do use hairline dividers and surface tone for structure; reach for the list-row pattern before inventing a card.",
+      "Do mark metadata (dates, counts, statuses) in the mono micro-label style.",
+      "Do keep reading columns at max-w-3xl and body line-height ≥1.6 — the long session is the product.",
+      "Do honor reduced motion and the global :focus-visible accent ring."
+    ],
+    "donts": [
+      "Don't ship Web-1.0 academic rawness — unstyled density, default-font dumps, naked tables. Rigor must be typeset.",
+      "Don't build the cluttered wiki — no boxes-within-boxes, no sidebar chrome fighting prose, no link thickets in the reading column.",
+      "Don't hardcode a color value in a component; only the fixed semantic tokens are literal.",
+      "Don't use side-stripe accents (border-left > 1px) on cards, banners, or list items; blockquote/callout 2px quote rules are the sole exception.",
+      "Don't put Playfair in buttons, labels, or data.",
+      "Don't add resting shadows, gradients, or glassmorphism — depth is hairline + tone.",
+      "Don't let Quiet Iris exceed ~10% of a screen."
+    ]
+  }
+}
