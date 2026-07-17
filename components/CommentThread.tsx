@@ -44,6 +44,20 @@ interface Props {
 }
 
 // ---------------------------------------------------------------------------
+// Shared metadata styles (Precision Editorial mono labels)
+// ---------------------------------------------------------------------------
+
+const monoMeta = {
+  fontSize: "0.6875rem",
+  fontFamily: "ui-monospace, monospace",
+  letterSpacing: "0.05em",
+} as const;
+
+function formatDate(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+// ---------------------------------------------------------------------------
 // CommentNode sub-component
 // ---------------------------------------------------------------------------
 
@@ -65,65 +79,81 @@ function CommentNodeView({
   const isDeleted = node.deletedAt !== null;
 
   return (
-    <div className={depth > 0 ? "pl-4 border-l themed-border" : ""}>
-      <div className="py-3">
-        {isDeleted ? (
-          <p className="text-sm italic themed-muted">Comment removed</p>
-        ) : (
-          <>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium themed-heading">{node.authorName}</span>
-              <span className="text-xs themed-muted">
-                {node.createdAt.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-                {node.updatedAt.getTime() !== node.createdAt.getTime() && " (edited)"}
+    <div
+      className={depth > 0 ? "mt-4 pl-4 sm:pl-5" : undefined}
+      style={depth > 0 ? { borderLeft: "1px solid var(--border)" } : undefined}
+    >
+      {isDeleted ? (
+        <p className="text-sm italic themed-muted py-1">Comment removed</p>
+      ) : (
+        <div className="group">
+          {/* Byline — name carries the weight, date recedes into mono */}
+          <div className="flex items-baseline gap-x-3 gap-y-1 flex-wrap">
+            <span className="text-sm font-medium themed-heading">{node.authorName}</span>
+            <span className="themed-muted" style={monoMeta}>
+              {formatDate(node.createdAt)}
+              {node.updatedAt.getTime() !== node.createdAt.getTime() && (
+                <span aria-label="edited"> · edited</span>
+              )}
+            </span>
+            {node.isPending && (
+              <span
+                className="themed-muted"
+                style={{
+                  ...monoMeta,
+                  fontSize: "0.5625rem",
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  border: "1px solid var(--border)",
+                  borderRadius: "9999px",
+                  padding: "0.125rem 0.5rem",
+                }}
+              >
+                awaiting moderation
               </span>
-              {node.isPending && (
-                <span className="text-xs px-1.5 py-0.5 rounded border themed-border themed-muted">
-                  awaiting moderation
-                </span>
-              )}
-            </div>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{node.body}</p>
+            )}
+          </div>
 
-            <div className="flex gap-3 mt-1">
-              {/* Reply form — pending comments can't collect replies */}
-              {depth < 5 && !node.isPending && (
-                <CommentForm
-                  action={boundCreate}
-                  parentId={node.id}
-                  session={session}
-                  compact
-                />
-              )}
-              {node.canEdit && (
-                <CommentForm
-                  action={boundEdit}
-                  commentId={node.id}
-                  initialBody={node.body}
-                  session={session}
-                  compact
-                  isEdit
-                />
-              )}
-              {node.canDelete && (
-                <form action={boundDelete}>
-                  <input type="hidden" name="commentId" value={node.id} />
-                  <button
-                    type="submit"
-                    className="text-xs themed-muted hover:text-red-500 transition-colors"
-                  >
-                    Delete
-                  </button>
-                </form>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+          <p
+            className="whitespace-pre-wrap themed-foreground mt-1.5"
+            style={{ fontSize: "0.9375rem", lineHeight: 1.65 }}
+          >
+            {node.body}
+          </p>
+
+          {/* Quiet action row */}
+          <div
+            className="flex items-center gap-4 mt-1.5 opacity-70 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+            style={{ fontSize: "0.75rem" }}
+          >
+            {depth < 5 && !node.isPending && (
+              <CommentForm action={boundCreate} parentId={node.id} session={session} compact />
+            )}
+            {node.canEdit && (
+              <CommentForm
+                action={boundEdit}
+                commentId={node.id}
+                initialBody={node.body}
+                session={session}
+                compact
+                isEdit
+              />
+            )}
+            {node.canDelete && (
+              <form action={boundDelete}>
+                <input type="hidden" name="commentId" value={node.id} />
+                <button
+                  type="submit"
+                  className="themed-muted transition-colors hover:text-[var(--color-error)]"
+                  style={{ fontSize: "0.75rem" }}
+                >
+                  Delete
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {node.replies.length > 0 && (
         <div>
@@ -154,7 +184,8 @@ function CommentNodeView({
  * Visibility: `approved` comments are public; `pending` guest comments are
  * shown only to the guest who wrote them (cookie token match) and to
  * publisher editors; `spam` never renders here (it lives in the moderation
- * queue). Soft-deleted comments keep their slot as "Comment removed".
+ * queue). Soft-deleted comments render a tombstone only while live replies
+ * hang beneath them (see pruneDeleted).
  */
 export default async function CommentThread({
   publisherSlug,
@@ -226,30 +257,45 @@ export default async function CommentThread({
   const visibleCount = visible.filter((r) => r.deletedAt === null).length;
 
   return (
-    <section className="mt-10">
-      <h2 className="text-lg font-semibold mb-4 themed-heading">
-        {visibleCount === 0
-          ? "No comments yet"
-          : visibleCount === 1
-          ? "1 comment"
-          : `${visibleCount} comments`}
-      </h2>
+    <section className="mt-16">
+      {/* Section rule + eyebrow header, per list-section convention */}
+      <div className="flex items-baseline justify-between pb-3 border-b themed-border">
+        <p className="ps-eyebrow">Discussion</p>
+        <span className="themed-muted" style={monoMeta}>
+          {visibleCount === 0
+            ? "no comments"
+            : visibleCount === 1
+            ? "1 comment"
+            : `${visibleCount} comments`}
+        </span>
+      </div>
 
       {/* Top-level comment form — guests welcome */}
-      <CommentForm action={boundCreate} session={session} />
+      <div className="mt-6">
+        <CommentForm action={boundCreate} session={session} />
+      </div>
 
-      {tree.length > 0 && (
-        <div className="mt-6 space-y-1 divide-y themed-border">
-          {tree.map((node) => (
-            <CommentNodeView
+      {tree.length === 0 ? (
+        <p className="mt-8 text-sm italic themed-muted">
+          No comments yet — yours could open the discussion.
+        </p>
+      ) : (
+        <div className="mt-10">
+          {tree.map((node, i) => (
+            <div
               key={node.id}
-              node={node}
-              session={session}
-              depth={0}
-              boundCreate={boundCreate}
-              boundDelete={boundDelete}
-              boundEdit={boundEdit}
-            />
+              className={i > 0 ? "mt-6 pt-6" : undefined}
+              style={i > 0 ? { borderTop: "1px solid var(--border)" } : undefined}
+            >
+              <CommentNodeView
+                node={node}
+                session={session}
+                depth={0}
+                boundCreate={boundCreate}
+                boundDelete={boundDelete}
+                boundEdit={boundEdit}
+              />
+            </div>
           ))}
         </div>
       )}

@@ -10,13 +10,18 @@ import TurnstileWidget from "./TurnstileWidget";
 // SubmitButton (needs useFormStatus, must be its own component)
 // ---------------------------------------------------------------------------
 
-function SubmitButton({ label }: { label: string }) {
+function SubmitButton({ label, compact }: { label: string; compact?: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
-      className="px-3 py-1.5 text-sm font-medium rounded themed-btn-primary disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+      className="themed-btn-accent rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+      style={{
+        fontSize: compact ? "0.75rem" : "0.8125rem",
+        padding: compact ? "0.3125rem 0.875rem" : "0.4375rem 1.125rem",
+        fontWeight: 500,
+      }}
     >
       {pending ? "Saving…" : label}
     </button>
@@ -81,7 +86,8 @@ export default function CommentForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs themed-muted hover:themed-link transition-colors"
+        className="themed-muted themed-hover-foreground transition-colors"
+        style={{ fontSize: "0.75rem" }}
       >
         {isEdit ? "Edit" : "Reply"}
       </button>
@@ -105,13 +111,13 @@ export default function CommentForm({
   }
 
   return (
-    <form ref={formRef} action={handleAction} className={compact ? "mt-2" : "mt-4"}>
-      {parentId !== undefined && (
-        <input type="hidden" name="parentId" value={parentId} />
-      )}
-      {commentId !== undefined && (
-        <input type="hidden" name="commentId" value={commentId} />
-      )}
+    <form
+      ref={formRef}
+      action={handleAction}
+      className={compact ? "mt-2 w-full" : undefined}
+    >
+      {parentId !== undefined && <input type="hidden" name="parentId" value={parentId} />}
+      {commentId !== undefined && <input type="hidden" name="commentId" value={commentId} />}
 
       {needsGuestFields && (
         <>
@@ -129,7 +135,8 @@ export default function CommentForm({
             required
             minLength={2}
             maxLength={50}
-            className="w-full mb-2 px-3 py-2 text-sm rounded border themed-input"
+            className="w-full themed-input rounded-md"
+            style={{ fontSize: "0.875rem", padding: "0.5rem 0.75rem", marginBottom: "0.5rem" }}
           />
         </>
       )}
@@ -137,33 +144,44 @@ export default function CommentForm({
       <textarea
         name="body"
         defaultValue={initialBody}
-        placeholder={isEdit ? "Edit your comment…" : parentId ? "Write a reply…" : "Leave a comment…"}
+        placeholder={
+          isEdit ? "Edit your comment…" : parentId ? "Write a reply…" : "Join the discussion…"
+        }
         required
         minLength={1}
         maxLength={session ? 10000 : 5000}
         rows={compact ? 2 : 4}
-        className="w-full px-3 py-2 text-sm rounded border themed-input resize-y"
+        className="w-full themed-input rounded-md resize-y"
+        style={{ fontSize: "0.875rem", padding: "0.5rem 0.75rem", lineHeight: 1.6 }}
       />
 
       {needsGuestFields && <TurnstileWidget />}
 
-      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      {error && (
+        <p className="mt-2" style={{ fontSize: "0.8125rem", color: "var(--color-error)" }}>
+          {error}
+        </p>
+      )}
 
-      <div className="flex items-center gap-2 mt-2">
-        <SubmitButton label={isEdit ? "Save" : parentId ? "Reply" : "Comment"} />
+      <div className="flex items-baseline gap-3 mt-2.5 flex-wrap">
+        <SubmitButton
+          label={isEdit ? "Save" : parentId ? "Reply" : "Post comment"}
+          compact={compact}
+        />
         {compact && (
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="text-sm themed-muted hover:themed-link transition-colors"
+            className="themed-muted themed-hover-foreground transition-colors"
+            style={{ fontSize: "0.75rem" }}
           >
             Cancel
           </button>
         )}
         {needsGuestFields && !compact && (
-          <span className="text-xs themed-muted">
+          <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
             Commenting as a guest —{" "}
-            <Link href="/login" className="themed-link underline underline-offset-2">
+            <Link href="/login" className="themed-accent underline underline-offset-2">
               sign in
             </Link>{" "}
             to comment as yourself.

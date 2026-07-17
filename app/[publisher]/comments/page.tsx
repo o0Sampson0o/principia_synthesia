@@ -24,6 +24,12 @@ interface QueueRow {
   subjectHref: string | null;
 }
 
+const monoMeta = {
+  fontSize: "0.6875rem",
+  fontFamily: "ui-monospace, monospace",
+  letterSpacing: "0.05em",
+} as const;
+
 // ---------------------------------------------------------------------------
 // Moderation queue (publisher editors only)
 // ---------------------------------------------------------------------------
@@ -125,71 +131,128 @@ export default async function CommentsModerationPage({
   const boundSetModeration = setGuestModeration.bind(null, publisherSlug);
 
   return (
-    <main className="w-full max-w-4xl mx-auto px-5 py-10 sm:py-14">
-      <div className="mb-10">
-        <p className="ps-eyebrow mb-1.5">@{publisherSlug}</p>
-        <h1
-          className="ps-display themed-heading"
-          style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}
-        >
-          Comment moderation
-        </h1>
-        <p className="text-sm themed-muted mt-2">
-          {pendingCount === 0
-            ? "No comments waiting for review."
-            : `${pendingCount} comment${pendingCount === 1 ? "" : "s"} waiting for review.`}
-        </p>
+    <main className="w-full max-w-5xl mx-auto px-5 sm:px-8 py-10 sm:py-16">
+      {/* ── Page header ──────────────────────────────────────────── */}
+      <div className="flex items-end justify-between gap-8 mb-10">
+        <div>
+          <p className="ps-eyebrow mb-3">@{publisherSlug}</p>
+          <h1
+            className="ps-display themed-heading"
+            style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
+          >
+            Comment moderation
+          </h1>
+        </div>
+        <div className="shrink-0 text-right">
+          <p
+            className="themed-heading"
+            style={{
+              fontFamily: "var(--font-playfair), serif",
+              fontSize: "clamp(2rem, 4vw, 3rem)",
+              fontWeight: 500,
+              letterSpacing: "-0.03em",
+              lineHeight: 1,
+            }}
+          >
+            {pendingCount}
+          </p>
+          <p
+            className="themed-muted mt-1"
+            style={{
+              fontSize: "0.5625rem",
+              fontFamily: "ui-monospace, monospace",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            awaiting review
+          </p>
+        </div>
       </div>
 
-      {/* Guest moderation policy toggle */}
-      <form action={boundSetModeration} className="mb-10 flex items-center gap-3">
-        <input
-          type="hidden"
-          name="allowUnmoderatedGuests"
-          value={pub.allowUnmoderatedGuests ? "false" : "true"}
-        />
-        <span className="text-sm">
-          Guest comments currently{" "}
-          <strong>
-            {pub.allowUnmoderatedGuests ? "post immediately" : "require approval"}
-          </strong>
-          .
+      {/* ── Guest policy — settings row ──────────────────────────── */}
+      <div
+        className="flex items-center justify-between gap-4 flex-wrap rounded-lg border themed-border px-4 py-3.5 mb-12"
+        style={{ background: "var(--surface)" }}
+      >
+        <div>
+          <p className="text-sm font-medium themed-heading">Guest comments</p>
+          <p className="themed-muted mt-0.5" style={{ fontSize: "0.8125rem" }}>
+            {pub.allowUnmoderatedGuests
+              ? "Post immediately, without review."
+              : "Held here for review before appearing publicly."}
+          </p>
+        </div>
+        <form action={boundSetModeration}>
+          <input
+            type="hidden"
+            name="allowUnmoderatedGuests"
+            value={pub.allowUnmoderatedGuests ? "false" : "true"}
+          />
+          <button
+            type="submit"
+            className="themed-btn-outline rounded-lg"
+            style={{ fontSize: "0.8125rem", padding: "0.4375rem 1rem" }}
+          >
+            {pub.allowUnmoderatedGuests ? "Require approval" : "Allow immediate posting"}
+          </button>
+        </form>
+      </div>
+
+      {/* ── Queue ────────────────────────────────────────────────── */}
+      <div className="flex items-baseline justify-between pb-3 border-b themed-border mb-2">
+        <p className="ps-eyebrow-muted">Review queue</p>
+        <span className="themed-muted" style={monoMeta}>
+          {rows.length}
         </span>
-        <button
-          type="submit"
-          className="px-3 py-1.5 text-sm font-medium rounded border themed-border hover:themed-link transition-colors"
-        >
-          {pub.allowUnmoderatedGuests ? "Require approval" : "Allow immediate posting"}
-        </button>
-      </form>
+      </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm themed-muted">The queue is empty. 🎉</p>
+        <p className="py-10 text-sm italic themed-muted text-center">
+          The queue is empty — nothing awaits review.
+        </p>
       ) : (
-        <div className="space-y-1 divide-y themed-border">
+        <div>
           {rows.map((row) => {
             const boundModerate = moderateComment.bind(null, publisherSlug, row.subject);
             const boundDelete = deleteComment.bind(null, publisherSlug, row.subject);
             return (
-              <div key={row.id} className="py-4">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <div
+                key={row.id}
+                className="hover:bg-[var(--surface)] transition-colors"
+                style={{ borderBottom: "1px solid var(--border)", padding: "1rem 0.5rem" }}
+              >
+                {/* Meta line */}
+                <div className="flex items-baseline gap-x-3 gap-y-1 flex-wrap">
                   <span className="text-sm font-medium themed-heading">{row.authorName}</span>
-                  <span className="text-xs themed-muted">
+                  <span className="themed-muted" style={monoMeta}>
                     {row.createdAt.toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
                     })}
                   </span>
-                  <span className="text-xs px-1.5 py-0.5 rounded border themed-border themed-muted">
+                  <span
+                    style={{
+                      ...monoMeta,
+                      fontSize: "0.5625rem",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      border: "1px solid var(--border)",
+                      borderRadius: "9999px",
+                      padding: "0.125rem 0.5rem",
+                      color:
+                        row.status === "spam" ? "var(--color-error)" : "var(--muted-foreground)",
+                    }}
+                  >
                     {row.status}
                   </span>
-                  <span className="text-xs themed-muted">
+                  <span className="themed-muted" style={{ fontSize: "0.75rem" }}>
                     on{" "}
                     {row.subjectHref ? (
                       <Link
                         href={row.subjectHref}
-                        className="themed-link underline underline-offset-2"
+                        className="themed-accent underline underline-offset-2"
                       >
                         {row.subjectTitle}
                       </Link>
@@ -198,8 +261,16 @@ export default async function CommentsModerationPage({
                     )}
                   </span>
                 </div>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap mb-2">{row.body}</p>
-                <div className="flex gap-3">
+
+                <p
+                  className="whitespace-pre-wrap themed-foreground mt-1.5"
+                  style={{ fontSize: "0.875rem", lineHeight: 1.6 }}
+                >
+                  {row.body}
+                </p>
+
+                {/* Actions */}
+                <div className="flex items-baseline gap-4 mt-2" style={{ fontSize: "0.75rem" }}>
                   {row.status === "pending" && (
                     <>
                       <form action={boundModerate}>
@@ -207,7 +278,8 @@ export default async function CommentsModerationPage({
                         <input type="hidden" name="status" value="approved" />
                         <button
                           type="submit"
-                          className="text-xs font-medium themed-link hover:underline"
+                          className="themed-accent font-medium hover:underline underline-offset-2"
+                          style={{ fontSize: "0.75rem" }}
                         >
                           Approve
                         </button>
@@ -217,7 +289,8 @@ export default async function CommentsModerationPage({
                         <input type="hidden" name="status" value="spam" />
                         <button
                           type="submit"
-                          className="text-xs themed-muted hover:text-red-500 transition-colors"
+                          className="themed-muted transition-colors hover:text-[var(--color-error)]"
+                          style={{ fontSize: "0.75rem" }}
                         >
                           Mark as spam
                         </button>
@@ -230,7 +303,8 @@ export default async function CommentsModerationPage({
                       <input type="hidden" name="status" value="approved" />
                       <button
                         type="submit"
-                        className="text-xs font-medium themed-link hover:underline"
+                        className="themed-accent font-medium hover:underline underline-offset-2"
+                        style={{ fontSize: "0.75rem" }}
                       >
                         Not spam — approve
                       </button>
@@ -240,7 +314,8 @@ export default async function CommentsModerationPage({
                     <input type="hidden" name="commentId" value={row.id} />
                     <button
                       type="submit"
-                      className="text-xs themed-muted hover:text-red-500 transition-colors"
+                      className="themed-muted transition-colors hover:text-[var(--color-error)]"
+                      style={{ fontSize: "0.75rem" }}
                     >
                       Delete
                     </button>
