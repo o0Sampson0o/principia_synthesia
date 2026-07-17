@@ -181,7 +181,7 @@ export default function InsertImageButton({
                   placeholder="Describe the image"
                   className="themed-input w-full text-sm"
                 />
-                <button type="button" onClick={handleInsert} className="themed-btn-primary text-sm">
+                <button type="button" onClick={handleInsert} className="themed-btn-accent rounded-lg text-sm">
                   Insert
                 </button>
               </div>

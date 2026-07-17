@@ -101,7 +101,7 @@ export default function CitationModal({ onClose, ...inputProps }: Props) {
           <button
             type="button"
             onClick={handleCopy}
-            className="themed-btn-primary text-sm px-4 py-2"
+            className="themed-btn-accent rounded-lg text-sm px-4 py-2"
           >
             {copied ? "Copied!" : "Copy"}
           </button>

@@ -454,6 +454,7 @@ body {
 .markdown-content p {
   margin-top: 0;
   margin-bottom: 1.4em;
+  text-wrap: pretty;
 }
 .markdown-content p:first-child { margin-top: 0; }
 
@@ -1280,6 +1281,7 @@ body::-webkit-scrollbar-corner,
   line-height: 1.02;
   letter-spacing: -0.04em;
   color: var(--foreground);
+  text-wrap: balance;
 }
 
 /* Profile / page display name (Playfair) */
@@ -1289,6 +1291,7 @@ body::-webkit-scrollbar-corner,
   line-height: 1.12;
   letter-spacing: -0.03em;
   color: var(--foreground);
+  text-wrap: balance;
 }
 
 /* Small-caps accent eyebrow */
@@ -1466,4 +1469,26 @@ body::-webkit-scrollbar-corner,
 @media (max-width: 639px) {
   .ps-hero { letter-spacing: -0.02em; }
   .ps-content-row { padding: 0.875rem 1rem; }
+}
+
+/* ─── Accessibility: focus + reduced motion (systemic) ───────────── */
+/* Keyboard focus ring for anything interactive that doesn't define its
+   own. :where() keeps specificity at zero so component-level
+   :focus-visible rules (ps-tab, ps-user-pill, …) still win. */
+:where(a, button, [role="button"], input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Collapse all animation for users who ask for less motion. Component
+   rules above handle their own cases; this is the safety net. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

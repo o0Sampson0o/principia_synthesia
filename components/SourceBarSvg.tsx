@@ -79,12 +79,15 @@ export default function SourceBarSvg({ data }: Props) {
               {hasData && (
                 <div
                   style={{
-                    width: `${barWidth}%`,
+                    width: "100%",
                     height: 6,
                     borderRadius: 3,
                     backgroundColor: "var(--accent)",
                     opacity: 0.8,
-                    transition: "width 0.3s ease",
+                    // scaleX instead of width so the bar animates off the layout path
+                    transform: `scaleX(${barWidth / 100})`,
+                    transformOrigin: "left center",
+                    transition: "transform 0.3s ease",
                   }}
                 />
               )}

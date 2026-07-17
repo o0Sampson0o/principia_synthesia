@@ -105,7 +105,7 @@ export default function ImportEventsForm({ previewAction, confirmAction }: Props
           </div>
         )}
 
-        <button type="submit" disabled={previewPending} className="themed-btn-primary">
+        <button type="submit" disabled={previewPending} className="themed-btn-accent rounded-lg">
           {previewPending ? "Analysing…" : "Preview import"}
         </button>
       </form>
@@ -149,7 +149,7 @@ export default function ImportEventsForm({ previewAction, confirmAction }: Props
                 type="button"
                 onClick={handleConfirm}
                 disabled={confirmPending}
-                className="themed-btn-primary"
+                className="themed-btn-accent rounded-lg"
               >
                 {confirmPending ? "Importing…" : "Confirm import"}
               </button>

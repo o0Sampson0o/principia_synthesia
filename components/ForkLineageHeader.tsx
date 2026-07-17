@@ -18,7 +18,7 @@ export default function ForkLineageHeader({
   originalArticleSlug,
 }: Props) {
   return (
-    <div className="themed-surface border-l-4 border-amber-500 pl-4 py-3 mb-6 rounded-r text-sm">
+    <div className="themed-surface border themed-border rounded-lg px-4 py-3 mb-6 text-sm">
       <span className="opacity-70">Forked from </span>
       <Link
         href={`/${originalPublisherSlug}/articles/${originalArticleSlug}`}

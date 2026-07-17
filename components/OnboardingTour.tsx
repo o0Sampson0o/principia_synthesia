@@ -164,7 +164,7 @@ export default function OnboardingTour({ publisherSlug }: { publisherSlug: strin
                 Back
               </button>
             )}
-            <button type="button" onClick={next} disabled={isPending} className="themed-btn-primary text-sm">
+            <button type="button" onClick={next} disabled={isPending} className="themed-btn-accent rounded-lg text-sm">
               {stepIndex === STEPS.length - 1 ? "Done" : "Next"}
             </button>
           </div>

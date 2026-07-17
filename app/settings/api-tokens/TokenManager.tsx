@@ -99,7 +99,7 @@ export default function TokenManager({ tokens }: { tokens: TokenRow[] }) {
           <button
             type="submit"
             disabled={isPending}
-            className="themed-btn-primary rounded-lg"
+            className="themed-btn-accent rounded-lg"
             style={{ fontSize: "0.875rem", padding: "0.5rem 1rem" }}
           >
             {isPending ? "Creating…" : "Create token"}

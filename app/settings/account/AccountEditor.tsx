@@ -63,7 +63,7 @@ export default function AccountEditor({ initialDisplayName }: { initialDisplayNa
           <button
             type="submit"
             disabled={isPending}
-            className="themed-btn-primary rounded-lg"
+            className="themed-btn-accent rounded-lg"
             style={{ fontSize: "0.875rem", padding: "0.5rem 1rem" }}
           >
             Save
@@ -100,7 +100,7 @@ export default function AccountEditor({ initialDisplayName }: { initialDisplayNa
           <button
             type="submit"
             disabled={isPending}
-            className="themed-btn-primary rounded-lg"
+            className="themed-btn-accent rounded-lg"
             style={{ fontSize: "0.875rem", padding: "0.5rem 1rem" }}
           >
             Change password

@@ -20,7 +20,18 @@ export default function SnapshotBanner({
   });
 
   return (
-    <div className="mb-6 themed-surface border-l-4 border-yellow-400 px-4 py-3 text-sm">
+    <div className="mb-6 themed-surface border themed-border rounded-lg px-4 py-3 text-sm">
+      <p
+        className="themed-muted mb-1"
+        style={{
+          fontSize: "0.5625rem",
+          fontFamily: "ui-monospace, monospace",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+        }}
+      >
+        Archived version
+      </p>
       <p className="themed-heading font-medium">
         You are viewing version{" "}
         <code className="themed-inline-code">

@@ -127,7 +127,7 @@ export default function ArticleEditorPanel({
             <button
               type="button"
               onClick={handleRestore}
-              className="themed-btn-primary text-xs px-2 py-1"
+              className="themed-btn-accent rounded-lg text-xs px-2 py-1"
             >
               Restore
             </button>

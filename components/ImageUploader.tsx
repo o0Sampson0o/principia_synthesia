@@ -118,7 +118,7 @@ export default function ImageUploader({ publisherSlug, onUploaded }: Props) {
             type="button"
             onClick={handleUpload}
             disabled={uploading}
-            className="themed-btn-primary text-sm"
+            className="themed-btn-accent rounded-lg text-sm"
           >
             {uploading ? "Uploading…" : "Upload"}
           </button>

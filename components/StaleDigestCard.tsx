@@ -49,7 +49,7 @@ export default function StaleDigestCard({ notificationId, articles }: Props) {
         <button
           type="submit"
           disabled={checked.size === 0}
-          className="themed-btn-primary text-xs px-3 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="themed-btn-accent rounded-lg text-xs px-3 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Verify {checked.size > 0 ? `${checked.size} selected` : "selected"}
         </button>

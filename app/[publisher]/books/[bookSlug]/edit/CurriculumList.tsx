@@ -82,7 +82,14 @@ export default function CurriculumList({
     return <p className="text-sm themed-muted mb-6">No chapters yet.</p>;
   }
 
-  let chapterNo = 0;
+  // Chapter numbers skip part dividers; derived (not mutated) so render stays pure.
+  const chapterNumbers = new Map<number | string, number>();
+  {
+    let n = 0;
+    for (const row of rows) {
+      if (row.kind !== "part") chapterNumbers.set(row.entryId, ++n);
+    }
+  }
 
   return (
     <div className="mb-6">
@@ -169,14 +176,12 @@ export default function CurriculumList({
           }
 
           const ch = row;
-          chapterNo += 1;
+          const chapterNo = chapterNumbers.get(ch.entryId);
 
           return (
             <li
               key={ch.entryId}
-              className={`flex items-center gap-2 p-3 border rounded themed-surface ${
-                ch.isExternal ? "border-l-4 border-l-blue-500" : ""
-              }`}
+              className="flex items-center gap-2 p-3 border rounded themed-surface"
             >
               <span className="text-sm themed-muted w-6 shrink-0">{chapterNo}.</span>
               <div className="flex-1 min-w-0">

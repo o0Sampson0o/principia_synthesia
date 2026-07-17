@@ -100,7 +100,7 @@ export default function EditObjectFormClient({
         )}
 
         <div className="flex items-center gap-4">
-          <button type="submit" className="themed-btn-primary">
+          <button type="submit" className="themed-btn-accent rounded-lg">
             Save changes
           </button>
           <Link
