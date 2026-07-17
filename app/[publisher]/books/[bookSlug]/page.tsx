@@ -7,6 +7,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { canEditContent } from "@/lib/roles";
+import CommentThread from "@/components/CommentThread";
 
 export default async function BookPage({
   params,
@@ -173,6 +174,16 @@ export default async function BookPage({
           })}
         </div>
       )}
+
+      {/* ── Book discussion ──────────────────────────────────────── */}
+      <CommentThread
+        publisherSlug={publisherSlug}
+        subject={{ kind: "book", slug: bookSlug }}
+        subjectId={{ bookId: bookRow.id }}
+        ownerType={ownerType}
+        ownerId={ownerId}
+        session={session}
+      />
 
     </main>
   );

@@ -34,6 +34,7 @@ import ForkLineageHeader from "@/components/ForkLineageHeader";
 import ForksList from "@/components/ForksList";
 import Cite from "@/components/Cite";
 import BibliographySection from "@/components/BibliographySection";
+import CommentThread from "@/components/CommentThread";
 import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
 import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-numbering";
 
@@ -431,6 +432,14 @@ export default async function ArticlePage({
 
       <ForksList forks={forksWithPublisher} totalCount={forksCount} />
 
+      <CommentThread
+        publisherSlug={publisherSlug}
+        subject={{ kind: "article", slug }}
+        subjectId={{ articleId: article.id }}
+        ownerType={ownerType as "user" | "org"}
+        ownerId={ownerId}
+        session={session}
+      />
 
     </main>
   );

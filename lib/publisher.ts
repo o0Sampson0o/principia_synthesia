@@ -8,6 +8,8 @@ export interface ResolvedPublisher {
   orgId: number | null;
   slug: string;
   displayName: string; // user.displayName or org.name
+  /** Guest comments post straight to 'approved' instead of the mod queue. */
+  allowUnmoderatedGuests: boolean;
 }
 
 /**
@@ -25,6 +27,7 @@ export async function resolvePublisher(slug: string): Promise<ResolvedPublisher 
       kind: publishers.kind,
       userId: publishers.userId,
       orgId: publishers.orgId,
+      allowUnmoderatedGuests: publishers.allowUnmoderatedGuests,
       userDisplayName: users.displayName,
       orgName: organizations.name,
     })
@@ -48,5 +51,6 @@ export async function resolvePublisher(slug: string): Promise<ResolvedPublisher 
     orgId: row.orgId,
     slug: row.slug,
     displayName,
+    allowUnmoderatedGuests: row.allowUnmoderatedGuests,
   };
 }

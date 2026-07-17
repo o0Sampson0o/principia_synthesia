@@ -20,6 +20,12 @@ function notificationHref(n: Notification): string {
   if (n.type === "onboarding_example_article") {
     return `/${p.publisherSlug}/articles/${p.slug}`;
   }
+  if (n.type === "comment_posted") {
+    if (p.pending) return `/${p.publisherSlug}/comments`;
+    return p.subjectKind === "book"
+      ? `/${p.publisherSlug}/books/${p.subjectSlug}`
+      : `/${p.publisherSlug}/articles/${p.subjectSlug}`;
+  }
   return "/";
 }
 
@@ -37,6 +43,11 @@ function notificationLabel(n: Notification): string {
   }
   if (n.type === "onboarding_example_article") {
     return `Welcome! Your example article "${p.title}" is ready.`;
+  }
+  if (n.type === "comment_posted") {
+    return p.pending
+      ? `${p.authorName} left a comment on "${p.subjectTitle}" — awaiting moderation`
+      : `${p.authorName} commented on "${p.subjectTitle}"`;
   }
   return n.type;
 }

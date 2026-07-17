@@ -1,26 +1,31 @@
 import { db } from "@/db";
-import { articleComments, users } from "@/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { comments, users } from "@/db/schema";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type { SessionPayload } from "@/lib/auth";
-import { createComment, deleteComment, editComment } from "@/app/[publisher]/articles/[slug]/comments/actions";
+import { canEditContent } from "@/lib/roles";
+import { GUEST_EDIT_WINDOW_MS, getGuestTokenHash } from "@/lib/comments";
+import { createComment, deleteComment, editComment } from "@/app/[publisher]/comments/actions";
+import type { CommentSubject } from "@/lib/validations";
 import CommentForm from "./CommentForm";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface RawComment {
+interface CommentRow {
   id: number;
   parentId: number | null;
-  authorId: number;
   authorName: string;
+  isPending: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
   body: string;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
 }
 
-interface CommentNode extends RawComment {
+interface CommentNode extends CommentRow {
   replies: CommentNode[];
 }
 
@@ -29,9 +34,13 @@ interface CommentNode extends RawComment {
 // ---------------------------------------------------------------------------
 
 interface Props {
-  articleId: number;
   publisherSlug: string;
-  articleSlug: string;
+  /** Slug-based subject the server actions re-resolve and re-authorize. */
+  subject: CommentSubject;
+  /** Resolved DB id of the subject — articles/chapters or books. */
+  subjectId: { articleId: number } | { bookId: number };
+  ownerType: "user" | "org";
+  ownerId: number;
   session: SessionPayload | null;
 }
 
@@ -39,7 +48,7 @@ interface Props {
 // Tree builder
 // ---------------------------------------------------------------------------
 
-function buildTree(rows: RawComment[]): CommentNode[] {
+function buildTree(rows: CommentRow[]): CommentNode[] {
   const nodeMap = new Map<number, CommentNode>();
   for (const row of rows) {
     nodeMap.set(row.id, { ...row, replies: [] });
@@ -54,7 +63,7 @@ function buildTree(rows: RawComment[]): CommentNode[] {
       if (parent) {
         parent.replies.push(node);
       } else {
-        // Orphaned reply (parent was hard-deleted) — attach to root
+        // Orphaned reply (parent hidden or hard-deleted) — attach to root
         roots.push(node);
       }
     }
@@ -69,9 +78,6 @@ function buildTree(rows: RawComment[]): CommentNode[] {
 
 function CommentNodeView({
   node,
-  articleId,
-  publisherSlug,
-  articleSlug,
   session,
   depth,
   boundCreate,
@@ -79,9 +85,6 @@ function CommentNodeView({
   boundEdit,
 }: {
   node: CommentNode;
-  articleId: number;
-  publisherSlug: string;
-  articleSlug: string;
   session: SessionPayload | null;
   depth: number;
   boundCreate: (formData: FormData) => Promise<void>;
@@ -89,7 +92,6 @@ function CommentNodeView({
   boundEdit: (formData: FormData) => Promise<void>;
 }) {
   const isDeleted = node.deletedAt !== null;
-  const isAuthor = session && session.userId === node.authorId;
 
   return (
     <div className={depth > 0 ? "pl-4 border-l themed-border" : ""}>
@@ -108,46 +110,46 @@ function CommentNodeView({
                 })}
                 {node.updatedAt.getTime() !== node.createdAt.getTime() && " (edited)"}
               </span>
+              {node.isPending && (
+                <span className="text-xs px-1.5 py-0.5 rounded border themed-border themed-muted">
+                  awaiting moderation
+                </span>
+              )}
             </div>
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{node.body}</p>
 
-            {session && (
-              <div className="flex gap-3 mt-1">
-                {/* Reply form — shallow nesting only one level deeper */}
-                {depth < 5 && (
-                  <CommentForm
-                    action={boundCreate}
-                    articleId={articleId}
-                    parentId={node.id}
-                    session={session}
-                    compact
-                  />
-                )}
-                {isAuthor && (
-                  <>
-                    <CommentForm
-                      action={boundEdit}
-                      articleId={articleId}
-                      commentId={node.id}
-                      initialBody={node.body}
-                      session={session}
-                      compact
-                      isEdit
-                    />
-                    <form action={boundDelete}>
-                      <input type="hidden" name="commentId" value={node.id} />
-                      <input type="hidden" name="articleId" value={articleId} />
-                      <button
-                        type="submit"
-                        className="text-xs themed-muted hover:text-red-500 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </form>
-                  </>
-                )}
-              </div>
-            )}
+            <div className="flex gap-3 mt-1">
+              {/* Reply form — pending comments can't collect replies */}
+              {depth < 5 && !node.isPending && (
+                <CommentForm
+                  action={boundCreate}
+                  parentId={node.id}
+                  session={session}
+                  compact
+                />
+              )}
+              {node.canEdit && (
+                <CommentForm
+                  action={boundEdit}
+                  commentId={node.id}
+                  initialBody={node.body}
+                  session={session}
+                  compact
+                  isEdit
+                />
+              )}
+              {node.canDelete && (
+                <form action={boundDelete}>
+                  <input type="hidden" name="commentId" value={node.id} />
+                  <button
+                    type="submit"
+                    className="text-xs themed-muted hover:text-red-500 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </form>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -158,9 +160,6 @@ function CommentNodeView({
             <CommentNodeView
               key={reply.id}
               node={reply}
-              articleId={articleId}
-              publisherSlug={publisherSlug}
-              articleSlug={articleSlug}
               session={session}
               depth={depth + 1}
               boundCreate={boundCreate}
@@ -178,38 +177,82 @@ function CommentNodeView({
 // CommentThread (server component)
 // ---------------------------------------------------------------------------
 
+/**
+ * Discussion thread for an article/chapter or a book. Open to guests.
+ *
+ * Visibility: `approved` comments are public; `pending` guest comments are
+ * shown only to the guest who wrote them (cookie token match) and to
+ * publisher editors; `spam` never renders here (it lives in the moderation
+ * queue). Soft-deleted comments keep their slot as "Comment removed".
+ */
 export default async function CommentThread({
-  articleId,
   publisherSlug,
-  articleSlug,
+  subject,
+  subjectId,
+  ownerType,
+  ownerId,
   session,
 }: Props) {
-  // Fetch all comments for this article, including soft-deleted ones (so
-  // thread structure is preserved), joined with author display name.
+  const [isEditor, guestHash] = await Promise.all([
+    canEditContent(session, ownerType, ownerId),
+    getGuestTokenHash({ mint: false }),
+  ]);
+
+  const subjectEq =
+    "articleId" in subjectId
+      ? eq(comments.articleId, subjectId.articleId)
+      : eq(comments.bookId, subjectId.bookId);
+
   const rows = await db
     .select({
-      id: articleComments.id,
-      parentId: articleComments.parentId,
-      authorId: articleComments.authorId,
-      authorName: users.displayName,
-      body: articleComments.body,
-      createdAt: articleComments.createdAt,
-      updatedAt: articleComments.updatedAt,
-      deletedAt: articleComments.deletedAt,
+      id: comments.id,
+      parentId: comments.parentId,
+      authorId: comments.authorId,
+      guestName: comments.guestName,
+      guestTokenHash: comments.guestTokenHash,
+      status: comments.status,
+      authorDisplayName: users.displayName,
+      body: comments.body,
+      createdAt: comments.createdAt,
+      updatedAt: comments.updatedAt,
+      deletedAt: comments.deletedAt,
+      // DB clock, so this server component's render stays pure
+      withinEditWindow: sql<boolean>`${comments.createdAt} > now() - make_interval(secs => ${GUEST_EDIT_WINDOW_MS / 1000})`,
     })
-    .from(articleComments)
-    .innerJoin(users, eq(articleComments.authorId, users.id))
-    .where(eq(articleComments.articleId, articleId))
-    .orderBy(articleComments.createdAt);
+    .from(comments)
+    .leftJoin(users, eq(comments.authorId, users.id))
+    .where(and(subjectEq, ne(comments.status, "spam")))
+    .orderBy(comments.createdAt);
 
-  const tree = buildTree(rows);
+  const visible: CommentRow[] = [];
+  for (const r of rows) {
+    const isOwnGuest = r.authorId === null && guestHash !== null && r.guestTokenHash === guestHash;
+    if (r.status === "pending" && !isEditor && !isOwnGuest) continue;
 
-  // Bind server actions to the publisher + slug context
-  const boundCreate = createComment.bind(null, publisherSlug, articleSlug);
-  const boundDelete = deleteComment.bind(null, publisherSlug, articleSlug);
-  const boundEdit = editComment.bind(null, publisherSlug, articleSlug);
+    const isAuthor = session !== null && r.authorId === session.userId;
+    const guestCanModify = isOwnGuest && r.withinEditWindow;
+    visible.push({
+      id: r.id,
+      parentId: r.parentId,
+      authorName: r.authorDisplayName ?? r.guestName ?? "Guest",
+      isPending: r.status === "pending",
+      canEdit: isAuthor || guestCanModify,
+      canDelete: isAuthor || guestCanModify || isEditor,
+      body: r.body,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      deletedAt: r.deletedAt,
+    });
+  }
 
-  const visibleCount = rows.filter((r) => r.deletedAt === null).length;
+  const tree = buildTree(visible);
+
+  // Bind server actions to the publisher + subject context
+  const boundCreate = createComment.bind(null, publisherSlug, subject);
+  const boundDelete = deleteComment.bind(null, publisherSlug, subject);
+  const boundEdit = editComment.bind(null, publisherSlug, subject);
+
+  const visibleCount = visible.filter((r) => r.deletedAt === null).length;
 
   return (
     <section className="mt-10">
@@ -221,12 +264,8 @@ export default async function CommentThread({
           : `${visibleCount} comments`}
       </h2>
 
-      {/* Top-level comment form */}
-      <CommentForm
-        action={boundCreate}
-        articleId={articleId}
-        session={session}
-      />
+      {/* Top-level comment form — guests welcome */}
+      <CommentForm action={boundCreate} session={session} />
 
       {tree.length > 0 && (
         <div className="mt-6 space-y-1 divide-y themed-border">
@@ -234,9 +273,6 @@ export default async function CommentThread({
             <CommentNodeView
               key={node.id}
               node={node}
-              articleId={articleId}
-              publisherSlug={publisherSlug}
-              articleSlug={articleSlug}
               session={session}
               depth={0}
               boundCreate={boundCreate}

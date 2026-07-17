@@ -20,7 +20,8 @@ function buildCsp(nonce: string): string {
     `img-src 'self' data: blob: https://*.public.blob.vercel-storage.com`,
     `font-src 'self' data:`,
     `connect-src 'self' https://vitals.vercel-insights.com https://vercel.live`,
-    `frame-src 'self' https://vercel.live`,
+    // challenges.cloudflare.com: Turnstile widget iframe (guest comments)
+    `frame-src 'self' https://vercel.live https://challenges.cloudflare.com`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

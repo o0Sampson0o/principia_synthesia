@@ -25,6 +25,7 @@ import { headers } from "next/headers";
 import { classifyReferrer } from "@/lib/analytics-source";
 import { getOrCreateSessionId } from "@/lib/analytics-session";
 import { config } from "@/lib/config";
+import CommentThread from "@/components/CommentThread";
 
 export default async function ChapterPage({
   params,
@@ -299,6 +300,18 @@ export default async function ChapterPage({
           </nav>
         </div>
       )}
+
+      {/* ── Chapter discussion ───────────────────────────────────── */}
+      <div className="max-w-3xl mx-auto px-5 pb-16 sm:pb-20">
+        <CommentThread
+          publisherSlug={articlePublisherSlug}
+          subject={{ kind: "article", slug: article.slug }}
+          subjectId={{ articleId: article.id }}
+          ownerType={articleOwnerType}
+          ownerId={articleOwnerId}
+          session={session}
+        />
+      </div>
 
     </main>
   );

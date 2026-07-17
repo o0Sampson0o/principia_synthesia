@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   serial,
@@ -8,6 +9,7 @@ import {
   unique,
   jsonb,
   index,
+  check,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
@@ -28,6 +30,8 @@ export const publishers = pgTable(
     kind: text("kind").notNull(), // 'user' | 'org'
     userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
     orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+    // When true, guest comments skip the moderation queue (posted as 'approved').
+    allowUnmoderatedGuests: boolean("allow_unmoderated_guests").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (t) => [
@@ -617,31 +621,52 @@ export const notifications = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Article comments (threaded, with soft-delete)
+// Comments (threaded, with soft-delete; articles/chapters and books)
 // ---------------------------------------------------------------------------
 
+/** Moderation state of a comment. Guests post as `pending` by default. */
+export type CommentStatus = "pending" | "approved" | "spam";
+
 /**
- * Top-level comments and threaded replies on articles.
+ * Top-level comments and threaded replies on articles (which includes book
+ * chapters) and on whole books — exactly one of `articleId`/`bookId` is set.
+ *
+ * Comments are open to guests: `authorId` is null for guest comments, which
+ * carry a `guestName` instead. `guestTokenHash` is the SHA-256 of a random
+ * token held in the guest's cookie, letting them edit/delete their own recent
+ * comments; `ipHash` is a salted hash for rate limiting and moderation (the
+ * raw IP is never stored).
+ *
  * `parentId` is null for root comments; replies point to their parent.
  * Soft-deletes via `deletedAt` preserve thread structure: deleted rows are
  * displayed as "Comment removed" rather than breaking reply chains.
  */
-export const articleComments = pgTable(
-  "article_comments",
+export const comments = pgTable(
+  "comments",
   {
     id: serial("id").primaryKey(),
-    articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
-    authorId: integer("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    parentId: integer("parent_id").references((): AnyPgColumn => articleComments.id, { onDelete: "cascade" }),
+    articleId: integer("article_id").references(() => articles.id, { onDelete: "cascade" }),
+    bookId: integer("book_id").references(() => books.id, { onDelete: "cascade" }),
+    authorId: integer("author_id").references(() => users.id, { onDelete: "cascade" }),
+    guestName: text("guest_name"),
+    guestTokenHash: text("guest_token_hash"),
+    ipHash: text("ip_hash"),
+    status: text("status").$type<CommentStatus>().notNull().default("approved"),
+    parentId: integer("parent_id").references((): AnyPgColumn => comments.id, { onDelete: "cascade" }),
     body: text("body").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     deletedAt: timestamp("deleted_at"),
   },
   (t) => [
-    index("article_comments_article_idx").on(t.articleId),
-    index("article_comments_author_idx").on(t.authorId),
-    index("article_comments_parent_idx").on(t.parentId),
+    index("comments_article_idx").on(t.articleId),
+    index("comments_book_idx").on(t.bookId),
+    index("comments_author_idx").on(t.authorId),
+    index("comments_parent_idx").on(t.parentId),
+    index("comments_status_idx").on(t.status),
+    check("comments_subject_check", sql`(article_id IS NULL) <> (book_id IS NULL)`),
+    check("comments_guest_name_check", sql`author_id IS NOT NULL OR guest_name IS NOT NULL`),
+    check("comments_status_values_check", sql`status IN ('pending', 'approved', 'spam')`),
   ]
 );
 

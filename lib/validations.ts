@@ -723,21 +723,38 @@ export const citationSlugSchema = z.string().regex(
 // Comment schemas
 // ---------------------------------------------------------------------------
 
+/** What a comment thread hangs off: an article (incl. chapters) or a book. */
+export const commentSubjectSchema = z.union([
+  z.object({ kind: z.literal("article"), slug: z.string().min(1) }),
+  z.object({ kind: z.literal("book"), slug: z.string().min(1) }),
+]);
+
+export type CommentSubject = z.infer<typeof commentSubjectSchema>;
+
 export const createCommentSchema = z.object({
-  articleId: z.coerce.number().int().positive(),
   parentId: z.coerce.number().int().positive().optional(),
   body: z.string().min(1).max(10_000),
 });
 
+/** Guest submissions: display name required, tighter body limit. */
+export const guestCommentSchema = z.object({
+  parentId: z.coerce.number().int().positive().optional(),
+  body: z.string().min(1).max(5_000),
+  guestName: z.string().trim().min(2).max(50),
+});
+
 export const deleteCommentSchema = z.object({
   commentId: z.coerce.number().int().positive(),
-  articleId: z.coerce.number().int().positive(),
 });
 
 export const editCommentSchema = z.object({
   commentId: z.coerce.number().int().positive(),
-  articleId: z.coerce.number().int().positive(),
   body: z.string().min(1).max(10_000),
+});
+
+export const moderateCommentSchema = z.object({
+  commentId: z.coerce.number().int().positive(),
+  status: z.enum(["approved", "spam"]),
 });
 
 // ---------------------------------------------------------------------------

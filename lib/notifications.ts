@@ -10,7 +10,8 @@ export type NotificationType =
   | "stale_articles_digest"
   | "article_forked"
   | "article_cited"
-  | "onboarding_example_article";
+  | "onboarding_example_article"
+  | "comment_posted";
 
 export type StaleArticleItem = {
   articleId: number;
@@ -46,11 +47,23 @@ export type OnboardingExampleArticlePayload = {
   title: string;
 };
 
+export type CommentPostedPayload = {
+  commentId: number;
+  publisherSlug: string;
+  subjectKind: "article" | "book";
+  subjectSlug: string;
+  subjectTitle: string;
+  authorName: string;
+  /** True when the comment sits in the moderation queue. */
+  pending: boolean;
+};
+
 export type NotificationPayload =
   | StaleArticlesDigestPayload
   | ArticleForkedPayload
   | ArticleCitedPayload
-  | OnboardingExampleArticlePayload;
+  | OnboardingExampleArticlePayload
+  | CommentPostedPayload;
 
 // ---------------------------------------------------------------------------
 // Helpers
