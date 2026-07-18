@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import ToastForm from "@/components/ToastForm";
+import ConfirmButton from "@/components/ConfirmButton";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -305,7 +306,7 @@ export default async function EditBookPage({
         </button>
       </ToastForm>
 
-      <section className="mt-10 border-t pt-8">
+      <section className="mt-10 border-t themed-border pt-8">
         <h2 className="text-xl font-semibold themed-heading mb-4">Sections</h2>
 
         <CurriculumList
@@ -324,7 +325,7 @@ export default async function EditBookPage({
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
             <h3 className="text-sm font-semibold themed-secondary mb-3">Add existing article</h3>
-            <form action={addChapter} className="space-y-2">
+            <ToastForm action={addChapter} errorTitle="Section not added" className="space-y-2">
               <input type="hidden" name="bookId" value={bookRow.id} />
               <input type="hidden" name="position" value={rows.length} />
               <select name="articleId" required className="themed-input text-sm">
@@ -337,10 +338,10 @@ export default async function EditBookPage({
                     </option>
                   ))}
               </select>
-              <button type="submit" className="themed-btn-accent rounded text-sm">
+              <button type="submit" className="themed-btn-outline rounded-lg text-sm">
                 Add section
               </button>
-            </form>
+            </ToastForm>
           </div>
 
           <div>
@@ -368,7 +369,7 @@ export default async function EditBookPage({
                 className="themed-input text-sm"
               />
               <p className="text-xs themed-muted">Must start with &ldquo;article-&rdquo; (e.g. article-intro).</p>
-              <button type="submit" className="themed-btn-accent rounded text-sm">
+              <button type="submit" className="themed-btn-outline rounded-lg text-sm">
                 Create section
               </button>
             </ToastForm>
@@ -396,7 +397,7 @@ export default async function EditBookPage({
                 placeholder="Part I: Foundations"
                 className="themed-input text-sm flex-1"
               />
-              <button type="submit" className="themed-btn-accent rounded text-sm">
+              <button type="submit" className="themed-btn-outline rounded-lg text-sm">
                 Add part
               </button>
             </form>
@@ -422,7 +423,7 @@ export default async function EditBookPage({
                 placeholder="Chapter 1: Getting started"
                 className="themed-input text-sm flex-1"
               />
-              <button type="submit" className="themed-btn-accent rounded text-sm">
+              <button type="submit" className="themed-btn-outline rounded-lg text-sm">
                 Add chapter
               </button>
             </form>
@@ -457,25 +458,31 @@ export default async function EditBookPage({
               title="Article slug, e.g. article-intro"
               className="themed-input text-sm"
             />
-            <button type="submit" className="themed-btn-accent rounded text-sm">
+            <button type="submit" className="themed-btn-outline rounded-lg text-sm">
               Add external section
             </button>
           </ToastForm>
         </div>
       </section>
 
-      <section className="mt-12 border-t border-red-200 pt-8">
-        <h2 className="text-lg font-semibold text-red-600 mb-2">Danger zone</h2>
+      <section className="mt-12 border-t themed-border pt-8">
+        <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--color-error)" }}>Danger zone</h2>
         <p className="text-sm themed-muted mb-4">
           Deleting a book moves it to the bin for 30 days, then it is permanently removed
           along with its curriculum entries and internal articles.
         </p>
-        <form action={deleteBook.bind(null, publisherSlug)}>
+        <ToastForm action={deleteBook.bind(null, publisherSlug)} errorTitle="Not deleted">
           <input type="hidden" name="bookId" value={bookRow.id} />
-          <button type="submit" className="themed-btn-ghost text-red-600 hover:bg-red-50">
+          <ConfirmButton
+            title="Delete book"
+            message="This moves the book to the bin for 30 days, then permanently removes it along with its curriculum entries and internal sections."
+            confirmLabel="Delete book"
+            danger
+            className="themed-btn-danger rounded-lg"
+          >
             Delete book
-          </button>
-        </form>
+          </ConfirmButton>
+        </ToastForm>
       </section>
     </main>
   );
