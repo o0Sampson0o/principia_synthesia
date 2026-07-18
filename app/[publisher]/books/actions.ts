@@ -552,8 +552,10 @@ export async function createInternalArticle(publisherSlug: string, formData: For
     throw err;
   }
 
+  // Revalidate in place (no redirect) so the editor updates without a
+  // navigation — otherwise the page scrolls to the top after each add.
+  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
   revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-  redirect(`/${publisherSlug}/books/${book.slug}/edit`);
 }
 
 /**
