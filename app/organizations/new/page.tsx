@@ -1,14 +1,13 @@
 import { redirect } from "next/navigation";
+import SearchParamToast from "@/components/SearchParamToast";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { createOrganization } from "../actions";
 
 async function ErrorMessage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const params = await searchParams;
-  if (params.error === "slug_taken") {
-    return <p className="text-sm text-red-500 mb-4">That slug is already taken.</p>;
-  }
-  return null;
+  const message = params.error === "slug_taken" ? "That slug is already taken." : null;
+  return <SearchParamToast message={message} />;
 }
 
 export default async function NewOrganizationPage({

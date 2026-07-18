@@ -1,5 +1,5 @@
 import Link from "next/link";
-import FormErrorBanner from "@/components/FormErrorBanner";
+import SearchParamToast from "@/components/SearchParamToast";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { organizations, orgMemberships } from "@/db/schema";
@@ -37,11 +37,7 @@ export default async function OrganizationsPage({
 
   return (
     <main className="flex-1">
-      {errorMessage && (
-        <div className="max-w-2xl mx-auto px-5 pt-6">
-          <FormErrorBanner message={errorMessage} />
-        </div>
-      )}
+      <SearchParamToast message={errorMessage} />
 
       {/* ── Framed masthead ─────────────────────────────────────────── */}
       <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>

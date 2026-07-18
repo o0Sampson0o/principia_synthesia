@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import Nav from "@/components/Nav";
+import Toaster from "@/components/Toaster";
 import Footer from "@/components/Footer";
 import CommandPalette from "@/components/CommandPalette";
 import OfflineGuard from "@/components/OfflineGuard";
@@ -86,6 +87,7 @@ export default async function RootLayout({
           <EmailVerificationBannerGate email={session.email} />
         )}
         {children}
+        <Toaster />
         <OnboardingTourGate />
         <Footer />
         <Analytics />

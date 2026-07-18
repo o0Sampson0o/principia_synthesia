@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import FormErrorBanner from "@/components/FormErrorBanner";
+import SearchParamToast from "@/components/SearchParamToast";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -90,7 +90,7 @@ export default async function EditArticlePage({
 
   return (
     <main className="w-full max-w-7xl mx-auto px-5 py-10 sm:py-14">
-      <FormErrorBanner message={errorMessage} />
+      <SearchParamToast message={errorMessage} />
 
       {/* ── Page header ── */}
       <div className="flex items-center justify-between mb-8">

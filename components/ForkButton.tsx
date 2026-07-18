@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { forkArticle } from "@/app/[publisher]/articles/fork-action";
+import { toastError } from "@/lib/toast";
 import ConfirmButton from "./ConfirmButton";
 
 interface Props {
@@ -18,14 +18,13 @@ const FORK_HINT =
 /**
  * Fork action for the article meta row. The consequence is stated in an
  * in-page confirm dialog (never a tooltip alone), and expected failures
- * render inline instead of crashing to the route error page.
+ * surface as toasts instead of crashing to the route error page.
  */
 export default function ForkButton({
   sourcePublisherSlug,
   sourceArticleSlug,
   isAuthenticated,
 }: Props) {
-  const [error, setError] = useState<string | null>(null);
   const articlePath = `/${sourcePublisherSlug}/articles/${sourceArticleSlug}`;
 
   if (!isAuthenticated) {
@@ -41,16 +40,15 @@ export default function ForkButton({
   }
 
   async function handleAction(formData: FormData) {
-    setError(null);
     try {
       const result = await forkArticle(formData);
-      if (result && "error" in result) setError(result.error);
+      if (result && "error" in result) toastError(result.error, "Fork failed");
       // On success the action redirects; nothing to do here.
     } catch (err) {
       // Next's redirect travels as a thrown error — let it through
       const digest = (err as { digest?: string })?.digest;
       if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) throw err;
-      setError("Fork failed — please try again.");
+      toastError("Fork failed — please try again.", "Fork failed");
     }
   }
 
@@ -66,11 +64,6 @@ export default function ForkButton({
       >
         Fork
       </ConfirmButton>
-      {error && (
-        <span role="alert" style={{ fontSize: "0.75rem", color: "var(--color-error)" }}>
-          {error}
-        </span>
-      )}
     </form>
   );
 }

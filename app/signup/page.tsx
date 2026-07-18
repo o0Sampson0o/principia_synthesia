@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signupAction } from "./actions";
+import SearchParamToast from "@/components/SearchParamToast";
 
 async function ErrorMessage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const params = await searchParams;
@@ -12,12 +13,7 @@ async function ErrorMessage({ searchParams }: { searchParams: Promise<{ error?: 
     invalid_publisherSlug: "Slug must be 3–40 lowercase letters, numbers, or hyphens.",
   };
   const message = params.error ? messages[params.error] : null;
-  if (!message) return null;
-  return (
-    <p className="text-sm mb-5" style={{ color: "var(--color-error)" }}>
-      {message}
-    </p>
-  );
+  return <SearchParamToast message={message} title="Sign-up failed" />;
 }
 
 export default async function SignupPage({

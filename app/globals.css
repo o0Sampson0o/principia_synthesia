@@ -1588,6 +1588,61 @@ body::-webkit-scrollbar-corner,
   padding: 0.125rem 0.5rem;
 }
 
+/* ─── Toasts (Toaster) ───────────────────────────────────────────── */
+/* Floating notices — surface + hairline + the floating-overlay shadow
+   (sanctioned: toasts live above the document, never in its flow).
+   z-index: above the grammar menu (60); native dialogs sit in the
+   browser top layer regardless. */
+.ps-toast-stack {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(calc(100vw - 2.5rem), 22rem);
+  pointer-events: none;
+}
+.ps-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+  animation: ps-toast-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes ps-toast-in {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ps-toast-content { flex: 1; min-width: 0; }
+.ps-toast-content .ps-mono-micro { margin-bottom: 0.25rem; }
+.ps-toast-message {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--foreground);
+  overflow-wrap: break-word;
+}
+.ps-toast-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.375rem;
+  margin: -0.25rem -0.25rem 0 0;
+  border-radius: 0.375rem;
+  transition: color 0.15s;
+}
+.ps-toast-dismiss:hover { color: var(--foreground); }
+
 /* ─── Confirm dialog (ConfirmButton) ─────────────────────────────── */
 /* All dialog styling lives here, never in Tailwind utilities on the
    element — unlayered rules below would override them. */

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { loginAction } from "./actions";
+import SearchParamToast from "@/components/SearchParamToast";
 
 async function StatusMessage({
   searchParams,
@@ -7,26 +8,28 @@ async function StatusMessage({
   searchParams: Promise<{ error?: string; verified?: string; redirect?: string }>;
 }) {
   const params = await searchParams;
+  // Note: never clear the `redirect` param — the login form relies on it.
   if (params.verified === "1") {
     return (
-      <p className="text-sm mb-5" style={{ color: "var(--color-success)" }}>
-        Email verified — please sign in.
-      </p>
+      <SearchParamToast
+        message="Email verified — please sign in."
+        title="Verified"
+        variant="success"
+        clearParams={["verified"]}
+      />
     );
   }
   if (params.verified === "error") {
     return (
-      <p className="text-sm mb-5" style={{ color: "var(--color-error)" }}>
-        That verification link has expired or has already been used.
-      </p>
+      <SearchParamToast
+        message="That verification link has expired or has already been used."
+        title="Verification failed"
+        clearParams={["verified"]}
+      />
     );
   }
   if (params.error === "invalid") {
-    return (
-      <p className="text-sm mb-5" style={{ color: "var(--color-error)" }}>
-        Invalid email or password.
-      </p>
-    );
+    return <SearchParamToast message="Invalid email or password." title="Sign-in failed" />;
   }
   return null;
 }

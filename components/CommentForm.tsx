@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import type { SessionPayload } from "@/lib/auth";
+import { toastError } from "@/lib/toast";
 import TurnstileWidget from "./TurnstileWidget";
 
 // ---------------------------------------------------------------------------
@@ -66,7 +67,6 @@ export default function CommentForm({
   isEdit = false,
 }: CommentFormProps) {
   const [open, setOpen] = useState(!compact);
-  const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -108,7 +108,6 @@ export default function CommentForm({
   }
 
   async function handleAction(formData: FormData) {
-    setError(null);
     if (needsGuestFields) {
       const name = (formData.get("guestName") as string | null)?.trim() ?? "";
       localStorage.setItem(GUEST_NAME_KEY, name);
@@ -116,12 +115,12 @@ export default function CommentForm({
     try {
       const result = await action(formData);
       if (result && typeof result === "object" && "error" in result) {
-        setError(result.error);
+        toastError(result.error, "Comment not posted");
         return;
       }
     } catch {
       // Unexpected failure (network, redacted server error)
-      setError("Could not post your comment. Please try again.");
+      toastError("Could not post your comment. Please try again.", "Comment not posted");
       return;
     }
     formRef.current?.reset();
@@ -183,12 +182,6 @@ export default function CommentForm({
       />
 
       {needsGuestFields && <TurnstileWidget />}
-
-      {error && (
-        <p className="mt-2" style={{ fontSize: "0.8125rem", color: "var(--color-error)" }}>
-          {error}
-        </p>
-      )}
 
       <div className="flex items-baseline gap-3 mt-2.5 flex-wrap">
         <SubmitButton

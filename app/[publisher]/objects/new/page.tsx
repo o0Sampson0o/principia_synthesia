@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import FormErrorBanner from "@/components/FormErrorBanner";
+import SearchParamToast from "@/components/SearchParamToast";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -51,7 +51,7 @@ export default async function NewObjectPage({
         <p className="ps-eyebrow mb-1.5">Object</p>
         <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New object</h1>
       </div>
-      <FormErrorBanner message={errorMessage} />
+      <SearchParamToast message={errorMessage} />
       <form action={action} className="space-y-4">
         <NewObjectFormClient />
         <button type="submit" className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>

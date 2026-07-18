@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import FormErrorBanner from "@/components/FormErrorBanner";
+import SearchParamToast from "@/components/SearchParamToast";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -222,7 +222,7 @@ export default async function EditBookPage({
 
   return (
     <main className="w-full max-w-4xl mx-auto px-5 py-10 sm:py-14">
-      <FormErrorBanner message={errorMessage} />
+      <SearchParamToast message={errorMessage} />
       <div className="flex items-end justify-between mb-8 gap-4">
         <div>
           <p className="ps-eyebrow mb-1.5">Book</p>
