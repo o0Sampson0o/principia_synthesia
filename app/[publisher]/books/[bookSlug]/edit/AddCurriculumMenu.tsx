@@ -20,6 +20,7 @@ export interface AddMenuItem {
 export default function AddCurriculumMenu({ items }: { items: AddMenuItem[] }) {
   const [active, setActive] = useState<string | null>(null);
   const activeItem = items.find((i) => i.key === active) ?? null;
+  const panelId = "add-curriculum-panel";
 
   return (
     <div className="mt-8 border-t themed-border pt-6">
@@ -33,6 +34,7 @@ export default function AddCurriculumMenu({ items }: { items: AddMenuItem[] }) {
               type="button"
               onClick={() => setActive(isActive ? null : item.key)}
               aria-expanded={isActive}
+              aria-controls={isActive ? panelId : undefined}
               className="rounded-lg text-xs px-3 py-1.5 border transition-colors"
               style={
                 isActive
@@ -52,6 +54,7 @@ export default function AddCurriculumMenu({ items }: { items: AddMenuItem[] }) {
 
       {activeItem && (
         <div
+          id={panelId}
           className="mt-4 rounded-lg border themed-border p-4"
           style={{ background: "var(--surface)" }}
         >

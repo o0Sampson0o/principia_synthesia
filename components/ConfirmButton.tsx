@@ -11,6 +11,8 @@ interface Props {
   confirmLabel?: string;
   /** Destructive styling on the confirm action. */
   danger?: boolean;
+  /** Disable the trigger (e.g. while another edit is uncommitted). */
+  disabled?: boolean;
   className?: string;
   children: React.ReactNode;
 }
@@ -26,6 +28,7 @@ export default function ConfirmButton({
   title = "Please confirm",
   confirmLabel = "Confirm",
   danger = false,
+  disabled = false,
   className,
   children,
 }: Props) {
@@ -43,7 +46,7 @@ export default function ConfirmButton({
       <button
         type="button"
         ref={triggerRef}
-        disabled={pending}
+        disabled={pending || disabled}
         className={className}
         onClick={() => dialogRef.current?.showModal()}
       >

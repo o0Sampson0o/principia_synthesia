@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   DndContext,
@@ -50,17 +50,19 @@ type ServerAction = (formData: FormData) => Promise<void>;
 
 /**
  * One sortable row: provides the drag handle (only the handle starts a drag,
- * so the rename input, links, and action buttons inside stay interactive) and
+ * so the label input, links, and action buttons inside stay interactive) and
  * the transform/lift while dragging. The row's kind-specific markup is passed
- * as children. Rows are flush hairline dividers (the List Row signature), not
- * boxed cards.
+ * as children. Rows are flush hairline dividers (the List Row signature).
  */
 function SortableRow({
   id,
+  label,
   className,
   children,
 }: {
   id: number;
+  /** Row identity for the handle's aria-label. */
+  label: string;
   className: string;
   children: React.ReactNode;
 }) {
@@ -76,16 +78,16 @@ function SortableRow({
         transition,
         opacity: isDragging ? 0.6 : 1,
         background: isDragging ? "var(--surface)" : undefined,
-        boxShadow: isDragging ? "0 10px 34px rgba(0,0,0,0.16)" : undefined,
+        boxShadow: isDragging ? "0 10px 34px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)" : undefined,
         borderRadius: isDragging ? "0.5rem" : undefined,
         zIndex: isDragging ? 1 : undefined,
       }}
     >
       <button
         type="button"
-        className="themed-muted themed-hover-foreground shrink-0 cursor-grab active:cursor-grabbing rounded-md transition-colors"
-        style={{ fontSize: "1rem", lineHeight: 1, padding: "0.5rem 0.375rem", touchAction: "none" }}
-        aria-label="Drag to reorder"
+        className="themed-muted themed-hover-foreground shrink-0 cursor-grab active:cursor-grabbing rounded-md transition-colors flex items-center justify-center"
+        style={{ fontSize: "1rem", lineHeight: 1, minWidth: "2.25rem", minHeight: "2.25rem", touchAction: "none" }}
+        aria-label={`Drag to reorder: ${label}`}
         {...attributes}
         {...listeners}
       >
@@ -97,15 +99,92 @@ function SortableRow({
 }
 
 /**
- * Client-side curriculum list. Row CONTENT always renders from the server
- * props, so immediate actions (rename, remove, absorb, make standalone) appear
- * as soon as the server action revalidates. Only the ORDER lives in local
- * state — an overlay of entry ids, null while pristine — so drag-and-drop is
- * instant and nothing is written until "Save order" submits the final
- * arrangement in one call. "Cancel" drops the overlay.
+ * A Part/Chapter label that reads as a heading and reveals an input on click
+ * (commits on Enter or blur), rather than an always-live form field — so the
+ * structural outline looks like an outline, not a wall of inputs. Disabled
+ * while an unsaved reorder is pending (editing would remount and drop it).
+ */
+function EditableDividerLabel({
+  entryId,
+  bookId,
+  label,
+  kind,
+  action,
+  disabled,
+}: {
+  entryId: number;
+  bookId: number;
+  label: string | null;
+  kind: "part" | "chapter";
+  action: ServerAction;
+  disabled: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const cancelRef = useRef(false);
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setEditing(true)}
+        className="flex-1 min-w-0 text-left text-sm font-medium themed-heading truncate disabled:opacity-60 disabled:cursor-not-allowed"
+        title={disabled ? "Save your new order before editing" : "Click to rename"}
+      >
+        {label || <span className="themed-muted italic">Untitled {kind}</span>}
+      </button>
+    );
+  }
+
+  return (
+    <ToastForm action={action} errorTitle="Not renamed" className="flex-1 min-w-0">
+      <input type="hidden" name="entryId" value={entryId} />
+      <input type="hidden" name="bookId" value={bookId} />
+      <input
+        name="title"
+        type="text"
+        required
+        maxLength={200}
+        autoFocus
+        defaultValue={label ?? ""}
+        aria-label={`${kind} title`}
+        className="themed-input text-sm w-full font-medium"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          } else if (e.key === "Escape") {
+            cancelRef.current = true;
+            e.currentTarget.blur();
+          }
+        }}
+        onBlur={(e) => {
+          if (cancelRef.current) {
+            cancelRef.current = false;
+            setEditing(false);
+            return;
+          }
+          if (e.currentTarget.value.trim() !== (label ?? "").trim()) {
+            e.currentTarget.form?.requestSubmit();
+          } else {
+            setEditing(false);
+          }
+        }}
+      />
+    </ToastForm>
+  );
+}
+
+/**
+ * Client-side curriculum list. Row CONTENT always renders from server props,
+ * so immediate actions (rename, remove, absorb, make standalone) appear as
+ * soon as the server action revalidates. Only the ORDER lives in local state —
+ * an overlay of entry ids, null while pristine — so drag-and-drop is instant
+ * and nothing is written until "Save order" submits the final arrangement.
  *
- * The parent keys this component on the saved entry-id order, so a save (or a
- * server-side add/remove) remounts it with a clean overlay.
+ * Because any row mutation revalidates and remounts this component (resetting
+ * the overlay), row edits are DISABLED while an unsaved reorder is pending —
+ * otherwise a rename/remove would silently discard the in-progress drag.
  */
 export default function CurriculumList({
   bookId,
@@ -130,8 +209,6 @@ export default function CurriculumList({
   const [isPending, startTransition] = useTransition();
 
   const sensors = useSensors(
-    // A small activation distance so a click on the handle can still fire
-    // buttons/inputs elsewhere without accidental drags.
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
@@ -185,10 +262,12 @@ export default function CurriculumList({
     <div className="mb-6">
       {dirty && (
         <div
-          className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg border themed-border"
+          className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg border themed-border flex-wrap"
           style={{ background: "var(--surface)" }}
         >
-          <span className="text-xs themed-muted flex-1">Order changed — not saved yet.</span>
+          <span className="text-xs themed-muted flex-1 min-w-0">
+            New order not saved — save or cancel it before editing rows.
+          </span>
           <button
             type="button"
             onClick={saveOrder}
@@ -222,34 +301,20 @@ export default function CurriculumList({
                   <SortableRow
                     key={row.entryId}
                     id={row.entryId}
-                    className={isChapter ? "pl-6" : ""}
+                    label={row.partTitle ?? (isChapter ? "chapter" : "part")}
+                    className={isChapter ? "pl-5" : ""}
                   >
-                    <span
-                      className="ps-mono-micro themed-muted shrink-0"
-                      style={{ width: "3.75rem" }}
-                    >
+                    <span className="ps-mono-micro themed-muted shrink-0" style={{ width: "3.75rem" }}>
                       {isChapter ? "Chapter" : "Part"}
                     </span>
-                    <ToastForm
+                    <EditableDividerLabel
+                      entryId={row.entryId}
+                      bookId={bookId}
+                      label={row.partTitle}
+                      kind={isChapter ? "chapter" : "part"}
                       action={renameAction}
-                      errorTitle="Not renamed"
-                      className="flex-1 min-w-0 flex items-center gap-2"
-                    >
-                      <input type="hidden" name="entryId" value={row.entryId} />
-                      <input type="hidden" name="bookId" value={bookId} />
-                      <input
-                        name="title"
-                        type="text"
-                        required
-                        maxLength={200}
-                        defaultValue={row.partTitle ?? ""}
-                        className="themed-input text-sm flex-1 min-w-0 font-medium"
-                        aria-label={isChapter ? "Chapter title" : "Part title"}
-                      />
-                      <button type="submit" className="themed-btn-ghost text-xs px-2 py-1 shrink-0">
-                        Rename
-                      </button>
-                    </ToastForm>
+                      disabled={dirty}
+                    />
                     <ToastForm action={removeEntry} errorTitle="Not removed" className="shrink-0">
                       <input type="hidden" name="id" value={row.entryId} />
                       <input type="hidden" name="bookId" value={bookId} />
@@ -258,6 +323,7 @@ export default function CurriculumList({
                         message={`This removes the ${isChapter ? "chapter" : "part"} label only. The sections under it stay in the book and fold into the ${isChapter ? "part" : "book"} above.`}
                         confirmLabel="Remove"
                         danger
+                        disabled={dirty}
                         className="ps-quiet-action ps-quiet-action-danger"
                       >
                         Remove
@@ -271,10 +337,10 @@ export default function CurriculumList({
               const ch = row;
               const sectionNo = sectionNumbers.get(ch.entryId);
               return (
-                <SortableRow key={ch.entryId} id={ch.entryId} className="pl-6 flex-wrap">
+                <SortableRow key={ch.entryId} id={ch.entryId} label={ch.articleTitle} className="pl-10 flex-wrap">
                   <span
-                    className="ps-mono-meta themed-muted shrink-0 tabular-nums"
-                    style={{ width: "1.75rem" }}
+                    className="ps-mono-meta themed-muted shrink-0 tabular-nums text-right"
+                    style={{ width: "2.5rem" }}
                   >
                     {String(sectionNo).padStart(2, "0")}
                   </span>
@@ -283,15 +349,21 @@ export default function CurriculumList({
                       {ch.articleTitle}
                     </span>
                     <span className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs themed-muted">{ch.articleSlug}</span>
-                      {ch.isInternal && <span className="themed-badge">internal</span>}
+                      <span className="ps-mono-meta themed-muted">{ch.articleSlug}</span>
+                      {ch.isInternal && (
+                        <span className="ps-status-pill ps-mono-micro themed-muted">internal</span>
+                      )}
                       {ch.isExternal && (
-                        <span className="themed-tag text-xs" title={`Borrowed from @${ch.articlePublisherSlug}`}>
-                          external ·{" "}
-                          <Link href={`/${ch.articlePublisherSlug}`} className="themed-link">
+                        <>
+                          <span className="ps-status-pill ps-mono-micro themed-muted">external</span>
+                          <Link
+                            href={`/${ch.articlePublisherSlug}`}
+                            className="ps-mono-meta themed-link"
+                            title={`Borrowed from @${ch.articlePublisherSlug}`}
+                          >
                             @{ch.articlePublisherSlug}
                           </Link>
-                        </span>
+                        </>
                       )}
                     </span>
                   </div>
@@ -304,6 +376,7 @@ export default function CurriculumList({
                           title="Make standalone"
                           message="This gives the section its own public /articles URL and lists it in search and the sitemap. It stays in this book but is no longer deleted along with it."
                           confirmLabel="Make standalone"
+                          disabled={dirty}
                           className="ps-quiet-action"
                         >
                           Make standalone
@@ -319,6 +392,7 @@ export default function CurriculumList({
                           message="This makes the article internal to this book: its public /articles URL stops working, it leaves your standalone list, search and the sitemap, and it is deleted if this book is deleted."
                           confirmLabel="Make internal"
                           danger
+                          disabled={dirty}
                           className="ps-quiet-action"
                         >
                           Make internal
@@ -347,6 +421,7 @@ export default function CurriculumList({
                         }
                         confirmLabel={ch.isExternal ? "Unlink" : "Remove"}
                         danger={!ch.isExternal}
+                        disabled={dirty}
                         className={`ps-quiet-action ${ch.isExternal ? "" : "ps-quiet-action-danger"}`}
                       >
                         {ch.isExternal ? "Unlink" : "Remove"}
