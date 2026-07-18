@@ -21,6 +21,8 @@ import {
   absorbArticleIntoBook,
   addPart,
   renamePart,
+  addChapterDivider,
+  renameChapterDivider,
 } from "../../actions";
 
 export default async function EditBookPage({
@@ -63,7 +65,7 @@ export default async function EditBookPage({
     .innerJoin(categories, eq(bookCategories.categoryId, categories.id))
     .where(eq(bookCategories.bookId, bookRow.id));
 
-  // Current chapters
+  // Current sections (article-backed curriculum entries)
   const chapters = await db
     .select({
       entryId: curriculumEntries.id,
@@ -95,17 +97,29 @@ export default async function EditBookPage({
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 
-  // Standalone part dividers (entries with no article). Merged with chapters
-  // into one position-ordered list so both reorder through the same entryIds.
-  const partDividers = await db
-    .select({ entryId: curriculumEntries.id, position: curriculumEntries.position, partTitle: curriculumEntries.partTitle })
+  // Standalone dividers (entries with no article): Part and Chapter labels.
+  // Merged with sections into one position-ordered list so all three kinds
+  // reorder through the same entryIds. Legacy rows (pre-0022) have a NULL
+  // dividerLevel and are treated as parts.
+  const dividers = await db
+    .select({
+      entryId: curriculumEntries.id,
+      position: curriculumEntries.position,
+      partTitle: curriculumEntries.partTitle,
+      dividerLevel: curriculumEntries.dividerLevel,
+    })
     .from(curriculumEntries)
     .where(and(eq(curriculumEntries.bookId, bookRow.id), isNull(curriculumEntries.articleId)))
     .orderBy(asc(curriculumEntries.position));
 
   const rows = [
-    ...chapters.map((c) => ({ kind: "chapter" as const, entryId: c.entryId, position: c.position, chapter: c })),
-    ...partDividers.map((d) => ({ kind: "part" as const, entryId: d.entryId, position: d.position, part: d })),
+    ...chapters.map((c) => ({ kind: "section" as const, entryId: c.entryId, position: c.position, chapter: c })),
+    ...dividers.map((d) => ({
+      kind: (d.dividerLevel === "chapter" ? "chapter" : "part") as "part" | "chapter",
+      entryId: d.entryId,
+      position: d.position,
+      part: d,
+    })),
   ].sort((a, b) => a.position - b.position);
 
 
@@ -130,10 +144,9 @@ export default async function EditBookPage({
   );
 
   const listRows = rows.map((r) =>
-    r.kind === "part"
-      ? { kind: "part" as const, entryId: r.entryId, partTitle: r.part.partTitle }
-      : {
-          kind: "chapter" as const,
+    r.kind === "section"
+      ? {
+          kind: "section" as const,
           entryId: r.entryId,
           articleId: r.chapter.articleId,
           articleSlug: r.chapter.articleSlug,
@@ -146,6 +159,7 @@ export default async function EditBookPage({
           articlePublisherSlug: r.chapter.articlePublisherSlug,
           booksCount: bookCountByArticle.get(r.chapter.articleId) ?? 1,
         }
+      : { kind: r.kind, entryId: r.entryId, partTitle: r.part.partTitle }
   );
 
   // Articles available to add (non-internal, non-deleted, owned by this publisher)
@@ -205,6 +219,16 @@ export default async function EditBookPage({
   async function renamePartAction(formData: FormData): Promise<void> {
     "use server";
     await renamePart(publisherSlug, formData);
+  }
+
+  async function addChapterDividerAction(formData: FormData): Promise<void> {
+    "use server";
+    await addChapterDivider(publisherSlug, formData);
+  }
+
+  async function renameChapterDividerAction(formData: FormData): Promise<void> {
+    "use server";
+    await renameChapterDivider(publisherSlug, formData);
   }
 
   async function absorb(formData: FormData): Promise<void> {
@@ -282,7 +306,7 @@ export default async function EditBookPage({
       </ToastForm>
 
       <section className="mt-10 border-t pt-8">
-        <h2 className="text-xl font-semibold themed-heading mb-4">Chapters</h2>
+        <h2 className="text-xl font-semibold themed-heading mb-4">Sections</h2>
 
         <CurriculumList
           key={listRows.map((r) => r.entryId).join("-")}
@@ -291,6 +315,7 @@ export default async function EditBookPage({
           reorder={reorder}
           removeEntry={removeChapter}
           renamePart={renamePartAction}
+          renameChapterDivider={renameChapterDividerAction}
           makeStandalone={makeStandalone}
           absorb={absorb}
         />
@@ -313,23 +338,23 @@ export default async function EditBookPage({
                   ))}
               </select>
               <button type="submit" className="themed-btn-accent rounded text-sm">
-                Add chapter
+                Add section
               </button>
             </form>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold themed-secondary mb-3">
-              Create internal chapter
+              Create internal section
             </h3>
-            <ToastForm action={newInternalArticle} errorTitle="Chapter not added" className="space-y-2">
+            <ToastForm action={newInternalArticle} errorTitle="Section not added" className="space-y-2">
               <input type="hidden" name="bookId" value={bookRow.id} />
               <input type="hidden" name="position" value={rows.length} />
               <input
                 name="title"
                 type="text"
                 required
-                placeholder="Chapter title"
+                placeholder="Section title"
                 maxLength={200}
                 className="themed-input text-sm"
               />
@@ -337,42 +362,71 @@ export default async function EditBookPage({
                 name="slug"
                 type="text"
                 required
-                placeholder="article-my-chapter"
+                placeholder="article-my-section"
                 pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
                 title="Must start with 'article-' followed by lowercase letters, numbers, and hyphens"
                 className="themed-input text-sm"
               />
               <p className="text-xs themed-muted">Must start with &ldquo;article-&rdquo; (e.g. article-intro).</p>
               <button type="submit" className="themed-btn-accent rounded text-sm">
-                Create chapter
+                Create section
               </button>
             </ToastForm>
           </div>
         </div>
 
-        <div className="mt-6">
-          <h3 className="text-sm font-semibold themed-secondary mb-3">
-            Add part
-          </h3>
-          <p className="text-xs themed-muted mb-3">
-            A part is a standalone section heading. Chapters listed after it
-            belong to that part until the next one. Reorder it like any chapter.
-          </p>
-          <form action={addPartAction} className="flex gap-2">
-            <input type="hidden" name="bookId" value={bookRow.id} />
-            <input type="hidden" name="position" value={rows.length} />
-            <input
-              name="title"
-              type="text"
-              required
-              maxLength={200}
-              placeholder="Part I: Foundations"
-              className="themed-input text-sm flex-1"
-            />
-            <button type="submit" className="themed-btn-accent rounded text-sm">
+        <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div>
+            <h3 className="text-sm font-semibold themed-secondary mb-3">
               Add part
-            </button>
-          </form>
+            </h3>
+            <p className="text-xs themed-muted mb-3">
+              A part is the top-level heading. Chapters and sections listed after
+              it belong to that part until the next one. Reorder it like any
+              section.
+            </p>
+            <form action={addPartAction} className="flex gap-2">
+              <input type="hidden" name="bookId" value={bookRow.id} />
+              <input type="hidden" name="position" value={rows.length} />
+              <input
+                name="title"
+                type="text"
+                required
+                maxLength={200}
+                placeholder="Part I: Foundations"
+                className="themed-input text-sm flex-1"
+              />
+              <button type="submit" className="themed-btn-accent rounded text-sm">
+                Add part
+              </button>
+            </form>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold themed-secondary mb-3">
+              Add chapter
+            </h3>
+            <p className="text-xs themed-muted mb-3">
+              A chapter is the middle-level heading between a part and its
+              sections. Sections listed after it belong to that chapter until the
+              next one.
+            </p>
+            <form action={addChapterDividerAction} className="flex gap-2">
+              <input type="hidden" name="bookId" value={bookRow.id} />
+              <input type="hidden" name="position" value={rows.length} />
+              <input
+                name="title"
+                type="text"
+                required
+                maxLength={200}
+                placeholder="Chapter 1: Getting started"
+                className="themed-input text-sm flex-1"
+              />
+              <button type="submit" className="themed-btn-accent rounded text-sm">
+                Add chapter
+              </button>
+            </form>
+          </div>
         </div>
 
         <div className="mt-6">
@@ -384,7 +438,7 @@ export default async function EditBookPage({
             visible to your account (public, or you must have an access grant).
             Original authorship is preserved.
           </p>
-          <ToastForm action={addExternal} errorTitle="Chapter not added" className="space-y-2">
+          <ToastForm action={addExternal} errorTitle="Section not added" className="space-y-2">
             <input type="hidden" name="bookId" value={bookRow.id} />
             <input type="hidden" name="position" value={rows.length} />
             <input
@@ -398,13 +452,13 @@ export default async function EditBookPage({
               name="articleSlug"
               type="text"
               required
-              placeholder="article-my-chapter"
+              placeholder="article-my-section"
               pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
               title="Article slug, e.g. article-intro"
               className="themed-input text-sm"
             />
             <button type="submit" className="themed-btn-accent rounded text-sm">
-              Add external chapter
+              Add external section
             </button>
           </ToastForm>
         </div>

@@ -19,32 +19,41 @@ export function parentBookNotBinned() {
 }
 
 /**
- * Stamps standalone part-divider rows (curriculum entries with a NULL
- * articleId) onto the first chapter that follows them, reproducing the legacy
- * "partTitle on the chapter that starts the part" shape. Exports, snapshots,
- * the /api/v1 structure contract and the ps-sync CLI all still speak that
- * shape, so parts survive those surfaces without any of them knowing divider
- * rows exist.
+ * Stamps standalone divider rows (curriculum entries with a NULL articleId)
+ * onto the first section that follows them, reproducing the "label on the
+ * section that starts the group" shape for BOTH hierarchy levels:
+ *   - a `dividerLevel: 'part'` row  → `partTitle` on the following section
+ *   - a `dividerLevel: 'chapter'` row → `chapterTitle` on the following section
  *
- * Chapter rows keep their own partTitle when no divider precedes them, so
- * pre-migration data renders unchanged.
+ * Exports, snapshots, the /api/v1 structure contract and the ps-sync CLI all
+ * speak this folded shape, so the Part › Chapter › Section hierarchy survives
+ * those surfaces without any of them knowing divider rows exist.
+ *
+ * Section rows keep any pre-existing partTitle when no divider precedes them,
+ * so pre-migration data renders unchanged.
  */
-export async function withPartTitles<T extends { position: number; partTitle: string | null }>(
-  chapters: T[],
-  bookId: number
-): Promise<T[]> {
+export async function withDividerTitles<
+  T extends { position: number; partTitle: string | null; chapterTitle: string | null },
+>(sections: T[], bookId: number): Promise<T[]> {
   const dividers = await db
-    .select({ position: curriculumEntries.position, partTitle: curriculumEntries.partTitle })
+    .select({
+      position: curriculumEntries.position,
+      partTitle: curriculumEntries.partTitle,
+      dividerLevel: curriculumEntries.dividerLevel,
+    })
     .from(curriculumEntries)
     .where(and(eq(curriculumEntries.bookId, bookId), isNull(curriculumEntries.articleId)))
     .orderBy(asc(curriculumEntries.position));
-  if (dividers.length === 0) return chapters;
+  if (dividers.length === 0) return sections;
 
-  const out = [...chapters].sort((a, b) => a.position - b.position).map((c) => ({ ...c }));
+  const out = [...sections].sort((a, b) => a.position - b.position).map((s) => ({ ...s }));
   for (const d of dividers) {
     if (!d.partTitle) continue;
-    const next = out.find((c) => c.position > d.position);
-    if (next) next.partTitle = d.partTitle;
+    const next = out.find((s) => s.position > d.position);
+    if (!next) continue;
+    // Legacy divider rows (pre-0022) have a NULL dividerLevel — treat as 'part'.
+    if (d.dividerLevel === "chapter") next.chapterTitle = d.partTitle;
+    else next.partTitle = d.partTitle;
   }
   return out;
 }

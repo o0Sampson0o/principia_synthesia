@@ -11,10 +11,11 @@ import { mdxSanitizeSchema } from "@/lib/mdx-sanitize";
 import type { EventRow } from "@/lib/timeline-utils";
 import { renderTimelineHtml } from "@/lib/events-html";
 
-export interface BookChapter {
+export interface BookSection {
   title: string;
   content?: string | null;
   partTitle?: string | null;
+  chapterTitle?: string | null;
 }
 
 export function cleanMdx(mdx: string): string {
@@ -90,28 +91,33 @@ export const PRINT_CSS = `
   .toc-page h2 { font-size: 18pt; margin-bottom: 16pt; }
   .toc-entry { display: flex; align-items: baseline; margin-bottom: 4pt; }
   .toc-part { font-size: 10pt; color: #555; font-style: italic; margin-bottom: 2pt; margin-top: 8pt; }
+  .toc-chapter { font-size: 10pt; color: #666; margin-bottom: 2pt; margin-top: 4pt; padding-left: 10pt; }
   .toc-title { font-size: 11pt; }
   .toc-dots { flex: 1; border-bottom: 1pt dotted #bbb; margin: 0 6pt 2pt; }
   .toc-num { font-size: 11pt; }
 
-  .chapter { page-break-before: always; }
-  .chapter-header { margin-bottom: 18pt; border-bottom: 1pt solid #ccc; padding-bottom: 8pt; }
-  .chapter-part { font-size: 10pt; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4pt; }
-  .chapter-title { font-size: 20pt; font-weight: bold; margin: 0; }
+  .section { page-break-before: always; }
+  .section-header { margin-bottom: 18pt; border-bottom: 1pt solid #ccc; padding-bottom: 8pt; }
+  .section-part { font-size: 10pt; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4pt; }
+  .section-chapter { font-size: 12pt; color: #444; font-weight: bold; margin-bottom: 4pt; }
+  .section-title { font-size: 20pt; font-weight: bold; margin: 0; }
 
   /* KaTeX display math centering */
   .katex-display { margin: 10pt 0; text-align: center; }
 `;
 
-function buildTocHtml(entries: BookChapter[]): string {
+function buildTocHtml(entries: BookSection[]): string {
   const rows = entries
-    .map((ch, i) => {
-      const partRow = ch.partTitle
-        ? `<div class="toc-part">${escapeHtml(ch.partTitle)}</div>`
+    .map((s, i) => {
+      const partRow = s.partTitle
+        ? `<div class="toc-part">${escapeHtml(s.partTitle)}</div>`
         : "";
-      return `${partRow}
+      const chapterRow = s.chapterTitle
+        ? `<div class="toc-chapter">${escapeHtml(s.chapterTitle)}</div>`
+        : "";
+      return `${partRow}${chapterRow}
       <div class="toc-entry">
-        <span class="toc-title">${escapeHtml(ch.title)}</span>
+        <span class="toc-title">${escapeHtml(s.title)}</span>
         <span class="toc-dots"></span>
         <span class="toc-num">${i + 1}</span>
       </div>`;
@@ -130,41 +136,45 @@ function escapeHtml(str: string): string {
 
 export async function renderBookHtml(
   bookTitle: string,
-  chapters: BookChapter[],
+  sections: BookSection[],
   events?: EventRow[]
 ): Promise<string> {
   const katexCss = getKatexCss();
 
-  const chapterHtmlParts = await Promise.all(
-    chapters.map(async (ch, i) => {
-      const bodyHtml = await mdxToHtml(ch.content ?? "");
-      const partHtml = ch.partTitle
-        ? `<div class="chapter-part">${escapeHtml(ch.partTitle)}</div>`
+  const sectionHtmlParts = await Promise.all(
+    sections.map(async (s, i) => {
+      const bodyHtml = await mdxToHtml(s.content ?? "");
+      const partHtml = s.partTitle
+        ? `<div class="section-part">${escapeHtml(s.partTitle)}</div>`
         : "";
-      return `<div class="chapter" id="ch-${i + 1}">
-        <div class="chapter-header">
+      const chapterHtml = s.chapterTitle
+        ? `<div class="section-chapter">${escapeHtml(s.chapterTitle)}</div>`
+        : "";
+      return `<div class="section" id="sec-${i + 1}">
+        <div class="section-header">
           ${partHtml}
-          <h1 class="chapter-title">${escapeHtml(ch.title)}</h1>
+          ${chapterHtml}
+          <h1 class="section-title">${escapeHtml(s.title)}</h1>
         </div>
-        <div class="chapter-body">${bodyHtml}</div>
+        <div class="section-body">${bodyHtml}</div>
       </div>`;
     })
   );
 
   const timelineHtml = events && events.length > 0
-    ? `<div class="chapter">${renderTimelineHtml(events)}</div>`
+    ? `<div class="section">${renderTimelineHtml(events)}</div>`
     : "";
 
-  const tocChapters: BookChapter[] = events && events.length > 0
-    ? [...chapters, { title: "Timeline" }]
-    : chapters;
+  const tocSections: BookSection[] = events && events.length > 0
+    ? [...sections, { title: "Timeline" }]
+    : sections;
 
   const coverHtml = `<div class="cover-page">
     <h1>${escapeHtml(bookTitle)}</h1>
     <div class="subtitle">Principia Synthesia</div>
   </div>`;
 
-  const tocHtml = buildTocHtml(tocChapters);
+  const tocHtml = buildTocHtml(tocSections);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -178,7 +188,7 @@ export async function renderBookHtml(
 <body>
   ${coverHtml}
   ${tocHtml}
-  ${chapterHtmlParts.join("\n")}
+  ${sectionHtmlParts.join("\n")}
   ${timelineHtml}
 </body>
 </html>`;

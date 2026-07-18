@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
-import { withPartTitles } from "@/lib/curriculum";
+import { withDividerTitles } from "@/lib/curriculum";
 import { books, curriculumEntries, articles } from "@/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
@@ -61,7 +61,12 @@ export default async function BookAnalyticsPage({
       )
     )
     .orderBy(curriculumEntries.position)
-    .then((rows) => withPartTitles(rows, bookRow.id));
+    .then((rows) =>
+      withDividerTitles(
+        rows.map((r) => ({ ...r, chapterTitle: null as string | null })),
+        bookRow.id
+      )
+    );
 
   const DAYS = 30;
   const dailyViewsPerArticle: DailyViewRow[][] = await Promise.all(

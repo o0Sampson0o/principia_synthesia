@@ -35,7 +35,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 import { __resetForTests } from "@/lib/rate-limit";
 import {
   BookStructureConflictError,
-  BookChapterSetMismatchError,
+  BookSectionSetMismatchError,
 } from "@/lib/books-write";
 
 const SESSION = { userId: 10, email: "a@b.c", userSlug: "alice", isRootAdmin: false };
@@ -62,9 +62,9 @@ function req(opts: { body?: unknown; ifMatch?: string; token?: boolean } = {}): 
   });
 }
 
-const CHAPTERS = [
-  { articleSlug: "article-one", partTitle: "Part I" },
-  { articleSlug: "article-two", partTitle: null },
+const SECTIONS = [
+  { articleSlug: "article-one", partTitle: "Part I", chapterTitle: "Chapter 1" },
+  { articleSlug: "article-two", partTitle: null, chapterTitle: null },
 ];
 
 beforeEach(() => {
@@ -82,7 +82,7 @@ describe("PUT /api/v1/publishers/[publisher]/books/[slug]", () => {
   it("428 without If-Match", async () => {
     authOk();
     const { PUT } = await import("@/app/api/v1/publishers/[publisher]/books/[slug]/route");
-    const res = await PUT(req({ body: { chapters: CHAPTERS } }), params);
+    const res = await PUT(req({ body: { sections: SECTIONS } }), params);
     expect(res.status).toBe(428);
     expect(mockUpdateBookStructureCore).not.toHaveBeenCalled();
   });
@@ -90,15 +90,15 @@ describe("PUT /api/v1/publishers/[publisher]/books/[slug]", () => {
   it("422 for an invalid body", async () => {
     authOk();
     const { PUT } = await import("@/app/api/v1/publishers/[publisher]/books/[slug]/route");
-    const res = await PUT(req({ body: { chapters: [{ articleSlug: "not-a-slug!" }] }, ifMatch: "h" }), params);
+    const res = await PUT(req({ body: { sections: [{ articleSlug: "not-a-slug!" }] }, ifMatch: "h" }), params);
     expect(res.status).toBe(422);
   });
 
-  it("200 and forwards the base hash + chapters to the core", async () => {
+  it("200 and forwards the base hash + sections to the core", async () => {
     authOk();
     mockUpdateBookStructureCore.mockResolvedValue({ structureHash: "new", updatedAt: new Date() });
     const { PUT } = await import("@/app/api/v1/publishers/[publisher]/books/[slug]/route");
-    const res = await PUT(req({ body: { chapters: CHAPTERS }, ifMatch: "base" }), params);
+    const res = await PUT(req({ body: { sections: SECTIONS }, ifMatch: "base" }), params);
     expect(res.status).toBe(200);
     expect((await res.json()).structureHash).toBe("new");
     expect(mockUpdateBookStructureCore).toHaveBeenCalledWith(
@@ -112,21 +112,21 @@ describe("PUT /api/v1/publishers/[publisher]/books/[slug]", () => {
       new BookStructureConflictError("remotehash", new Date())
     );
     const { PUT } = await import("@/app/api/v1/publishers/[publisher]/books/[slug]/route");
-    const res = await PUT(req({ body: { chapters: CHAPTERS }, ifMatch: "stale" }), params);
+    const res = await PUT(req({ body: { sections: SECTIONS }, ifMatch: "stale" }), params);
     expect(res.status).toBe(412);
     expect((await res.json()).remoteStructureHash).toBe("remotehash");
   });
 
-  it("409 when the chapter set changed", async () => {
+  it("409 when the section set changed", async () => {
     authOk();
     mockUpdateBookStructureCore.mockRejectedValue(
-      new BookChapterSetMismatchError(["article-new"], ["article-gone"])
+      new BookSectionSetMismatchError(["article-new"], ["article-gone"])
     );
     const { PUT } = await import("@/app/api/v1/publishers/[publisher]/books/[slug]/route");
-    const res = await PUT(req({ body: { chapters: CHAPTERS }, ifMatch: "h" }), params);
+    const res = await PUT(req({ body: { sections: SECTIONS }, ifMatch: "h" }), params);
     expect(res.status).toBe(409);
     const json = await res.json();
-    expect(json.error).toBe("chapter_set_mismatch");
+    expect(json.error).toBe("section_set_mismatch");
     expect(json.added).toEqual(["article-new"]);
     expect(json.removed).toEqual(["article-gone"]);
   });

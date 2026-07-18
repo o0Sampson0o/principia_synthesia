@@ -31,12 +31,13 @@ import { MdH1, MdH2, MdH3 } from "@/components/MdHeadings";
 import ArticleToc from "@/components/ArticleToc";
 import { extractToc } from "@/lib/article-toc";
 
-export default async function ChapterPage({
+export default async function SectionPage({
   params,
 }: {
-  params: Promise<{ publisher: string; bookSlug: string; chapter: string }>;
+  // The dynamic segment holds the article slug — the public URL is unchanged.
+  params: Promise<{ publisher: string; bookSlug: string; section: string }>;
 }) {
-  const { publisher: publisherSlug, bookSlug, chapter: chapterSlug } = await params;
+  const { publisher: publisherSlug, bookSlug, section: sectionSlug } = await params;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -58,7 +59,7 @@ export default async function ChapterPage({
     .select({ article: articles })
     .from(curriculumEntries)
     .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
-    .where(and(eq(curriculumEntries.bookId, bookRow.id), eq(articles.slug, chapterSlug)))
+    .where(and(eq(curriculumEntries.bookId, bookRow.id), eq(articles.slug, sectionSlug)))
     .limit(1);
 
   const article = entryRow?.article;
@@ -103,7 +104,7 @@ export default async function ChapterPage({
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 
-  const currentIdx = allEntries.findIndex((e) => e.articleSlug === chapterSlug);
+  const currentIdx = allEntries.findIndex((e) => e.articleSlug === sectionSlug);
   const prevSlug = currentIdx > 0 ? allEntries[currentIdx - 1].articleSlug : null;
   const nextSlug = currentIdx < allEntries.length - 1 ? allEntries[currentIdx + 1].articleSlug : null;
 
@@ -157,7 +158,7 @@ export default async function ChapterPage({
   return (
     <main className="flex-1">
 
-      {/* ── Framed chapter header ────────────────────────────────── */}
+      {/* ── Framed section header ────────────────────────────────── */}
       <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
         <div className="max-w-3xl mx-auto px-5">
 
@@ -198,7 +199,7 @@ export default async function ChapterPage({
               )}
               {isEditor && (
                 <Link
-                  href={`/${articlePublisherSlug}/articles/${chapterSlug}/edit`}
+                  href={`/${articlePublisherSlug}/articles/${sectionSlug}/edit`}
                   className="themed-nav-link hover:text-[var(--foreground)] transition-colors"
                   style={{ fontSize: "0.8125rem" }}
                 >
@@ -208,7 +209,7 @@ export default async function ChapterPage({
             </div>
           </div>
 
-          {/* Chapter title */}
+          {/* Section title */}
           <div className="py-8 sm:py-11">
             <h1
               className="article-title-serif"
@@ -307,7 +308,7 @@ export default async function ChapterPage({
         </div>
       )}
 
-      {/* ── Chapter discussion ───────────────────────────────────── */}
+      {/* ── Section discussion ───────────────────────────────────── */}
       <div className="max-w-3xl mx-auto px-5 pb-16 sm:pb-20">
         <CommentThread
           publisherSlug={articlePublisherSlug}

@@ -172,7 +172,7 @@ export async function pull(root: string, argv: string[]): Promise<number> {
         const local = existsSync(abs) ? readFileSync(abs, "utf8") : null;
         const localDirty =
           st && local !== null
-            ? structureLocalHash(parseBookNote(local).chapters) !== st.baseLocalHash
+            ? structureLocalHash(parseBookNote(local).sections) !== st.baseLocalHash
             : false;
         const remoteChanged = st ? book.structureHash !== st.baseHash : true;
 
@@ -194,7 +194,7 @@ export async function pull(root: string, argv: string[]): Promise<number> {
           path,
           baseHash: book.structureHash,
           baseLocalHash: structureLocalHash(
-            parseBookNote(rendered).chapters
+            parseBookNote(rendered).sections
           ),
         };
       }

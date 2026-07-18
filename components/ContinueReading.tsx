@@ -156,7 +156,7 @@ export default async function ContinueReading({
             </Link>
             {b.nextTitle && b.nextHref && (
               <span className="block mt-1">
-                <span className="themed-muted">Next chapter: </span>
+                <span className="themed-muted">Next section: </span>
                 <Link href={b.nextHref} className="themed-link">
                   {b.nextTitle}
                 </Link>

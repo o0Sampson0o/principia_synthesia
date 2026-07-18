@@ -190,6 +190,23 @@ export const renamePartSchema = z.object({
 });
 
 /**
+ * Chapter dividers: standalone "Chapter" heading rows (the middle grouping
+ * level between Part and Section) in a book's curriculum. Same shape as Part
+ * dividers, distinguished by `dividerLevel: 'chapter'` on insert.
+ */
+export const addChapterDividerSchema = z.object({
+  bookId: z.coerce.number().int().positive("Invalid book ID"),
+  title: z.string().min(1, "Chapter title is required").max(200, "Chapter title too long"),
+  position: z.coerce.number().int().min(0, "Position must be non-negative"),
+});
+
+export const renameChapterDividerSchema = z.object({
+  entryId: z.coerce.number().int().positive("Invalid entry ID"),
+  bookId: z.coerce.number().int().positive("Invalid book ID"),
+  title: z.string().min(1, "Chapter title is required").max(200, "Chapter title too long"),
+});
+
+/**
  * Validates form data for promoting an internal (book-only) article into a
  * standalone article. The article keeps its curriculum entry; only its
  * `isInternal`/`parentBookId` flags flip.
@@ -496,13 +513,14 @@ export const bulkImportSourceSchema = z.object({
 // ---------------------------------------------------------------------------
 
 /**
- * Schema for a single chapter entry inside the sync bundle's book.json.
+ * Schema for a single section entry inside the sync bundle's book.json.
  * `updatedAt` is an ISO 8601 string (validated by Date.parse, not z.date()).
  */
-export const syncBundleChapterSchema = z.object({
+export const syncBundleSectionSchema = z.object({
   slug: articleSlugSchema,
   title: z.string().min(1).max(200),
   partTitle: z.string().max(200).nullable().optional(),
+  chapterTitle: z.string().max(200).nullable().optional(),
   position: z.number().int().min(0),
   isInternal: z.boolean(),
   updatedAt: z
@@ -517,11 +535,11 @@ export const syncBundleManifestSchema = z.object({
   exportedAt: z
     .string()
     .refine((s) => !Number.isNaN(Date.parse(s)), "exportedAt must be a valid ISO date"),
-  chapters: z.array(syncBundleChapterSchema),
+  sections: z.array(syncBundleSectionSchema),
 });
 
 export type SyncBundleManifest = z.infer<typeof syncBundleManifestSchema>;
-export type SyncBundleChapter = z.infer<typeof syncBundleChapterSchema>;
+export type SyncBundleSection = z.infer<typeof syncBundleSectionSchema>;
 
 // ---------------------------------------------------------------------------
 // Sync REST API (/api/v1) request bodies
@@ -550,13 +568,14 @@ export const apiUpdateArticleSchema = z.object({
   editNote: z.string().max(200).optional(),
 });
 
-/** Validates PUT /api/v1/publishers/[publisher]/books/[slug] (reorder/re-part). */
+/** Validates PUT /api/v1/publishers/[publisher]/books/[slug] (reorder/re-group). */
 export const apiUpdateBookStructureSchema = z.object({
-  chapters: z
+  sections: z
     .array(
       z.object({
         articleSlug: articleSlugSchema,
         partTitle: z.string().max(200).nullable().default(null),
+        chapterTitle: z.string().max(200).nullable().default(null),
       })
     )
     .max(1000),

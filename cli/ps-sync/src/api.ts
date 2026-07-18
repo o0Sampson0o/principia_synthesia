@@ -52,9 +52,10 @@ export interface RemoteBook {
   title: string;
   summary: string | null;
   structureHash: string;
-  chapters: Array<{
+  sections: Array<{
     position: number;
     partTitle: string | null;
+    chapterTitle: string | null;
     articleId: number;
     articleSlug: string;
     title: string;
@@ -201,11 +202,11 @@ export class ApiClient {
   updateBookStructure(
     publisher: string,
     slug: string,
-    chapters: { articleSlug: string; partTitle: string | null }[],
+    sections: { articleSlug: string; partTitle: string | null; chapterTitle: string | null }[],
     baseHash: string
   ): Promise<{ structureHash: string; updatedAt: string }> {
     return this.request("PUT", `/api/v1/publishers/${publisher}/books/${slug}`, {
-      body: { chapters },
+      body: { sections },
       ifMatch: baseHash,
     });
   }

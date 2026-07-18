@@ -1,10 +1,11 @@
 import JSZip from "jszip";
-import type { SyncBundleManifest, SyncBundleChapter } from "@/lib/validations";
+import type { SyncBundleManifest, SyncBundleSection } from "@/lib/validations";
 
-interface SyncChapter {
+interface SyncSection {
   slug: string;
   title: string;
   partTitle: string | null;
+  chapterTitle: string | null;
   position: number;
   isInternal: boolean;
   updatedAt: Date | null;
@@ -14,29 +15,30 @@ interface SyncChapter {
 export async function buildSyncBundle(
   bookSlug: string,
   bookTitle: string,
-  chapters: SyncChapter[]
+  sections: SyncSection[]
 ): Promise<ArrayBuffer> {
   const zip = new JSZip();
-  const chaptersFolder = zip.folder("chapters")!;
+  const sectionsFolder = zip.folder("chapters")!;
 
-  const manifestChapters: SyncBundleChapter[] = chapters.map((c) => ({
-    slug: c.slug,
-    title: c.title,
-    partTitle: c.partTitle,
-    position: c.position,
-    isInternal: c.isInternal,
-    updatedAt: (c.updatedAt ?? new Date(0)).toISOString(),
+  const manifestSections: SyncBundleSection[] = sections.map((s) => ({
+    slug: s.slug,
+    title: s.title,
+    partTitle: s.partTitle,
+    chapterTitle: s.chapterTitle,
+    position: s.position,
+    isInternal: s.isInternal,
+    updatedAt: (s.updatedAt ?? new Date(0)).toISOString(),
   }));
 
-  for (const c of chapters) {
-    chaptersFolder.file(`${c.slug}.mdx`, c.content ?? "");
+  for (const s of sections) {
+    sectionsFolder.file(`${s.slug}.mdx`, s.content ?? "");
   }
 
   const manifest: SyncBundleManifest = {
     bookSlug,
     bookTitle,
     exportedAt: new Date().toISOString(),
-    chapters: manifestChapters,
+    sections: manifestSections,
   };
   zip.file("book.json", JSON.stringify(manifest, null, 2));
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { withPartTitles } from "@/lib/curriculum";
+import { withDividerTitles } from "@/lib/curriculum";
 import { articles, books, curriculumEntries } from "@/db/schema";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import {
@@ -10,7 +10,7 @@ import {
   preconditionRequired,
 } from "@/lib/api-v1";
 import {
-  BookChapterSetMismatchError,
+  BookSectionSetMismatchError,
   BookNotFoundError,
   BookStructureConflictError,
   computeStructureHash,
@@ -19,7 +19,7 @@ import {
 import { apiUpdateBookStructureSchema } from "@/lib/validations";
 
 /**
- * GET /api/v1/publishers/[publisher]/books/[slug] — a book's ordered chapter
+ * GET /api/v1/publishers/[publisher]/books/[slug] — a book's ordered section
  * list, with a structureHash for optimistic concurrency on PUT.
  */
 export async function GET(
@@ -41,7 +41,7 @@ export async function GET(
     return NextResponse.json({ error: "book_not_found" }, { status: 404 });
   }
 
-  const chapters = await db
+  const sections = await db
     .select({
       position: curriculumEntries.position,
       partTitle: curriculumEntries.partTitle,
@@ -57,23 +57,32 @@ export async function GET(
     )
     .where(eq(curriculumEntries.bookId, book.id))
     .orderBy(asc(curriculumEntries.position))
-    .then((rows) => withPartTitles(rows, book.id));
+    .then((rows) =>
+      withDividerTitles(
+        rows.map((r) => ({ ...r, chapterTitle: null as string | null })),
+        book.id
+      )
+    );
 
   const structureHash = computeStructureHash(
-    chapters.map((c) => ({ articleSlug: c.articleSlug, partTitle: c.partTitle }))
+    sections.map((s) => ({
+      articleSlug: s.articleSlug,
+      partTitle: s.partTitle,
+      chapterTitle: s.chapterTitle,
+    }))
   );
 
   return NextResponse.json(
-    { slug: book.slug, title: book.title, summary: book.summary, chapters, structureHash },
+    { slug: book.slug, title: book.title, summary: book.summary, sections, structureHash },
     { headers: { ETag: `"${structureHash}"` } }
   );
 }
 
 /**
- * PUT /api/v1/publishers/[publisher]/books/[slug] — reorder chapters and
- * change their part groupings. The chapter set must match the book's current
- * set (add/remove stays in the web UI). Requires If-Match with the structure
- * hash; 412 on conflict, 409 if the chapter set differs.
+ * PUT /api/v1/publishers/[publisher]/books/[slug] — reorder sections and
+ * change their Part/Chapter groupings. The section set must match the book's
+ * current set (add/remove stays in the web UI). Requires If-Match with the
+ * structure hash; 412 on conflict, 409 if the section set differs.
  */
 export async function PUT(
   request: Request,
@@ -106,7 +115,7 @@ export async function PUT(
       ownerType: auth.ownerType,
       ownerId: auth.ownerId,
       bookSlug: slug,
-      chapters: parsed.data.chapters,
+      sections: parsed.data.sections,
       expectedStructureHash: baseHash,
     });
     revalidatePath(`/${publisher}/books/${slug}`);
@@ -122,14 +131,14 @@ export async function PUT(
         { status: 412 }
       );
     }
-    if (err instanceof BookChapterSetMismatchError) {
+    if (err instanceof BookSectionSetMismatchError) {
       return NextResponse.json(
         {
-          error: "chapter_set_mismatch",
+          error: "section_set_mismatch",
           added: err.added,
           removed: err.removed,
           message:
-            "Add or remove chapters in the web UI; ps-sync only reorders and re-groups existing chapters.",
+            "Add or remove sections in the web UI; ps-sync only reorders and re-groups existing sections.",
         },
         { status: 409 }
       );

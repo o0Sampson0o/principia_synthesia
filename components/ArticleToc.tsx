@@ -1,7 +1,7 @@
 import type { TocEntry } from "@/lib/article-toc";
 
-/** Show a contents block only when an article has this many sections. */
-const TOC_THRESHOLD = 4;
+/** Show a contents block only when an article has this many headings. */
+const TOC_THRESHOLD = 2;
 
 /**
  * Collapsible table of contents for long articles — a hairline-framed

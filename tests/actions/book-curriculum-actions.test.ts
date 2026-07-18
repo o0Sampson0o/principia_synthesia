@@ -73,7 +73,11 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   };
 });
 
-import { addExternalArticle, upsertCurriculumEntry } from "@/app/[publisher]/books/actions";
+import {
+  addExternalArticle,
+  upsertCurriculumEntry,
+  addChapterDivider,
+} from "@/app/[publisher]/books/actions";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -202,7 +206,7 @@ describe("addExternalArticle", () => {
     });
 
     await expect(addExternalArticle("publisher-a", fd)).rejects.toThrow(
-      /same-publisher chapter picker/
+      /same-publisher section picker/
     );
   });
 
@@ -312,11 +316,11 @@ describe("addExternalArticle", () => {
       position: "0",
     });
 
-    // Duplicate chapter slug is user input, not a crash — the action
+    // Duplicate section slug is user input, not a crash — the action
     // returns the error (ToastForm surfaces it) instead of navigating.
     const result = await addExternalArticle("publisher-a", fd);
     expect(result).toEqual({
-      error: "A chapter with that slug already exists in this book.",
+      error: "A section with that slug already exists in this book.",
     });
   });
 
@@ -379,5 +383,41 @@ describe("upsertCurriculumEntry security", () => {
     expect(mockInsertValues).toHaveBeenCalledWith(
       expect.objectContaining({ bookId: 5, articleId: 42 })
     );
+  });
+});
+
+// ─── addChapterDivider ────────────────────────────────────────────────────────
+
+describe("addChapterDivider", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupPublisherA();
+  });
+
+  it("inserts a chapter divider row (articleId null, dividerLevel 'chapter')", async () => {
+    mockSelect.mockReturnValueOnce(chainResolving([{ id: 5, slug: "book-x" }])); // book ownership
+    mockInsertValues.mockResolvedValue([]);
+    mockInsert.mockReturnValue({ values: mockInsertValues });
+
+    const fd = makeFormData({
+      bookId: "5",
+      title: "Chapter One",
+      position: "3",
+    });
+
+    await addChapterDivider("publisher-a", fd);
+
+    expect(mockInsert).toHaveBeenCalled();
+    expect(mockInsertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bookId: 5,
+        articleId: null,
+        position: 3,
+        partTitle: "Chapter One",
+        dividerLevel: "chapter",
+      })
+    );
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/publisher-a/books/book-x");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/publisher-a/books/book-x/edit");
   });
 });

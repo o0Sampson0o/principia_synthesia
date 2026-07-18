@@ -3,6 +3,7 @@ export interface TocEntry {
   bookTitle: string;
   position: number;
   partTitle: string | null;
+  chapterTitle: string | null;
   articleSlug: string;
   articleTitle: string;
   entryId: number;

@@ -15,16 +15,17 @@ import { renderTimelineHtml } from "@/lib/events-html";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface EpubChapter {
+export interface EpubSection {
   title: string;
   content?: string | null;
   partTitle?: string | null;
+  chapterTitle?: string | null;
 }
 
 export interface BuildEpubOptions {
   title: string;
   author?: string;
-  chapters: EpubChapter[];
+  sections: EpubSection[];
   events?: EventRow[];
 }
 
@@ -192,9 +193,23 @@ async function mdxToHtml(mdx: string): Promise<string> {
   return String(file);
 }
 
-function wrapChapterHtml(title: string, bodyHtml: string): string {
-  const id = "chapter-title";
-  return `<header><h1 id="${id}">${title.replace(/</g, "&lt;")}</h1></header>
+function esc(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function wrapSectionHtml(
+  title: string,
+  bodyHtml: string,
+  opts?: { partTitle?: string | null; chapterTitle?: string | null }
+): string {
+  const id = "section-title";
+  const partHtml = opts?.partTitle
+    ? `<p class="epub-part">${esc(opts.partTitle)}</p>`
+    : "";
+  const chapterHtml = opts?.chapterTitle
+    ? `<p class="epub-chapter">${esc(opts.chapterTitle)}</p>`
+    : "";
+  return `<header>${partHtml}${chapterHtml}<h1 id="${id}">${title.replace(/</g, "&lt;")}</h1></header>
 <main role="main" aria-labelledby="${id}">
 ${bodyHtml}
 </main>
@@ -209,27 +224,32 @@ const EPUB_CSS = `
 .epub-link a { color: #666; font-size: 90%; }
 .toc-author { font-size: 90%; color: #555; }
 .toc-link { color: #999; font-size: 85%; display: block; }
+.epub-part { font-size: 85%; text-transform: uppercase; letter-spacing: 0.05em; color: #666; margin: 0 0 0.25em; }
+.epub-chapter { font-size: 95%; font-weight: bold; color: #444; margin: 0 0 0.25em; }
 hr { border: 0; border-bottom: 1px solid #dedede; margin: 60px 10%; }
 svg { max-width: 100%; }
 footer:empty { display: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; }
 `;
 
-export async function buildEpub({ title, author, chapters, events }: BuildEpubOptions): Promise<Buffer> {
-  const epubChapters = await Promise.all(
-    chapters.map(async (ch) => {
-      const bodyHtml = await mdxToHtml(ch.content ?? "");
+export async function buildEpub({ title, author, sections, events }: BuildEpubOptions): Promise<Buffer> {
+  const epubSections = await Promise.all(
+    sections.map(async (s) => {
+      const bodyHtml = await mdxToHtml(s.content ?? "");
       return {
-        title: ch.title,
-        content: wrapChapterHtml(ch.title, bodyHtml),
+        title: s.title,
+        content: wrapSectionHtml(s.title, bodyHtml, {
+          partTitle: s.partTitle,
+          chapterTitle: s.chapterTitle,
+        }),
       };
     })
   );
 
   if (events && events.length > 0) {
-    epubChapters.push({
+    epubSections.push({
       title: "Timeline",
-      content: wrapChapterHtml("Timeline", renderTimelineHtml(events, { includeHeading: false })),
+      content: wrapSectionHtml("Timeline", renderTimelineHtml(events, { includeHeading: false })),
     });
   }
 
@@ -239,7 +259,7 @@ export async function buildEpub({ title, author, chapters, events }: BuildEpubOp
       author: author ?? "Principia Synthesia",
       css: EPUB_CSS,
     },
-    epubChapters
+    epubSections
   );
 
   return buffer as Buffer;

@@ -69,21 +69,31 @@ export default async function BookPage({
     .where(eq(curriculumEntries.bookId, bookRow.id))
     .orderBy(asc(curriculumEntries.position));
 
-  // Standalone part dividers (entries with no article), interleaved with the
-  // chapters by position. Chapter numbering skips them.
-  const partDividers = await db
-    .select({ id: curriculumEntries.id, position: curriculumEntries.position, partTitle: curriculumEntries.partTitle })
+  // Standalone dividers (entries with no article): Part and Chapter labels,
+  // interleaved with the sections by position. Section numbering skips them.
+  // Legacy rows (pre-0022) have a NULL dividerLevel and are treated as parts.
+  const dividers = await db
+    .select({
+      id: curriculumEntries.id,
+      position: curriculumEntries.position,
+      partTitle: curriculumEntries.partTitle,
+      dividerLevel: curriculumEntries.dividerLevel,
+    })
     .from(curriculumEntries)
     .where(and(eq(curriculumEntries.bookId, bookRow.id), isNull(curriculumEntries.articleId)))
     .orderBy(asc(curriculumEntries.position));
 
-  let chapterNo = 0;
+  let sectionNo = 0;
   const listing = [
-    ...entries.map((e) => ({ kind: "chapter" as const, position: e.position, entry: e })),
-    ...partDividers.map((d) => ({ kind: "part" as const, position: d.position, part: d })),
+    ...entries.map((e) => ({ kind: "section" as const, position: e.position, entry: e })),
+    ...dividers.map((d) => ({
+      kind: (d.dividerLevel === "chapter" ? "chapter" : "part") as "part" | "chapter",
+      position: d.position,
+      part: d,
+    })),
   ]
     .sort((a, b) => a.position - b.position)
-    .map((item) => (item.kind === "chapter" ? { ...item, no: ++chapterNo } : item));
+    .map((item) => (item.kind === "section" ? { ...item, no: ++sectionNo } : item));
 
   return (
     <main className="w-full max-w-4xl mx-auto px-5 py-12 sm:py-16">
@@ -134,23 +144,29 @@ export default async function BookPage({
 
       <hr className="themed-hr" />
 
-      {/* ── Chapters ── */}
+      {/* ── Sections ── */}
       {listing.length === 0 ? (
-        <p className="themed-muted mt-8" style={{ fontSize: "0.9375rem" }}>No chapters yet.</p>
+        <p className="themed-muted mt-8" style={{ fontSize: "0.9375rem" }}>No sections yet.</p>
       ) : (
         <div className="ps-content-box mt-0 border-t-0 rounded-none rounded-b-lg">
           {listing.map((item) => {
-            if (item.kind === "part") {
+            if (item.kind !== "section") {
+              const isChapter = item.kind === "chapter";
               return (
-                <div key={`part-${item.part.id}`} className="ps-content-row">
-                  <p className="ps-eyebrow-muted">{item.part.partTitle}</p>
+                <div
+                  key={`${item.kind}-${item.part.id}`}
+                  className={`ps-content-row ${isChapter ? "pl-4" : ""}`}
+                >
+                  <p className="ps-eyebrow-muted" style={isChapter ? { opacity: 0.8 } : undefined}>
+                    {item.part.partTitle}
+                  </p>
                 </div>
               );
             }
             const e = item.entry;
             const isExternal = e.articlePublisherSlug !== null && e.articlePublisherSlug !== publisherSlug;
             return (
-              <div key={e.id} className="ps-content-row flex-col items-start gap-0.5">
+              <div key={e.id} className="ps-content-row flex-col items-start gap-0.5 pl-8">
                 {e.partTitle && (
                   <p className="ps-eyebrow-muted mb-2">{e.partTitle}</p>
                 )}

@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export type CurriculumRow =
   | {
-      kind: "chapter";
+      kind: "section";
       entryId: number;
       articleId: number;
       articleSlug: string;
@@ -18,6 +18,11 @@ export type CurriculumRow =
     }
   | {
       kind: "part";
+      entryId: number;
+      partTitle: string | null;
+    }
+  | {
+      kind: "chapter";
       entryId: number;
       partTitle: string | null;
     };
@@ -41,6 +46,7 @@ export default function CurriculumList({
   reorder,
   removeEntry,
   renamePart,
+  renameChapterDivider,
   makeStandalone,
   absorb,
 }: {
@@ -49,6 +55,7 @@ export default function CurriculumList({
   reorder: ServerAction;
   removeEntry: ServerAction;
   renamePart: ServerAction;
+  renameChapterDivider: ServerAction;
   makeStandalone: ServerAction;
   absorb: ServerAction;
 }) {
@@ -79,15 +86,16 @@ export default function CurriculumList({
   }
 
   if (rows.length === 0) {
-    return <p className="text-sm themed-muted mb-6">No chapters yet.</p>;
+    return <p className="text-sm themed-muted mb-6">No sections yet.</p>;
   }
 
-  // Chapter numbers skip part dividers; derived (not mutated) so render stays pure.
-  const chapterNumbers = new Map<number | string, number>();
+  // Section numbers skip BOTH divider kinds; derived (not mutated) so render
+  // stays pure.
+  const sectionNumbers = new Map<number | string, number>();
   {
     let n = 0;
     for (const row of rows) {
-      if (row.kind !== "part") chapterNumbers.set(row.entryId, ++n);
+      if (row.kind === "section") sectionNumbers.set(row.entryId, ++n);
     }
   }
 
@@ -143,11 +151,16 @@ export default function CurriculumList({
             </>
           );
 
-          if (row.kind === "part") {
+          if (row.kind === "part" || row.kind === "chapter") {
+            const isChapter = row.kind === "chapter";
+            const renameAction = isChapter ? renameChapterDivider : renamePart;
             return (
-              <li key={row.entryId} className="flex items-center gap-2 p-3 border rounded themed-surface border-dashed">
+              <li
+                key={row.entryId}
+                className={`flex items-center gap-2 p-3 border rounded themed-surface border-dashed ${isChapter ? "ml-4" : ""}`}
+              >
                 <span className="text-sm themed-muted w-6 shrink-0">&sect;</span>
-                <form action={renamePart} className="flex-1 min-w-0 flex items-center gap-2">
+                <form action={renameAction} className="flex-1 min-w-0 flex items-center gap-2">
                   <input type="hidden" name="entryId" value={row.entryId} />
                   <input type="hidden" name="bookId" value={bookId} />
                   <input
@@ -157,7 +170,7 @@ export default function CurriculumList({
                     maxLength={200}
                     defaultValue={row.partTitle ?? ""}
                     className="themed-input text-sm flex-1 min-w-0 font-medium"
-                    aria-label="Part title"
+                    aria-label={isChapter ? "Chapter title" : "Part title"}
                   />
                   <button type="submit" className="themed-btn-ghost text-xs px-2 py-1">Rename</button>
                 </form>
@@ -166,7 +179,11 @@ export default function CurriculumList({
                   <form action={removeEntry}>
                     <input type="hidden" name="id" value={row.entryId} />
                     <input type="hidden" name="bookId" value={bookId} />
-                    <button type="submit" className="text-xs text-red-500 hover:text-red-700 px-2 py-1" title="Remove part">
+                    <button
+                      type="submit"
+                      className="text-xs text-red-500 hover:text-red-700 px-2 py-1"
+                      title={isChapter ? "Remove chapter" : "Remove part"}
+                    >
                       Remove
                     </button>
                   </form>
@@ -176,14 +193,14 @@ export default function CurriculumList({
           }
 
           const ch = row;
-          const chapterNo = chapterNumbers.get(ch.entryId);
+          const sectionNo = sectionNumbers.get(ch.entryId);
 
           return (
             <li
               key={ch.entryId}
-              className="flex items-center gap-2 p-3 border rounded themed-surface"
+              className="flex items-center gap-2 p-3 border rounded themed-surface ml-8"
             >
-              <span className="text-sm themed-muted w-6 shrink-0">{chapterNo}.</span>
+              <span className="text-sm themed-muted w-6 shrink-0">{sectionNo}.</span>
               <div className="flex-1 min-w-0">
                 {ch.partTitle && (
                   <span className="text-xs themed-muted block">{ch.partTitle}</span>
@@ -216,7 +233,7 @@ export default function CurriculumList({
                     <button
                       type="submit"
                       className="themed-btn-ghost text-xs px-2 py-1"
-                      title="Make this a standalone article. It stays a chapter here but also gets its own public URL and appears in listings, search and the sitemap. It will no longer be deleted along with the book."
+                      title="Make this a standalone article. It stays a section here but also gets its own public URL and appears in listings, search and the sitemap. It will no longer be deleted along with the book."
                     >
                       Make standalone
                     </button>

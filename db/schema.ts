@@ -269,17 +269,23 @@ export const revisions = pgTable("revisions", {
  * Ordered entries in a book. `bookId` FK replaces the old `bookSlug`/`bookTitle`
  * denormalised text columns. Cascade-deletes when the book is deleted.
  */
+/** A divider row's level in the Part › Chapter › Section hierarchy. */
+export type CurriculumDividerLevel = "part" | "chapter";
+
 export const curriculumEntries = pgTable(
   "curriculum_entries",
   {
     id: serial("id").primaryKey(),
     bookId: integer("book_id").notNull().references(() => books.id, { onDelete: "cascade" }),
-    // NULL articleId marks a part divider: a standalone, reorderable "Part"
-    // heading row whose title lives in partTitle. Chapter rows have an
-    // articleId and (post-migration 0020) a NULL partTitle.
+    // NULL articleId marks a divider row: a standalone, reorderable label whose
+    // text lives in partTitle and whose level (Part or Chapter) lives in
+    // dividerLevel. Section rows (the articles) have an articleId, a NULL
+    // dividerLevel, and (post-migration 0020) a NULL partTitle.
     articleId: integer("article_id").references(() => articles.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
     partTitle: text("part_title"),
+    // 'part' | 'chapter' on divider rows; NULL on section rows.
+    dividerLevel: text("divider_level").$type<CurriculumDividerLevel>(),
   },
   (t) => [unique().on(t.bookId, t.articleId)]
 );
@@ -391,6 +397,7 @@ export const bookSnapshotEntries = pgTable("book_snapshot_entries", {
   articleContent: text("article_content"),
   position: integer("position").notNull(),
   partTitle: text("part_title"),
+  chapterTitle: text("chapter_title"),
 });
 
 // ---------------------------------------------------------------------------

@@ -29,10 +29,12 @@ import {
   absorbArticleSchema,
   addPartSchema,
   renamePartSchema,
+  addChapterDividerSchema,
+  renameChapterDividerSchema,
 } from "@/lib/validations";
 import { resolvePublisher } from "@/lib/publisher";
 import { isUniqueViolation } from "@/lib/db-errors";
-import { withPartTitles } from "@/lib/curriculum";
+import { withDividerTitles } from "@/lib/curriculum";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -228,7 +230,7 @@ export async function addExternalArticle(
   // 3. Disallow targeting the same publisher (must use upsertCurriculumEntry).
   if (validated.targetPublisher === publisherSlug) {
     throw new Error(
-      "Use the same-publisher chapter picker for your own articles."
+      "Use the same-publisher section picker for your own articles."
     );
   }
 
@@ -282,7 +284,7 @@ export async function addExternalArticle(
     )
     .limit(1);
   if (conflict) {
-    return { error: "A chapter with that slug already exists in this book." };
+    return { error: "A section with that slug already exists in this book." };
   }
 
   // 8. Insert curriculum entry.
@@ -379,9 +381,9 @@ export async function reorderChapters(publisherSlug: string, formData: FormData)
 // ---------------------------------------------------------------------------
 
 /**
- * Adds a standalone part divider (curriculum entry with a NULL articleId) at
- * the given position — usually the end of the list. Reorderable and removable
- * exactly like a chapter entry.
+ * Adds a standalone part divider (curriculum entry with a NULL articleId and
+ * dividerLevel 'part') at the given position — usually the end of the list.
+ * Reorderable and removable exactly like a section entry.
  */
 export async function addPart(publisherSlug: string, formData: FormData) {
   const { ownerType, ownerId } = await assertEditRights(publisherSlug);
@@ -402,6 +404,7 @@ export async function addPart(publisherSlug: string, formData: FormData) {
     articleId: null,
     position: validated.position,
     partTitle: validated.title,
+    dividerLevel: "part",
   });
 
   revalidatePath(`/${publisherSlug}/books/${book.slug}`);
@@ -412,6 +415,68 @@ export async function renamePart(publisherSlug: string, formData: FormData) {
   const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = renamePartSchema.parse({
+    entryId: formData.get("entryId"),
+    bookId: formData.get("bookId"),
+    title: formData.get("title"),
+  });
+
+  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
+    .limit(1);
+  if (!book) throw new Error("Book not found");
+
+  await db
+    .update(curriculumEntries)
+    .set({ partTitle: validated.title })
+    .where(and(
+      eq(curriculumEntries.id, validated.entryId),
+      eq(curriculumEntries.bookId, validated.bookId),
+      isNull(curriculumEntries.articleId)
+    ));
+
+  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+}
+
+// ---------------------------------------------------------------------------
+// Chapter dividers (the middle grouping level between Part and Section)
+// ---------------------------------------------------------------------------
+
+/**
+ * Adds a standalone chapter divider (curriculum entry with a NULL articleId and
+ * dividerLevel 'chapter') at the given position. Same lifecycle as a part
+ * divider; only the level differs.
+ */
+export async function addChapterDivider(publisherSlug: string, formData: FormData) {
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  const validated = addChapterDividerSchema.parse({
+    bookId: formData.get("bookId"),
+    title: formData.get("title"),
+    position: formData.get("position"),
+  });
+
+  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
+    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
+    .limit(1);
+  if (!book) throw new Error("Book not found");
+
+  await db.insert(curriculumEntries).values({
+    bookId: validated.bookId,
+    articleId: null,
+    position: validated.position,
+    partTitle: validated.title,
+    dividerLevel: "chapter",
+  });
+
+  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+}
+
+export async function renameChapterDivider(publisherSlug: string, formData: FormData) {
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  const validated = renameChapterDividerSchema.parse({
     entryId: formData.get("entryId"),
     bookId: formData.get("bookId"),
     title: formData.get("title"),
@@ -480,9 +545,9 @@ export async function createInternalArticle(publisherSlug: string, formData: For
       });
     });
   } catch (err) {
-    // Chapter slugs share the article namespace — duplicates are user input
+    // Section slugs share the article namespace — duplicates are user input
     if (isUniqueViolation(err)) {
-      return { error: "A chapter or article with that slug already exists. Pick a different slug." };
+      return { error: "A section or article with that slug already exists. Pick a different slug." };
     }
     throw err;
   }
@@ -701,7 +766,12 @@ export async function snapshotBook(publisherSlug: string, bookId: number, note?:
     .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
     .where(eq(curriculumEntries.bookId, bookId))
     .orderBy(asc(curriculumEntries.position))
-    .then((rows) => withPartTitles(rows, bookId));
+    .then((rows) =>
+      withDividerTitles(
+        rows.map((r) => ({ ...r, chapterTitle: null as string | null })),
+        bookId
+      )
+    );
 
   await db.transaction(async (tx) => {
     const [snapshot] = await tx
@@ -719,6 +789,7 @@ export async function snapshotBook(publisherSlug: string, bookId: number, note?:
           articleContent: e.content,
           position: e.position,
           partTitle: e.partTitle,
+          chapterTitle: e.chapterTitle,
         }))
       );
     }

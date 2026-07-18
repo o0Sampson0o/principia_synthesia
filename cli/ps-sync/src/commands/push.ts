@@ -182,14 +182,14 @@ export async function push(root: string, argv: string[]): Promise<number> {
     }
   }
 
-  // --- Book structure: reorder / re-part existing chapters ----------------
+  // --- Book structure: reorder / re-group existing sections ----------------
   let booksPushed = 0;
   for (const bst of Object.values(state.books ?? {})) {
     if (!publishers.includes(bst.publisher)) continue;
     const abs = join(root, bst.path);
     if (!existsSync(abs)) continue;
     const parsed = parseBookNote(readFileSync(abs, "utf8"));
-    const localHash = structureLocalHash(parsed.chapters);
+    const localHash = structureLocalHash(parsed.sections);
     if (localHash === bst.baseLocalHash) continue; // clean
 
     if (dryRun) {
@@ -201,7 +201,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
       const res = await api.updateBookStructure(
         bst.publisher,
         bst.slug,
-        parsed.chapters,
+        parsed.sections,
         bst.baseHash
       );
       bst.baseHash = res.structureHash;
@@ -212,11 +212,11 @@ export async function push(root: string, argv: string[]): Promise<number> {
       if (err instanceof ConflictError) {
         conflicts++;
         console.warn(`C ${bst.path} — book reordered remotely since your last pull (pull first)`);
-      } else if (err instanceof ApiError && err.code === "chapter_set_mismatch") {
+      } else if (err instanceof ApiError && err.code === "section_set_mismatch") {
         conflicts++;
         console.warn(
-          `C ${bst.path} — chapters added/removed locally; ps-sync only reorders. ` +
-            `Add/remove chapters in the web UI, then pull.`
+          `C ${bst.path} — sections added/removed locally; ps-sync only reorders. ` +
+            `Add/remove sections in the web UI, then pull.`
         );
       } else {
         throw err;

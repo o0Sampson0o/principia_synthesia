@@ -14,13 +14,13 @@ const BOOK_TITLE = "Test Book";
 
 describe("buildBookBundle", () => {
   it("returns an ArrayBuffer when called with one chapter", async () => {
-    const chapters = [{ title: "Introduction", content: "# Hello", partTitle: null }];
+    const chapters = [{ title: "Introduction", content: "# Hello", partTitle: null, chapterTitle: null }];
     const result = await buildBookBundle(BOOK_SLUG, BOOK_TITLE, chapters, new Map());
     expect(result).toBeInstanceOf(ArrayBuffer);
   });
 
   it("returns a buffer with non-zero byteLength for a single chapter", async () => {
-    const chapters = [{ title: "Introduction", content: "# Hello", partTitle: null }];
+    const chapters = [{ title: "Introduction", content: "# Hello", partTitle: null, chapterTitle: null }];
     const result = await buildBookBundle(BOOK_SLUG, BOOK_TITLE, chapters, new Map());
     expect(result.byteLength).toBeGreaterThan(0);
   });

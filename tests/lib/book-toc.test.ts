@@ -7,6 +7,7 @@ function entry(overrides: Partial<TocEntry> & { bookSlug: string; entryId: numbe
     bookTitle: "Test Book",
     position: 1,
     partTitle: null,
+    chapterTitle: null,
     articleSlug: `article-${overrides.entryId}`,
     articleTitle: `Article ${overrides.entryId}`,
     ...overrides,
