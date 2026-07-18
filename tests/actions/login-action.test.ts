@@ -109,25 +109,16 @@ describe("loginAction", () => {
     await expect(loginAction(fd)).rejects.toThrow("NEXT_REDIRECT:/user-slug");
   });
 
-  it("redirects to /login?error=invalid for unknown user", async () => {
+  it("returns an error (no navigation) for unknown user", async () => {
     setupUser(null);
     const fd = makeFormData({ email: "unknown@example.com", password: "pass" });
-    await expect(loginAction(fd)).rejects.toThrow("NEXT_REDIRECT:/login?error=invalid");
+    // Returned, not redirected, so the login form keeps its state.
+    await expect(loginAction(fd)).resolves.toEqual({ error: "Invalid email or password." });
   });
 
-  it("preserves redirect in error URL for unknown user", async () => {
-    setupUser(null);
-    const fd = makeFormData({
-      email: "unknown@example.com",
-      password: "pass",
-      redirect: "/some/page",
-    });
-    await expect(loginAction(fd)).rejects.toThrow("redirect=%2Fsome%2Fpage");
-  });
-
-  it("redirects to /login?error=invalid for wrong password", async () => {
+  it("returns an error (no navigation) for wrong password", async () => {
     mockVerifyPassword.mockResolvedValue(false);
     const fd = makeFormData({ email: "user@example.com", password: "wrong" });
-    await expect(loginAction(fd)).rejects.toThrow("NEXT_REDIRECT:/login?error=invalid");
+    await expect(loginAction(fd)).resolves.toEqual({ error: "Invalid email or password." });
   });
 });

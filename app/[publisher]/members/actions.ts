@@ -6,7 +6,6 @@ import { orgInvitations, orgMemberships, organizations, users } from "@/db/schem
 import { eq, and, gt } from "drizzle-orm";
 import { randomBytes, createHash } from "crypto";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { canManageOrg, getOrgRole } from "@/lib/roles";
 import { resolvePublisher } from "@/lib/publisher";
@@ -34,12 +33,12 @@ export async function inviteMember(
   const { session, orgId } = await assertCanInvite(publisherSlug);
 
   if (!rateLimit(`invite:${orgId}`, 5, 60 * 60 * 1000)) {
-    redirect(`/${publisherSlug}/members?error=rate_limited`);
+    return { error: "Too many invitations sent recently. Please try again later." };
   }
 
   const parsed = inviteMemberSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    redirect(`/${publisherSlug}/members?error=invalid_email`);
+    return { error: parsed.error.issues[0]?.message ?? "That email address doesn't look valid." };
   }
 
   const { email, role } = parsed.data;
@@ -53,7 +52,7 @@ export async function inviteMember(
   if (existing) {
     const alreadyMember = await getOrgRole(existing.id, orgId);
     if (alreadyMember) {
-      redirect(`/${publisherSlug}/members?error=already_member`);
+      return { error: "This user is already a member of the organisation." };
     }
   }
 
@@ -69,7 +68,7 @@ export async function inviteMember(
     .limit(1);
 
   if (existingInvite) {
-    redirect(`/${publisherSlug}/members?error=invite_exists`);
+    return { error: "An invitation has already been sent to this email address." };
   }
 
   const rawToken = randomBytes(32).toString("base64url");
@@ -87,7 +86,9 @@ export async function inviteMember(
   });
   } catch (err) {
     // Race between the pre-check and the insert
-    if (isUniqueViolation(err)) redirect(`/${publisherSlug}/members?error=invite_exists`);
+    if (isUniqueViolation(err)) {
+      return { error: "An invitation has already been sent to this email address." };
+    }
     throw err;
   }
 

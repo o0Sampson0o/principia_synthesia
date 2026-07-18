@@ -18,7 +18,7 @@ import {
   createUserSchema,
 } from "@/lib/validations";
 
-export async function createOrganization(formData: FormData) {
+export async function createOrganization(formData: FormData): Promise<{ error: string } | void> {
   const session = await requireSession();
 
   const validated = createOrganizationSchema.parse({
@@ -33,7 +33,7 @@ export async function createOrganization(formData: FormData) {
     .where(eq(publishers.slug, validated.publisherSlug))
     .limit(1);
   if (existing.length > 0) {
-    redirect("/organizations/new?error=slug_taken");
+    return { error: "That publisher slug is already taken." };
   }
 
   // Find root admin for auto-super_admin membership
@@ -78,7 +78,7 @@ export async function createOrganization(formData: FormData) {
     }
   });
   } catch (err) {
-    if (isUniqueViolation(err)) redirect("/organizations/new?error=slug_taken");
+    if (isUniqueViolation(err)) return { error: "That publisher slug is already taken." };
     throw err;
   }
 
@@ -268,7 +268,7 @@ export async function updateOrgMemberRole(formData: FormData) {
   if (org) revalidatePath(`/${org.publisherSlug}/members`);
 }
 
-export async function createUser(formData: FormData) {
+export async function createUser(formData: FormData): Promise<{ error: string } | void> {
   const session = await requireSession();
   if (!session.isRootAdmin) throw new Error("Forbidden");
 
@@ -287,14 +287,14 @@ export async function createUser(formData: FormData) {
     .from(users)
     .where(eq(users.email, emailNormalized))
     .limit(1);
-  if (existingEmail.length > 0) redirect("/organizations?error=email_taken");
+  if (existingEmail.length > 0) return { error: "A user with that email already exists." };
 
   const existingSlug = await db
     .select({ id: publishers.id })
     .from(publishers)
     .where(eq(publishers.slug, validated.publisherSlug))
     .limit(1);
-  if (existingSlug.length > 0) redirect("/organizations?error=slug_taken");
+  if (existingSlug.length > 0) return { error: "That publisher slug is already taken." };
 
   const passwordHash = await hashPassword(validated.password);
 
@@ -318,7 +318,7 @@ export async function createUser(formData: FormData) {
     });
   });
   } catch (err) {
-    if (isUniqueViolation(err)) redirect("/organizations?error=slug_taken");
+    if (isUniqueViolation(err)) return { error: "That publisher slug is already taken." };
     throw err;
   }
 

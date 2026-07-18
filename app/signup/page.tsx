@@ -1,26 +1,8 @@
 import Link from "next/link";
 import { signupAction } from "./actions";
-import SearchParamToast from "@/components/SearchParamToast";
+import ToastForm from "@/components/ToastForm";
 
-async function ErrorMessage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const params = await searchParams;
-  const messages: Record<string, string> = {
-    email_taken:    "That email address is already in use.",
-    slug_taken:     "That publisher slug is already taken.",
-    invalid_email:  "Please enter a valid email address.",
-    invalid_password: "Password must be at least 8 characters.",
-    invalid_displayName: "Display name is required.",
-    invalid_publisherSlug: "Slug must be 3–40 lowercase letters, numbers, or hyphens.",
-  };
-  const message = params.error ? messages[params.error] : null;
-  return <SearchParamToast message={message} title="Sign-up failed" />;
-}
-
-export default async function SignupPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
+export default async function SignupPage() {
   return (
     <main className="flex-1 flex items-center justify-center px-5 py-16">
       <div className="w-full" style={{ maxWidth: "22rem" }}>
@@ -39,8 +21,7 @@ export default async function SignupPage({
         </div>
 
         <div className="ps-form-card">
-          <ErrorMessage searchParams={searchParams} />
-          <form action={signupAction} className="space-y-4">
+          <ToastForm action={signupAction} errorTitle="Sign-up failed" className="space-y-4">
             <div>
               <label
                 htmlFor="email"
@@ -126,7 +107,7 @@ export default async function SignupPage({
             >
               Create account
             </button>
-          </form>
+          </ToastForm>
         </div>
 
         <p className="mt-5 themed-muted text-center" style={{ fontSize: "0.8125rem" }}>

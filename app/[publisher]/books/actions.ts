@@ -43,7 +43,10 @@ import { withPartTitles } from "@/lib/curriculum";
 // Book CRUD
 // ---------------------------------------------------------------------------
 
-export async function createBook(publisherSlug: string, formData: FormData) {
+export async function createBook(
+  publisherSlug: string,
+  formData: FormData
+): Promise<{ error: string } | void> {
   const { session, ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = createBookSchema.parse({
@@ -65,8 +68,10 @@ export async function createBook(publisherSlug: string, formData: FormData) {
     }).returning({ id: books.id });
   } catch (err) {
     // Duplicate slug (including one held by a binned book) is a user
-    // mistake, not a crash.
-    if (isUniqueViolation(err)) redirect(`/${publisherSlug}/books/new?error=slug_taken`);
+    // mistake, not a crash — returned so the form keeps its state.
+    if (isUniqueViolation(err)) {
+      return { error: "A book with this slug already exists (it may be in the bin). Pick a different slug." };
+    }
     throw err;
   }
 
@@ -129,8 +134,8 @@ export async function updateBook(publisherSlug: string, formData: FormData) {
       })
       .where(and(eq(books.id, validated.id), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)));
   } catch (err) {
-    if (isUniqueViolation(err) && current) {
-      redirect(`/${publisherSlug}/books/${current.slug}/edit?error=slug_taken`);
+    if (isUniqueViolation(err)) {
+      return { error: "Another book already uses that slug. Choose a different one." };
     }
     throw err;
   }
@@ -277,7 +282,7 @@ export async function addExternalArticle(
     )
     .limit(1);
   if (conflict) {
-    redirect(`/${publisherSlug}/books/${ownedBook.slug}/edit?error=chapter_slug_taken`);
+    return { error: "A chapter with that slug already exists in this book." };
   }
 
   // 8. Insert curriculum entry.
@@ -477,7 +482,7 @@ export async function createInternalArticle(publisherSlug: string, formData: For
   } catch (err) {
     // Chapter slugs share the article namespace — duplicates are user input
     if (isUniqueViolation(err)) {
-      redirect(`/${publisherSlug}/books/${book.slug}/edit?error=chapter_slug_taken`);
+      return { error: "A chapter or article with that slug already exists. Pick a different slug." };
     }
     throw err;
   }

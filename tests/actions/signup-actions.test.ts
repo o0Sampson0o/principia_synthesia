@@ -130,20 +130,23 @@ describe("signupAction", () => {
     );
   });
 
-  it("redirects to /signup?error=email_taken when email is already taken", async () => {
+  it("returns an error (no navigation) when email is already taken", async () => {
     mockSelectLimit.mockResolvedValueOnce([{ id: 1 }]);
-    mockRedirect.mockImplementationOnce(() => { throw new Error("NEXT_REDIRECT"); });
-    await expect(signupAction(makeFormData(validForm))).rejects.toThrow("NEXT_REDIRECT");
-    expect(mockRedirect).toHaveBeenCalledWith("/signup?error=email_taken");
+    // Returned, not redirected, so the signup form keeps its typed values.
+    await expect(signupAction(makeFormData(validForm))).resolves.toEqual({
+      error: "That email address is already in use.",
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
     expect(mockCreateVerificationToken).not.toHaveBeenCalled();
   });
 
-  it("redirects to /signup?error=slug_taken when slug is already taken", async () => {
+  it("returns an error (no navigation) when slug is already taken", async () => {
     mockSelectLimit.mockResolvedValueOnce([]);
     mockSelectLimit.mockResolvedValueOnce([{ id: 5 }]);
-    mockRedirect.mockImplementationOnce(() => { throw new Error("NEXT_REDIRECT"); });
-    await expect(signupAction(makeFormData(validForm))).rejects.toThrow("NEXT_REDIRECT");
-    expect(mockRedirect).toHaveBeenCalledWith("/signup?error=slug_taken");
+    await expect(signupAction(makeFormData(validForm))).resolves.toEqual({
+      error: "That publisher slug is already taken.",
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
     expect(mockCreateVerificationToken).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
+import ToastForm from "@/components/ToastForm";
 import { resolvePublisher } from "@/lib/publisher";
-import SearchParamToast from "@/components/SearchParamToast";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { createArticle } from "../actions";
@@ -10,16 +10,10 @@ import { DEFAULT_ARTICLE_METADATA } from "@/lib/frontmatter";
 
 export default async function NewArticlePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ publisher: string }>;
-  searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ publisher: publisherSlug }, { error }] = await Promise.all([params, searchParams]);
-  const errorMessage =
-    error === "slug_taken"
-      ? "An article with this slug already exists (it may be in the bin). Pick a different slug."
-      : null;
+  const { publisher: publisherSlug } = await params;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -44,9 +38,7 @@ export default async function NewArticlePage({
         </h1>
       </div>
 
-      <SearchParamToast message={errorMessage} />
-
-      <form action={action} className="space-y-5">
+      <ToastForm action={action} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="title" className="block font-medium mb-1.5 themed-secondary" style={{ fontSize: "0.75rem" }}>
@@ -96,7 +88,7 @@ export default async function NewArticlePage({
         >
           Publish article
         </button>
-      </form>
+      </ToastForm>
 
     </main>
   );

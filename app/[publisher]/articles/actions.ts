@@ -85,7 +85,10 @@ export async function assertEditRights(publisherSlug: string) {
 // Actions
 // ---------------------------------------------------------------------------
 
-export async function createArticle(publisherSlug: string, formData: FormData) {
+export async function createArticle(
+  publisherSlug: string,
+  formData: FormData
+): Promise<{ error: string } | void> {
   const { session, ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const validated = createArticleSchema.parse({
@@ -110,9 +113,10 @@ export async function createArticle(publisherSlug: string, formData: FormData) {
     });
   } catch (err) {
     // Duplicate slug (including one held by a binned article) is a user
-    // mistake, not a crash — send them back to the form with a message.
+    // mistake, not a crash — returned (not redirected) so the form keeps
+    // its scroll position and typed values.
     if (isUniqueViolation(err)) {
-      redirect(`/${publisherSlug}/articles/new?error=slug_taken`);
+      return { error: "An article with this slug already exists (it may be in the bin). Pick a different slug." };
     }
     throw err;
   }
@@ -170,13 +174,7 @@ export async function updateArticle(
     }));
   } catch (err) {
     if (err instanceof ArticleSlugTakenError || isUniqueViolation(err)) {
-      // Redirect back to the edit page under the article's *current* slug
-      const [row] = await db
-        .select({ slug: articles.slug })
-        .from(articles)
-        .where(eq(articles.id, validated.id))
-        .limit(1);
-      if (row) redirect(`/${publisherSlug}/articles/${row.slug}/edit?error=slug_taken`);
+      return { error: { slug: "Another article already uses that slug. Choose a different one." } };
     }
     throw err;
   }

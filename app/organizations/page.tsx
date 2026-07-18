@@ -1,22 +1,10 @@
 import Link from "next/link";
-import SearchParamToast from "@/components/SearchParamToast";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { organizations, orgMemberships } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-export default async function OrganizationsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
-  const { error } = await searchParams;
-  const errorMessage =
-    error === "slug_taken"
-      ? "That publisher slug is already taken. Pick a different one."
-      : error === "email_taken"
-      ? "A user with that email address already exists."
-      : null;
+export default async function OrganizationsPage() {
   const session = await getSession();
 
   let myOrgs: { id: number; name: string; slug: string; publisherSlug: string }[] = [];
@@ -37,7 +25,6 @@ export default async function OrganizationsPage({
 
   return (
     <main className="flex-1">
-      <SearchParamToast message={errorMessage} />
 
       {/* ── Framed masthead ─────────────────────────────────────────── */}
       <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>

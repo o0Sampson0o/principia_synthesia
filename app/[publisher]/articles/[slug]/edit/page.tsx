@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import SearchParamToast from "@/components/SearchParamToast";
+import ToastForm from "@/components/ToastForm";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -16,16 +16,10 @@ import Link from "next/link";
 
 export default async function EditArticlePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ publisher: string; slug: string }>;
-  searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ publisher: publisherSlug, slug }, { error }] = await Promise.all([params, searchParams]);
-  const errorMessage =
-    error === "slug_taken"
-      ? "Not saved: another article already uses that slug. Choose a different one."
-      : null;
+  const { publisher: publisherSlug, slug } = await params;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -66,9 +60,9 @@ export default async function EditArticlePage({
     .where(eq(articleCategories.articleId, article.id));
   const currentCategories = articleCats.map((c) => c.slug).join(", ");
 
-  async function action(formData: FormData): Promise<void> {
+  async function action(formData: FormData) {
     "use server";
-    await updateArticle(publisherSlug, null, formData);
+    return updateArticle(publisherSlug, null, formData);
   }
 
   async function saveDraftAction(content: string): Promise<{ ok: true; savedAt: string }> {
@@ -90,7 +84,6 @@ export default async function EditArticlePage({
 
   return (
     <main className="w-full max-w-7xl mx-auto px-5 py-10 sm:py-14">
-      <SearchParamToast message={errorMessage} />
 
       {/* ── Page header ── */}
       <div className="flex items-center justify-between mb-8">
@@ -129,7 +122,7 @@ export default async function EditArticlePage({
         </div>
       )}
 
-      <form action={action} className="space-y-5">
+      <ToastForm action={action} className="space-y-5">
         <input type="hidden" name="id" value={article.id} />
 
         {/* ── Meta fields ── */}
@@ -190,7 +183,7 @@ export default async function EditArticlePage({
         >
           Save changes
         </button>
-      </form>
+      </ToastForm>
 
       {/* ── Danger zone ── */}
       <div className="mt-14 pt-6 border-t themed-border">

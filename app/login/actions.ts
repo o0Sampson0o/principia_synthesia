@@ -16,7 +16,7 @@ function isSafeRedirect(path: string | null): path is string {
   return true;
 }
 
-export async function loginAction(formData: FormData) {
+export async function loginAction(formData: FormData): Promise<{ error: string } | void> {
   let validated: ReturnType<typeof loginSchema.parse>;
   try {
     validated = loginSchema.parse({
@@ -24,7 +24,7 @@ export async function loginAction(formData: FormData) {
       password: formData.get("password"),
     });
   } catch (err) {
-    if (err instanceof ZodError) redirect("/login?error=invalid");
+    if (err instanceof ZodError) return { error: "Please enter a valid email and password." };
     throw err;
   }
 
@@ -44,18 +44,12 @@ export async function loginAction(formData: FormData) {
     .limit(1);
 
   if (!row) {
-    const errorUrl = safeRedirect
-      ? `/login?error=invalid&redirect=${encodeURIComponent(safeRedirect)}`
-      : "/login?error=invalid";
-    redirect(errorUrl);
+    return { error: "Invalid email or password." };
   }
 
   const valid = await verifyPassword(validated.password, row.passwordHash);
   if (!valid) {
-    const errorUrl = safeRedirect
-      ? `/login?error=invalid&redirect=${encodeURIComponent(safeRedirect)}`
-      : "/login?error=invalid";
-    redirect(errorUrl);
+    return { error: "Invalid email or password." };
   }
 
   await setSessionCookie({

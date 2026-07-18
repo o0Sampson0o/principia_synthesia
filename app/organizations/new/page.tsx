@@ -1,20 +1,10 @@
 import { redirect } from "next/navigation";
-import SearchParamToast from "@/components/SearchParamToast";
+import ToastForm from "@/components/ToastForm";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { createOrganization } from "../actions";
 
-async function ErrorMessage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const params = await searchParams;
-  const message = params.error === "slug_taken" ? "That slug is already taken." : null;
-  return <SearchParamToast message={message} />;
-}
-
-export default async function NewOrganizationPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
+export default async function NewOrganizationPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -24,8 +14,7 @@ export default async function NewOrganizationPage({
         <p className="ps-eyebrow mb-1.5">Organization</p>
         <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New organization</h1>
       </div>
-      <ErrorMessage searchParams={searchParams} />
-      <form action={createOrganization} className="space-y-4">
+      <ToastForm action={createOrganization} errorTitle="Not created" className="space-y-4">
         <div>
           <label htmlFor="name" className="block font-medium themed-secondary mb-1.5" style={{ fontSize: "0.75rem" }}>
             Organization name
@@ -55,7 +44,7 @@ export default async function NewOrganizationPage({
         <button type="submit" className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
           Create organization
         </button>
-      </form>
+      </ToastForm>
       <p className="mt-6 text-sm themed-muted">
         <Link href="/organizations" className="themed-link">Back to organizations</Link>
       </p>

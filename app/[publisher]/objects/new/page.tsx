@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import SearchParamToast from "@/components/SearchParamToast";
+import ToastForm from "@/components/ToastForm";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -8,18 +8,10 @@ import NewObjectFormClient from "@/components/NewObjectFormClient";
 
 export default async function NewObjectPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ publisher: string }>;
-  searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ publisher: publisherSlug }, { error }] = await Promise.all([params, searchParams]);
-  const errorMessage =
-    error === "slug_taken"
-      ? "An object with this slug already exists. Pick a different slug."
-      : error === "invalid"
-      ? "The object could not be saved — please check the fields and try again."
-      : null;
+  const { publisher: publisherSlug } = await params;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -32,17 +24,12 @@ export default async function NewObjectPage({
     redirect(`/${publisherSlug}`);
   }
 
-  async function action(formData: FormData): Promise<void> {
+  async function action(formData: FormData) {
     "use server";
     const type = formData.get("type");
-    const result =
-      type === "diagram"
-        ? await createDiagram(publisherSlug, null, formData)
-        : await createKaoObject(publisherSlug, null, formData);
-    if (result?.errors) {
-      const code = result.errors.slug ? "slug_taken" : "invalid";
-      redirect(`/${publisherSlug}/objects/new?error=${code}`);
-    }
+    return type === "diagram"
+      ? await createDiagram(publisherSlug, null, formData)
+      : await createKaoObject(publisherSlug, null, formData);
   }
 
   return (
@@ -51,13 +38,12 @@ export default async function NewObjectPage({
         <p className="ps-eyebrow mb-1.5">Object</p>
         <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New object</h1>
       </div>
-      <SearchParamToast message={errorMessage} />
-      <form action={action} className="space-y-4">
+      <ToastForm action={action} className="space-y-4">
         <NewObjectFormClient />
         <button type="submit" className="themed-btn-accent rounded-lg" style={{ fontSize: "0.9375rem", padding: "0.625rem 1.5rem" }}>
           Create object
         </button>
-      </form>
+      </ToastForm>
     </main>
   );
 }

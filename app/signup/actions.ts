@@ -11,7 +11,7 @@ import { signupSchema } from "@/lib/validations";
 import { headers } from "next/headers";
 import { ZodError } from "zod";
 
-export async function signupAction(formData: FormData) {
+export async function signupAction(formData: FormData): Promise<{ error: string } | void> {
   const rawEmail = (formData.get("email") as string | null)?.trim().toLowerCase() ?? "";
   let validated: ReturnType<typeof signupSchema.parse>;
   try {
@@ -23,9 +23,7 @@ export async function signupAction(formData: FormData) {
     });
   } catch (err) {
     if (err instanceof ZodError) {
-      const first = err.issues[0];
-      const field = String(first?.path[0] ?? "input");
-      redirect(`/signup?error=invalid_${field}`);
+      return { error: err.issues[0]?.message ?? "Please check the form and try again." };
     }
     throw err;
   }
@@ -39,7 +37,7 @@ export async function signupAction(formData: FormData) {
     .where(eq(users.email, emailNormalized))
     .limit(1);
   if (existingUser.length > 0) {
-    redirect("/signup?error=email_taken");
+    return { error: "That email address is already in use." };
   }
 
   // Check slug uniqueness across all publishers (users and orgs)
@@ -49,7 +47,7 @@ export async function signupAction(formData: FormData) {
     .where(eq(publishers.slug, validated.publisherSlug))
     .limit(1);
   if (existingSlug.length > 0) {
-    redirect("/signup?error=slug_taken");
+    return { error: "That publisher slug is already taken." };
   }
 
   // Create user, publisher row, and update publisherSlug in a transaction
@@ -81,7 +79,7 @@ export async function signupAction(formData: FormData) {
   });
   } catch (err) {
     // Race between the pre-checks above and the insert
-    if (isUniqueViolation(err)) redirect("/signup?error=slug_taken");
+    if (isUniqueViolation(err)) return { error: "That publisher slug is already taken." };
     throw err;
   }
 

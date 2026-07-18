@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { loginAction } from "./actions";
+import ToastForm from "@/components/ToastForm";
 import SearchParamToast from "@/components/SearchParamToast";
 
 async function StatusMessage({
@@ -27,9 +28,6 @@ async function StatusMessage({
         clearParams={["verified"]}
       />
     );
-  }
-  if (params.error === "invalid") {
-    return <SearchParamToast message="Invalid email or password." title="Sign-in failed" />;
   }
   return null;
 }
@@ -64,7 +62,7 @@ export default async function LoginPage({
 
         <div className="ps-form-card">
           <StatusMessage searchParams={searchParams} />
-          <form action={loginAction} className="space-y-4">
+          <ToastForm action={loginAction} errorTitle="Sign-in failed" className="space-y-4">
             <div>
               <label
                 htmlFor="email"
@@ -107,7 +105,7 @@ export default async function LoginPage({
             >
               Sign in
             </button>
-          </form>
+          </ToastForm>
         </div>
 
         <p className="mt-5 themed-muted text-center" style={{ fontSize: "0.8125rem" }}>

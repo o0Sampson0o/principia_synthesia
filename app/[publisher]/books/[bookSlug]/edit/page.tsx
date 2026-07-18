@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import SearchParamToast from "@/components/SearchParamToast";
+import ToastForm from "@/components/ToastForm";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -25,18 +25,10 @@ import {
 
 export default async function EditBookPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ publisher: string; bookSlug: string }>;
-  searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ publisher: publisherSlug, bookSlug }, { error }] = await Promise.all([params, searchParams]);
-  const errorMessage =
-    error === "slug_taken"
-      ? "Not saved: another book already uses that slug. Choose a different one."
-      : error === "chapter_slug_taken"
-      ? "Not added: a chapter with that slug already exists in this book (or an article already uses it)."
-      : null;
+  const { publisher: publisherSlug, bookSlug } = await params;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -170,9 +162,9 @@ export default async function EditBookPage({
     )
     .orderBy(asc(articles.title));
 
-  async function action(formData: FormData): Promise<void> {
+  async function action(formData: FormData) {
     "use server";
-    await updateBook(publisherSlug, formData);
+    return updateBook(publisherSlug, formData);
   }
 
   async function addChapter(formData: FormData): Promise<void> {
@@ -185,9 +177,9 @@ export default async function EditBookPage({
     await removeCurriculumEntry(publisherSlug, formData);
   }
 
-  async function newInternalArticle(formData: FormData): Promise<void> {
+  async function newInternalArticle(formData: FormData) {
     "use server";
-    await createInternalArticle(publisherSlug, formData);
+    return createInternalArticle(publisherSlug, formData);
   }
 
   async function reorder(formData: FormData): Promise<void> {
@@ -195,9 +187,9 @@ export default async function EditBookPage({
     await reorderChapters(publisherSlug, formData);
   }
 
-  async function addExternal(formData: FormData): Promise<void> {
+  async function addExternal(formData: FormData) {
     "use server";
-    await addExternalArticle(publisherSlug, formData);
+    return addExternalArticle(publisherSlug, formData);
   }
 
   async function makeStandalone(formData: FormData): Promise<void> {
@@ -222,7 +214,6 @@ export default async function EditBookPage({
 
   return (
     <main className="w-full max-w-4xl mx-auto px-5 py-10 sm:py-14">
-      <SearchParamToast message={errorMessage} />
       <div className="flex items-end justify-between mb-8 gap-4">
         <div>
           <p className="ps-eyebrow mb-1.5">Book</p>
@@ -236,7 +227,7 @@ export default async function EditBookPage({
           Access &amp; visibility
         </Link>
       </div>
-      <form action={action} className="space-y-4">
+      <ToastForm action={action} className="space-y-4">
         <input type="hidden" name="id" value={bookRow.id} />
         <div>
           <label htmlFor="title" className="block text-sm font-medium themed-secondary mb-1">
@@ -288,7 +279,7 @@ export default async function EditBookPage({
         <button type="submit" className="themed-btn-accent rounded-lg">
           Save changes
         </button>
-      </form>
+      </ToastForm>
 
       <section className="mt-10 border-t pt-8">
         <h2 className="text-xl font-semibold themed-heading mb-4">Chapters</h2>
@@ -331,7 +322,7 @@ export default async function EditBookPage({
             <h3 className="text-sm font-semibold themed-secondary mb-3">
               Create internal chapter
             </h3>
-            <form action={newInternalArticle} className="space-y-2">
+            <ToastForm action={newInternalArticle} errorTitle="Chapter not added" className="space-y-2">
               <input type="hidden" name="bookId" value={bookRow.id} />
               <input type="hidden" name="position" value={rows.length} />
               <input
@@ -355,7 +346,7 @@ export default async function EditBookPage({
               <button type="submit" className="themed-btn-accent rounded text-sm">
                 Create chapter
               </button>
-            </form>
+            </ToastForm>
           </div>
         </div>
 
@@ -393,7 +384,7 @@ export default async function EditBookPage({
             visible to your account (public, or you must have an access grant).
             Original authorship is preserved.
           </p>
-          <form action={addExternal} className="space-y-2">
+          <ToastForm action={addExternal} errorTitle="Chapter not added" className="space-y-2">
             <input type="hidden" name="bookId" value={bookRow.id} />
             <input type="hidden" name="position" value={rows.length} />
             <input
@@ -415,7 +406,7 @@ export default async function EditBookPage({
             <button type="submit" className="themed-btn-accent rounded text-sm">
               Add external chapter
             </button>
-          </form>
+          </ToastForm>
         </div>
       </section>
 

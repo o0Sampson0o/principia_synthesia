@@ -313,13 +313,11 @@ describe("addExternalArticle", () => {
     });
 
     // Duplicate chapter slug is user input, not a crash — the action
-    // redirects back to the book editor with an error param. (This file's
-    // local next/navigation mock makes redirect a no-op, so assert the call.)
-    const { redirect } = await import("next/navigation");
-    await addExternalArticle("publisher-a", fd);
-    expect(redirect).toHaveBeenCalledWith(
-      "/publisher-a/books/book-x/edit?error=chapter_slug_taken"
-    );
+    // returns the error (ToastForm surfaces it) instead of navigating.
+    const result = await addExternalArticle("publisher-a", fd);
+    expect(result).toEqual({
+      error: "A chapter with that slug already exists in this book.",
+    });
   });
 
   it("rejects on bad input — Zod throws for invalid articleSlug", async () => {

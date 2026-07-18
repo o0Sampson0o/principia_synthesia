@@ -167,6 +167,15 @@ Refined and restrained: controls recede until needed, borders are precise, and t
 ### Navigation
 - **Style:** surface-toned bar with bottom hairline (`themed-nav`); links in graphite easing to ink on hover (`themed-nav-link`); underline tabs mark the active section (`.ps-tab`)
 
+### Toasts (error & status)
+Errors never reshape the page. Server actions **return** `{ error }` (they do
+not redirect on failure), a client `ToastForm` wrapper surfaces it as a
+floating `ps-toast` — surface + hairline + floating-overlay shadow, mono micro
+label, bottom-right, auto-dismiss — and the form keeps its scroll position and
+typed values. `SearchParamToast` covers the rare genuine cross-page arrival
+(e.g. the email-verification link landing on `/login`). Per-field validation
+stays inline on its input; a toast can't point at a field.
+
 ### List Row (signature)
 The app's characteristic surface: flush rows divided by hairlines, 0.875rem vertical padding, hover fill to surface tone, and a trailing "→" that fades in at 50% opacity on hover. Used for articles, search results, queues, and indexes — the anti-card.
 
