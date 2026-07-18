@@ -1537,8 +1537,9 @@ body::-webkit-scrollbar-corner,
 @media (max-width: 639px) {
   .ps-hero { letter-spacing: -0.02em; }
   .ps-content-row { padding: 0.875rem 1rem; }
-  /* 9px mono table headers are below the legibility floor on phones */
+  /* 9px mono micro-labels are below the legibility floor on phones */
   .markdown-content th { font-size: 0.6875rem; }
+  .ps-mono-micro { font-size: 0.6875rem; }
 }
 
 /* ─── Article meta row ───────────────────────────────────────────── */
@@ -1585,6 +1586,36 @@ body::-webkit-scrollbar-corner,
   border: 1px solid var(--border);
   border-radius: 9999px;
   padding: 0.125rem 0.5rem;
+}
+
+/* ─── Confirm dialog (ConfirmButton) ─────────────────────────────── */
+/* All dialog styling lives here, never in Tailwind utilities on the
+   element — unlayered rules below would override them. */
+.ps-confirm-dialog {
+  width: min(90vw, 24rem);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+.ps-confirm-label {
+  font-size: 0.5625rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin-bottom: 0.5rem;
+}
+.ps-confirm-body {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+.ps-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
 }
 
 /* ─── Quiet text action with a real touch target ─────────────────── */

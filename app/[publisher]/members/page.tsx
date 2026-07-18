@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import FormErrorBanner from "@/components/FormErrorBanner";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { getOrgRole, isSuperAdminProtected } from "@/lib/roles";
@@ -11,10 +12,22 @@ import { inviteMember, cancelInvitation, resendInvitation } from "@/app/[publish
 
 export default async function MembersPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publisher: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { publisher: publisherSlug } = await params;
+  const [{ publisher: publisherSlug }, { error }] = await Promise.all([params, searchParams]);
+  const errorMessage =
+    error === "invite_exists"
+      ? "An invitation has already been sent to this email address."
+      : error === "already_member"
+      ? "This user is already a member of the organisation."
+      : error === "rate_limited"
+      ? "Too many invitations sent recently. Please try again later."
+      : error === "invalid_email"
+      ? "That email address doesn't look valid."
+      : null;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -134,6 +147,7 @@ export default async function MembersPage({
 
   return (
     <main className="w-full max-w-2xl mx-auto px-5 py-12 sm:py-16">
+      <FormErrorBanner message={errorMessage} />
       <Link href={`/${publisherSlug}`} className="ps-eyebrow inline-flex items-center gap-1.5 mb-6 hover:opacity-70 transition-opacity">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M19 12H5m7-7-7 7 7 7" />

@@ -129,7 +129,10 @@ function CommentNodeView({
               <form action={boundDelete}>
                 <input type="hidden" name="commentId" value={node.id} />
                 <ConfirmButton
-                  message="Delete this comment? This cannot be undone."
+                  title="Delete comment"
+                  message="This permanently removes the comment. It cannot be undone."
+                  confirmLabel="Delete"
+                  danger
                   className="ps-quiet-action ps-quiet-action-danger"
                 >
                   Delete

@@ -8,6 +8,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { canView } from "@/lib/access";
 import { notify, resolveArticleAuthors, type ArticleForkedPayload } from "@/lib/notifications";
 import { forkArticleSchema } from "@/lib/validations";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -19,7 +20,7 @@ async function generateForkSlug(
   baseSlug: string,
   ownerType: string,
   ownerId: number
-): Promise<string> {
+): Promise<string | null> {
   const candidates = [
     `${baseSlug}-fork`,
     ...Array.from({ length: 9 }, (_, i) => `${baseSlug}-fork-${i + 2}`),
@@ -40,7 +41,7 @@ async function generateForkSlug(
     if (existing.length === 0) return candidate;
   }
 
-  throw new Error("Could not generate a unique fork slug after 10 attempts.");
+  return null;
 }
 
 /**
@@ -50,7 +51,7 @@ async function generateForkSlug(
  * with `forkedFromId` set, notifies the source article's author(s), and
  * redirects to the new article's edit page.
  */
-export async function forkArticle(formData: FormData) {
+export async function forkArticle(formData: FormData): Promise<{ error: string } | void> {
   const session = await requireSession();
 
   const raw = {
@@ -105,6 +106,9 @@ export async function forkArticle(formData: FormData) {
 
   // Generate a unique slug
   const forkSlug = await generateForkSlug(sourceArticleSlug, targetOwnerType, targetOwnerId);
+  if (forkSlug === null) {
+    return { error: "You already have many forks of this article — delete one before forking again." };
+  }
 
   // Derive forked metadata: reset status to draft, preserve tags/canvas
   const forkMetadata = {
@@ -113,9 +117,11 @@ export async function forkArticle(formData: FormData) {
   };
 
   // Insert the forked article
-  const [forked] = await db
-    .insert(articles)
-    .values({
+  let forked: { id: number; slug: string };
+  try {
+    [forked] = await db
+      .insert(articles)
+      .values({
       slug: forkSlug,
       title: sourceArticle.title,
       content: sourceArticle.content,
@@ -127,7 +133,13 @@ export async function forkArticle(formData: FormData) {
       forkedFromId: sourceArticle.id,
       lastVerifiedAt: null,
     })
-    .returning({ id: articles.id, slug: articles.slug });
+      .returning({ id: articles.id, slug: articles.slug });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { error: "Fork failed: a copy with this name already exists in your account." };
+    }
+    throw err;
+  }
 
   // Notify the source article's author(s)
   const recipients = await resolveArticleAuthors(sourceOwnerType, sourceOwnerId);

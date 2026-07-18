@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { resolvePublisher } from "@/lib/publisher";
+import FormErrorBanner from "@/components/FormErrorBanner";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import CategoryPicker from "@/components/CategoryPicker";
@@ -7,10 +8,16 @@ import { createBook } from "../actions";
 
 export default async function NewBookPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publisher: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { publisher: publisherSlug } = await params;
+  const [{ publisher: publisherSlug }, { error }] = await Promise.all([params, searchParams]);
+  const errorMessage =
+    error === "slug_taken"
+      ? "A book with this slug already exists (it may be in the bin). Pick a different slug."
+      : null;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -31,6 +38,8 @@ export default async function NewBookPage({
         <p className="ps-eyebrow mb-1.5">Book</p>
         <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New book</h1>
       </div>
+      <FormErrorBanner message={errorMessage} />
+
       <form action={action} className="space-y-4">
         <div>
           <label htmlFor="title" className="block font-medium themed-secondary mb-1.5" style={{ fontSize: "0.75rem" }}>

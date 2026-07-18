@@ -1,10 +1,12 @@
 "use server";
 
 import { db } from "@/db";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { orgInvitations, orgMemberships, organizations, users } from "@/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { randomBytes, createHash } from "crypto";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { canManageOrg, getOrgRole } from "@/lib/roles";
 import { resolvePublisher } from "@/lib/publisher";
@@ -32,12 +34,12 @@ export async function inviteMember(
   const { session, orgId } = await assertCanInvite(publisherSlug);
 
   if (!rateLimit(`invite:${orgId}`, 5, 60 * 60 * 1000)) {
-    return { error: "Too many invitations sent recently. Please try again later." };
+    redirect(`/${publisherSlug}/members?error=rate_limited`);
   }
 
   const parsed = inviteMemberSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    redirect(`/${publisherSlug}/members?error=invalid_email`);
   }
 
   const { email, role } = parsed.data;
@@ -51,7 +53,7 @@ export async function inviteMember(
   if (existing) {
     const alreadyMember = await getOrgRole(existing.id, orgId);
     if (alreadyMember) {
-      return { error: "This user is already a member of the organisation" };
+      redirect(`/${publisherSlug}/members?error=already_member`);
     }
   }
 
@@ -67,13 +69,14 @@ export async function inviteMember(
     .limit(1);
 
   if (existingInvite) {
-    return { error: "An invitation has already been sent to this email address" };
+    redirect(`/${publisherSlug}/members?error=invite_exists`);
   }
 
   const rawToken = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(rawToken).digest("hex");
   const expiresAt = new Date(Date.now() + INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
 
+  try {
   await db.insert(orgInvitations).values({
     orgId,
     email,
@@ -82,6 +85,11 @@ export async function inviteMember(
     invitedBy: session.userId,
     expiresAt,
   });
+  } catch (err) {
+    // Race between the pre-check and the insert
+    if (isUniqueViolation(err)) redirect(`/${publisherSlug}/members?error=invite_exists`);
+    throw err;
+  }
 
   const [org] = await db
     .select({ name: organizations.name })

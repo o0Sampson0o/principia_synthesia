@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { resolvePublisher } from "@/lib/publisher";
+import FormErrorBanner from "@/components/FormErrorBanner";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { createArticle } from "../actions";
@@ -9,10 +10,16 @@ import { DEFAULT_ARTICLE_METADATA } from "@/lib/frontmatter";
 
 export default async function NewArticlePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publisher: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { publisher: publisherSlug } = await params;
+  const [{ publisher: publisherSlug }, { error }] = await Promise.all([params, searchParams]);
+  const errorMessage =
+    error === "slug_taken"
+      ? "An article with this slug already exists (it may be in the bin). Pick a different slug."
+      : null;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -36,6 +43,8 @@ export default async function NewArticlePage({
           New article
         </h1>
       </div>
+
+      <FormErrorBanner message={errorMessage} />
 
       <form action={action} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

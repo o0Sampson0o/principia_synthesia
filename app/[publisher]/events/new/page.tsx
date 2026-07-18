@@ -1,4 +1,5 @@
 import { redirect, notFound } from "next/navigation";
+import FormErrorBanner from "@/components/FormErrorBanner";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -6,10 +7,18 @@ import { createEvent } from "@/app/[publisher]/events/actions";
 
 export default async function NewEventPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publisher: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { publisher: publisherSlug } = await params;
+  const [{ publisher: publisherSlug }, { error }] = await Promise.all([params, searchParams]);
+  const errorMessage =
+    error === "slug_taken"
+      ? "An event with this slug already exists. Pick a different slug."
+      : error === "invalid"
+      ? "The event could not be saved — please check the fields and try again."
+      : null;
 
   const session = await requireSession();
   const pub = await resolvePublisher(publisherSlug);
@@ -22,7 +31,14 @@ export default async function NewEventPage({
     redirect(`/${publisherSlug}`);
   }
 
-  const action = createEvent.bind(null, publisherSlug, null);
+  async function action(formData: FormData): Promise<void> {
+    "use server";
+    const result = await createEvent(publisherSlug, null, formData);
+    if (result?.errors) {
+      const code = result.errors.slug ? "slug_taken" : "invalid";
+      redirect(`/${publisherSlug}/events/new?error=${code}`);
+    }
+  }
 
   return (
     <main className="w-full max-w-2xl mx-auto px-5 py-10 sm:py-14">
@@ -31,7 +47,9 @@ export default async function NewEventPage({
         <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>New event</h1>
       </div>
 
-      <form action={action as (fd: FormData) => void} className="space-y-6">
+      <FormErrorBanner message={errorMessage} />
+
+      <form action={action} className="space-y-6">
         <div>
           <label className="block text-sm font-medium themed-heading mb-1" htmlFor="title">
             Title

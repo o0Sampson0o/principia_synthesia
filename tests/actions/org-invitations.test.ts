@@ -103,8 +103,9 @@ describe("inviteMember", () => {
     fd.set("orgId", "10");
     fd.set("email", "invite@test.com");
     fd.set("role", "member");
-    const result = await inviteMember("my-org", null, fd);
-    expect(result.error).toMatch(/already been sent/i);
+    await expect(inviteMember("my-org", null, fd)).rejects.toThrow(
+      /NEXT_REDIRECT: \/my-org\/members\?error=invite_exists/
+    );
   });
 
   it("returns error when user is already a member", async () => {
@@ -118,8 +119,9 @@ describe("inviteMember", () => {
     fd.set("orgId", "10");
     fd.set("email", "existing@test.com");
     fd.set("role", "member");
-    const result = await inviteMember("my-org", null, fd);
-    expect(result.error).toMatch(/already a member/i);
+    await expect(inviteMember("my-org", null, fd)).rejects.toThrow(
+      /NEXT_REDIRECT: \/my-org\/members\?error=already_member/
+    );
   });
 });
 

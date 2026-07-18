@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/db";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { objects } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -22,18 +23,26 @@ export async function createKaoObject(publisherSlug: string, _prevState: unknown
     return { errors: { content: ["Invalid JSON"] } };
   }
 
-  const [row] = await db
-    .insert(objects)
-    .values({
-      slug: parsed.data.slug,
-      name: parsed.data.name,
-      type: parsed.data.type,
-      content,
-      description: parsed.data.description ?? null,
-      ownerType,
-      ownerId,
-    })
-    .returning({ slug: objects.slug });
+  let row;
+  try {
+    [row] = await db
+      .insert(objects)
+      .values({
+        slug: parsed.data.slug,
+        name: parsed.data.name,
+        type: parsed.data.type,
+        content,
+        description: parsed.data.description ?? null,
+        ownerType,
+        ownerId,
+      })
+      .returning({ slug: objects.slug });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { errors: { slug: ["An object with this slug already exists"] } };
+    }
+    throw err;
+  }
 
   revalidatePath(`/${publisherSlug}`);
   revalidatePath(`/${publisherSlug}/objects`);
@@ -89,18 +98,26 @@ export async function createDiagram(publisherSlug: string, _prevState: unknown, 
 
   const content = { format: parsed.data.format, source: parsed.data.source };
 
-  const [row] = await db
-    .insert(objects)
-    .values({
-      slug: parsed.data.slug,
-      name: parsed.data.name,
-      type: "diagram",
-      content,
-      description: parsed.data.description ?? null,
-      ownerType,
-      ownerId,
-    })
-    .returning({ slug: objects.slug });
+  let row;
+  try {
+    [row] = await db
+      .insert(objects)
+      .values({
+        slug: parsed.data.slug,
+        name: parsed.data.name,
+        type: "diagram",
+        content,
+        description: parsed.data.description ?? null,
+        ownerType,
+        ownerId,
+      })
+      .returning({ slug: objects.slug });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { errors: { slug: ["An object with this slug already exists"] } };
+    }
+    throw err;
+  }
 
   revalidatePath(`/${publisherSlug}`);
   revalidatePath(`/${publisherSlug}/objects`);

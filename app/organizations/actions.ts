@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/db";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { organizations, publishers, orgMemberships, users, accessGrants } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
@@ -42,6 +43,7 @@ export async function createOrganization(formData: FormData) {
     .where(eq(users.isRootAdmin, true))
     .limit(1);
 
+  try {
   await db.transaction(async (tx) => {
     const [org] = await tx
       .insert(organizations)
@@ -75,6 +77,10 @@ export async function createOrganization(formData: FormData) {
       });
     }
   });
+  } catch (err) {
+    if (isUniqueViolation(err)) redirect("/organizations/new?error=slug_taken");
+    throw err;
+  }
 
   revalidatePath("/organizations");
   redirect(`/${validated.publisherSlug}`);
@@ -292,6 +298,7 @@ export async function createUser(formData: FormData) {
 
   const passwordHash = await hashPassword(validated.password);
 
+  try {
   await db.transaction(async (tx) => {
     const [newUser] = await tx
       .insert(users)
@@ -310,6 +317,10 @@ export async function createUser(formData: FormData) {
       userId: newUser.id,
     });
   });
+  } catch (err) {
+    if (isUniqueViolation(err)) redirect("/organizations?error=slug_taken");
+    throw err;
+  }
 
   revalidatePath("/organizations");
 }

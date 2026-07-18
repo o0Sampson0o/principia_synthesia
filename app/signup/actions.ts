@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/db";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { users, publishers } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { hashPassword, setSessionCookie, createVerificationToken } from "@/lib/auth";
@@ -54,7 +55,9 @@ export async function signupAction(formData: FormData) {
   // Create user, publisher row, and update publisherSlug in a transaction
   const passwordHash = await hashPassword(validated.password);
 
-  const newUser = await db.transaction(async (tx) => {
+  let newUser;
+  try {
+    newUser = await db.transaction(async (tx) => {
     // Insert user with a temporary empty publisherSlug (filled below)
     const [insertedUser] = await tx
       .insert(users)
@@ -76,6 +79,11 @@ export async function signupAction(formData: FormData) {
 
     return insertedUser;
   });
+  } catch (err) {
+    // Race between the pre-checks above and the insert
+    if (isUniqueViolation(err)) redirect("/signup?error=slug_taken");
+    throw err;
+  }
 
   const rawToken = await createVerificationToken(newUser.id);
 

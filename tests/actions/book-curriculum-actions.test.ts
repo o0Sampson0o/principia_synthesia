@@ -312,8 +312,13 @@ describe("addExternalArticle", () => {
       position: "0",
     });
 
-    await expect(addExternalArticle("publisher-a", fd)).rejects.toThrow(
-      /already exists in this book/
+    // Duplicate chapter slug is user input, not a crash — the action
+    // redirects back to the book editor with an error param. (This file's
+    // local next/navigation mock makes redirect a no-op, so assert the call.)
+    const { redirect } = await import("next/navigation");
+    await addExternalArticle("publisher-a", fd);
+    expect(redirect).toHaveBeenCalledWith(
+      "/publisher-a/books/book-x/edit?error=chapter_slug_taken"
     );
   });
 

@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import FormErrorBanner from "@/components/FormErrorBanner";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -15,10 +16,16 @@ import Link from "next/link";
 
 export default async function EditArticlePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publisher: string; slug: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { publisher: publisherSlug, slug } = await params;
+  const [{ publisher: publisherSlug, slug }, { error }] = await Promise.all([params, searchParams]);
+  const errorMessage =
+    error === "slug_taken"
+      ? "Not saved: another article already uses that slug. Choose a different one."
+      : null;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -83,6 +90,7 @@ export default async function EditArticlePage({
 
   return (
     <main className="w-full max-w-7xl mx-auto px-5 py-10 sm:py-14">
+      <FormErrorBanner message={errorMessage} />
 
       {/* ── Page header ── */}
       <div className="flex items-center justify-between mb-8">

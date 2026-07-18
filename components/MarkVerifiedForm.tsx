@@ -1,24 +1,7 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
 import { markArticleVerified } from "@/app/[publisher]/articles/actions";
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="ps-quiet-action"
-      onClick={(e) => {
-        // Stamps a public "last verified" date — confirm before it fires.
-        if (!window.confirm("Mark this article as verified today?")) e.preventDefault();
-      }}
-    >
-      {pending ? "Marking…" : "Mark as verified"}
-    </button>
-  );
-}
+import ConfirmButton from "./ConfirmButton";
 
 type Props = {
   publisherSlug: string;
@@ -31,7 +14,14 @@ export default function MarkVerifiedForm({ publisherSlug, articleId }: Props) {
     <form action={action}>
       <input type="hidden" name="articleId" value={articleId} />
       <input type="hidden" name="publisherSlug" value={publisherSlug} />
-      <SubmitButton />
+      <ConfirmButton
+        title="Mark as verified"
+        message="This stamps today's date as the article's public 'last verified' mark, telling readers the content is current."
+        confirmLabel="Mark verified"
+        className="ps-quiet-action"
+      >
+        Mark as verified
+      </ConfirmButton>
     </form>
   );
 }

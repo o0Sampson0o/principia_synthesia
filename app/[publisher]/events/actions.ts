@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/db";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { events, eventArticles, articles } from "@/db/schema";
 import { eq, and, inArray, isNull } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -59,9 +60,11 @@ export async function createEvent(
     parsed.data.recurrenceUntil ? new Date(parsed.data.recurrenceUntil) : undefined
   );
 
-  const [row] = await db
-    .insert(events)
-    .values({
+  let row;
+  try {
+    [row] = await db
+      .insert(events)
+      .values({
       slug: parsed.data.slug,
       title: parsed.data.title,
       description: parsed.data.description ?? null,
@@ -76,6 +79,12 @@ export async function createEvent(
       ownerId,
     })
     .returning({ id: events.id, slug: events.slug });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { errors: { slug: ["An event with this slug already exists"] } };
+    }
+    throw err;
+  }
 
   const slugs = (parsed.data.relatedArticleSlugs ?? "")
     .split(",")

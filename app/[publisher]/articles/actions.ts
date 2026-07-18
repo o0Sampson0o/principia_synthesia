@@ -18,7 +18,8 @@ import {
   markArticleVerifiedSchema,
 } from "@/lib/validations";
 import { createSnapshotIfPublished } from "@/lib/article-snapshots";
-import { createArticleCore, updateArticleCore, deleteArticleCore } from "@/lib/articles-write";
+import { createArticleCore, updateArticleCore, deleteArticleCore, ArticleSlugTakenError } from "@/lib/articles-write";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkMath from "remark-math";
@@ -95,17 +96,26 @@ export async function createArticle(publisherSlug: string, formData: FormData) {
     categories: formData.get("categories"),
   });
 
-  await createArticleCore({
-    actor: session,
-    ownerType,
-    ownerId,
-    publisherSlug,
-    slug: validated.slug,
-    title: validated.title,
-    summary: validated.summary,
-    content: validated.content,
-    extraCategorySlugs: validated.categories?.split(",").filter(Boolean),
-  });
+  try {
+    await createArticleCore({
+      actor: session,
+      ownerType,
+      ownerId,
+      publisherSlug,
+      slug: validated.slug,
+      title: validated.title,
+      summary: validated.summary,
+      content: validated.content,
+      extraCategorySlugs: validated.categories?.split(",").filter(Boolean),
+    });
+  } catch (err) {
+    // Duplicate slug (including one held by a binned article) is a user
+    // mistake, not a crash — send them back to the form with a message.
+    if (isUniqueViolation(err)) {
+      redirect(`/${publisherSlug}/articles/new?error=slug_taken`);
+    }
+    throw err;
+  }
 
   revalidatePath("/");
   revalidatePath(`/${publisherSlug}`);
@@ -143,19 +153,33 @@ export async function updateArticle(
     throw err;
   }
 
-  const { current } = await updateArticleCore({
-    actor: session,
-    ownerType,
-    ownerId,
-    publisherSlug,
-    id: validated.id,
-    slug: validated.slug,
-    title: validated.title,
-    summary: validated.summary,
-    content: validated.content,
-    editNote: (formData.get("editNote") as string) || undefined,
-    extraCategorySlugs: validated.categories?.split(",").filter(Boolean),
-  });
+  let current;
+  try {
+    ({ current } = await updateArticleCore({
+      actor: session,
+      ownerType,
+      ownerId,
+      publisherSlug,
+      id: validated.id,
+      slug: validated.slug,
+      title: validated.title,
+      summary: validated.summary,
+      content: validated.content,
+      editNote: (formData.get("editNote") as string) || undefined,
+      extraCategorySlugs: validated.categories?.split(",").filter(Boolean),
+    }));
+  } catch (err) {
+    if (err instanceof ArticleSlugTakenError || isUniqueViolation(err)) {
+      // Redirect back to the edit page under the article's *current* slug
+      const [row] = await db
+        .select({ slug: articles.slug })
+        .from(articles)
+        .where(eq(articles.id, validated.id))
+        .limit(1);
+      if (row) redirect(`/${publisherSlug}/articles/${row.slug}/edit?error=slug_taken`);
+    }
+    throw err;
+  }
 
   if (current?.isInternal && current?.parentBookId) {
     // Find the book slug for the redirect

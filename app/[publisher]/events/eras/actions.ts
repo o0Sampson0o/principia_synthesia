@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/db";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { events } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -34,6 +35,7 @@ export async function createEra(
   const { name, startDate, endDate, description } = parsed.data;
   const slug = eraToSlug(name);
 
+  try {
   await db.transaction(async (tx) => {
     await tx.insert(events).values({
       slug: `event-era-${slug}-start`,
@@ -61,6 +63,12 @@ export async function createEra(
       });
     }
   });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { errors: { name: ["An era with this name already exists"] } };
+    }
+    throw err;
+  }
 
   revalidateAll(publisherSlug);
   redirect(`/${publisherSlug}/events/eras/${slug}`);
@@ -81,6 +89,7 @@ export async function renameEra(
   const newSlug = eraToSlug(newName);
   const now = new Date();
 
+  try {
   await db.transaction(async (tx) => {
     await tx
       .update(events)
@@ -115,6 +124,12 @@ export async function renameEra(
         )
       );
   });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { errors: { newName: ["An era with this name already exists"] } };
+    }
+    throw err;
+  }
 
   revalidateAll(publisherSlug);
   redirect(`/${publisherSlug}/events/eras/${newSlug}`);

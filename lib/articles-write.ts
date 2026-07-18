@@ -36,6 +36,13 @@ export class ArticleConflictError extends Error {
 }
 
 /** Thrown when the target article does not exist under the given owner (only when a strict precondition is requested). */
+export class ArticleSlugTakenError extends Error {
+  constructor() {
+    super("An article with this slug already exists for this publisher");
+    this.name = "ArticleSlugTakenError";
+  }
+}
+
 export class ArticleNotFoundError extends Error {
   constructor() {
     super("Article not found");
@@ -196,6 +203,23 @@ export async function updateArticleCore(input: UpdateArticleCoreInput): Promise<
     if (remoteHash !== input.expectedBaseHash) {
       throw new ArticleConflictError(remoteHash, current.updatedAt);
     }
+  }
+
+  // Renames must fail cleanly BEFORE the revision insert, or a rejected
+  // rename would still pollute revision history.
+  if (current && input.slug !== current.slug) {
+    const [taken] = await db
+      .select({ id: articles.id })
+      .from(articles)
+      .where(
+        and(
+          eq(articles.ownerType, input.ownerType),
+          eq(articles.ownerId, input.ownerId),
+          eq(articles.slug, input.slug)
+        )
+      )
+      .limit(1);
+    if (taken && taken.id !== input.id) throw new ArticleSlugTakenError();
   }
 
   if (current?.content) {

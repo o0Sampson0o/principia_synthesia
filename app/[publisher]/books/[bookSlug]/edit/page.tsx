@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import FormErrorBanner from "@/components/FormErrorBanner";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -24,10 +25,18 @@ import {
 
 export default async function EditBookPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publisher: string; bookSlug: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { publisher: publisherSlug, bookSlug } = await params;
+  const [{ publisher: publisherSlug, bookSlug }, { error }] = await Promise.all([params, searchParams]);
+  const errorMessage =
+    error === "slug_taken"
+      ? "Not saved: another book already uses that slug. Choose a different one."
+      : error === "chapter_slug_taken"
+      ? "Not added: a chapter with that slug already exists in this book (or an article already uses it)."
+      : null;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -213,6 +222,7 @@ export default async function EditBookPage({
 
   return (
     <main className="w-full max-w-4xl mx-auto px-5 py-10 sm:py-14">
+      <FormErrorBanner message={errorMessage} />
       <div className="flex items-end justify-between mb-8 gap-4">
         <div>
           <p className="ps-eyebrow mb-1.5">Book</p>

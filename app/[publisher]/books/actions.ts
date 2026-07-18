@@ -31,6 +31,7 @@ import {
   renamePartSchema,
 } from "@/lib/validations";
 import { resolvePublisher } from "@/lib/publisher";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { withPartTitles } from "@/lib/curriculum";
 
 // ---------------------------------------------------------------------------
@@ -53,13 +54,21 @@ export async function createBook(publisherSlug: string, formData: FormData) {
     ownerId,
   });
 
-  const [book] = await db.insert(books).values({
-    slug: validated.slug,
-    title: validated.title,
-    summary: validated.summary,
-    ownerType: validated.ownerType,
-    ownerId: validated.ownerId,
-  }).returning({ id: books.id });
+  let book: { id: number };
+  try {
+    [book] = await db.insert(books).values({
+      slug: validated.slug,
+      title: validated.title,
+      summary: validated.summary,
+      ownerType: validated.ownerType,
+      ownerId: validated.ownerId,
+    }).returning({ id: books.id });
+  } catch (err) {
+    // Duplicate slug (including one held by a binned book) is a user
+    // mistake, not a crash.
+    if (isUniqueViolation(err)) redirect(`/${publisherSlug}/books/new?error=slug_taken`);
+    throw err;
+  }
 
   const categorySlugs = (formData.get("categories") as string)?.split(",").filter(Boolean) ?? [];
   await setContentTags("book", book.id, categorySlugs, session.userId);
@@ -109,15 +118,22 @@ export async function updateBook(publisherSlug: string, formData: FormData) {
     .where(eq(books.id, validated.id))
     .limit(1);
 
-  await db
-    .update(books)
-    .set({
-      slug: validated.slug,
-      title: validated.title,
-      summary: validated.summary,
-      updatedAt: new Date()
-    })
-    .where(and(eq(books.id, validated.id), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)));
+  try {
+    await db
+      .update(books)
+      .set({
+        slug: validated.slug,
+        title: validated.title,
+        summary: validated.summary,
+        updatedAt: new Date()
+      })
+      .where(and(eq(books.id, validated.id), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)));
+  } catch (err) {
+    if (isUniqueViolation(err) && current) {
+      redirect(`/${publisherSlug}/books/${current.slug}/edit?error=slug_taken`);
+    }
+    throw err;
+  }
 
   await setContentTags("book", validated.id, categorySlugs, session.userId);
 
@@ -261,9 +277,7 @@ export async function addExternalArticle(
     )
     .limit(1);
   if (conflict) {
-    throw new Error(
-      `A chapter with slug "${validated.articleSlug}" already exists in this book`
-    );
+    redirect(`/${publisherSlug}/books/${ownedBook.slug}/edit?error=chapter_slug_taken`);
   }
 
   // 8. Insert curriculum entry.
@@ -438,27 +452,35 @@ export async function createInternalArticle(publisherSlug: string, formData: For
   const defaultContent = `---\nstatus: published\ntags: []\ndescription: ""\ncanvas: null\n---\n\n# ${validated.title}\n`;
   const parsed = parseFrontmatter(defaultContent);
 
-  await db.transaction(async (tx) => {
-    const [article] = await tx
-      .insert(articles)
-      .values({
-        slug: validated.slug,
-        title: validated.title,
-        content: defaultContent,
-        ownerType,
-        ownerId,
-        isInternal: true,
-        parentBookId: validated.bookId,
-        metadata: parsed.metadata,
-      })
-      .returning({ id: articles.id });
+  try {
+    await db.transaction(async (tx) => {
+      const [article] = await tx
+        .insert(articles)
+        .values({
+          slug: validated.slug,
+          title: validated.title,
+          content: defaultContent,
+          ownerType,
+          ownerId,
+          isInternal: true,
+          parentBookId: validated.bookId,
+          metadata: parsed.metadata,
+        })
+        .returning({ id: articles.id });
 
-    await tx.insert(curriculumEntries).values({
-      bookId: validated.bookId,
-      articleId: article.id,
-      position: validated.position,
+      await tx.insert(curriculumEntries).values({
+        bookId: validated.bookId,
+        articleId: article.id,
+        position: validated.position,
+      });
     });
-  });
+  } catch (err) {
+    // Chapter slugs share the article namespace — duplicates are user input
+    if (isUniqueViolation(err)) {
+      redirect(`/${publisherSlug}/books/${book.slug}/edit?error=chapter_slug_taken`);
+    }
+    throw err;
+  }
 
   revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
   redirect(`/${publisherSlug}/books/${book.slug}/edit`);
