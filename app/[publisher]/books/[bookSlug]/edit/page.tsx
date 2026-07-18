@@ -10,6 +10,7 @@ import { eq, and, asc, isNull, or, sql, inArray } from "drizzle-orm";
 import Link from "next/link";
 import CategoryPicker from "@/components/CategoryPicker";
 import CurriculumList from "./CurriculumList";
+import AddCurriculumMenu from "./AddCurriculumMenu";
 import {
   updateBook,
   deleteBook,
@@ -321,148 +322,152 @@ export default async function EditBookPage({
           absorb={absorb}
         />
 
-        {/* Add existing article */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div>
-            <h3 className="text-sm font-semibold themed-secondary mb-3">Add existing article</h3>
-            <ToastForm action={addChapter} errorTitle="Section not added" className="space-y-2">
-              <input type="hidden" name="bookId" value={bookRow.id} />
-              <input type="hidden" name="position" value={rows.length} />
-              <select name="articleId" required className="themed-input text-sm">
-                <option value="">Select an article…</option>
-                {availableArticles
-                  .filter((a) => !chapters.some((c) => c.articleId === a.id))
-                  .map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.title} ({a.slug})
-                    </option>
-                  ))}
-              </select>
-              <button type="submit" className="themed-btn-outline rounded-lg text-sm">
-                Add section
-              </button>
-            </ToastForm>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-semibold themed-secondary mb-3">
-              Create internal section
-            </h3>
-            <ToastForm action={newInternalArticle} errorTitle="Section not added" className="space-y-2">
-              <input type="hidden" name="bookId" value={bookRow.id} />
-              <input type="hidden" name="position" value={rows.length} />
-              <input
-                name="title"
-                type="text"
-                required
-                placeholder="Section title"
-                maxLength={200}
-                className="themed-input text-sm"
-              />
-              <input
-                name="slug"
-                type="text"
-                required
-                placeholder="article-my-section"
-                pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
-                title="Must start with 'article-' followed by lowercase letters, numbers, and hyphens"
-                className="themed-input text-sm"
-              />
-              <p className="text-xs themed-muted">Must start with &ldquo;article-&rdquo; (e.g. article-intro).</p>
-              <button type="submit" className="themed-btn-outline rounded-lg text-sm">
-                Create section
-              </button>
-            </ToastForm>
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div>
-            <h3 className="text-sm font-semibold themed-secondary mb-3">
-              Add part
-            </h3>
-            <p className="text-xs themed-muted mb-3">
-              A part is the top-level heading. Chapters and sections listed after
-              it belong to that part until the next one. Reorder it like any
-              section.
-            </p>
-            <form action={addPartAction} className="flex gap-2">
-              <input type="hidden" name="bookId" value={bookRow.id} />
-              <input type="hidden" name="position" value={rows.length} />
-              <input
-                name="title"
-                type="text"
-                required
-                maxLength={200}
-                placeholder="Part I: Foundations"
-                className="themed-input text-sm flex-1"
-              />
-              <button type="submit" className="themed-btn-outline rounded-lg text-sm">
-                Add part
-              </button>
-            </form>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-semibold themed-secondary mb-3">
-              Add chapter
-            </h3>
-            <p className="text-xs themed-muted mb-3">
-              A chapter is the middle-level heading between a part and its
-              sections. Sections listed after it belong to that chapter until the
-              next one.
-            </p>
-            <form action={addChapterDividerAction} className="flex gap-2">
-              <input type="hidden" name="bookId" value={bookRow.id} />
-              <input type="hidden" name="position" value={rows.length} />
-              <input
-                name="title"
-                type="text"
-                required
-                maxLength={200}
-                placeholder="Chapter 1: Getting started"
-                className="themed-input text-sm flex-1"
-              />
-              <button type="submit" className="themed-btn-outline rounded-lg text-sm">
-                Add chapter
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <h3 className="text-sm font-semibold themed-secondary mb-3">
-            Add external article
-          </h3>
-          <p className="text-xs themed-muted mb-3">
-            Borrow an article authored by another publisher. The article must be
-            visible to your account (public, or you must have an access grant).
-            Original authorship is preserved.
-          </p>
-          <ToastForm action={addExternal} errorTitle="Section not added" className="space-y-2">
-            <input type="hidden" name="bookId" value={bookRow.id} />
-            <input type="hidden" name="position" value={rows.length} />
-            <input
-              name="targetPublisher"
-              type="text"
-              required
-              placeholder="publisher-slug"
-              className="themed-input text-sm"
-            />
-            <input
-              name="articleSlug"
-              type="text"
-              required
-              placeholder="article-my-section"
-              pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
-              title="Article slug, e.g. article-intro"
-              className="themed-input text-sm"
-            />
-            <button type="submit" className="themed-btn-outline rounded-lg text-sm">
-              Add external section
-            </button>
-          </ToastForm>
-        </div>
+        <AddCurriculumMenu
+          items={[
+            {
+              key: "existing",
+              label: "Existing section",
+              content: (
+                <ToastForm action={addChapter} errorTitle="Section not added" className="space-y-2">
+                  <p className="text-xs themed-muted mb-1">Add one of your standalone articles as a section.</p>
+                  <input type="hidden" name="bookId" value={bookRow.id} />
+                  <input type="hidden" name="position" value={rows.length} />
+                  <select name="articleId" required className="themed-input text-sm">
+                    <option value="">Select an article…</option>
+                    {availableArticles
+                      .filter((a) => !chapters.some((c) => c.articleId === a.id))
+                      .map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.title} ({a.slug})
+                        </option>
+                      ))}
+                  </select>
+                  <button type="submit" className="themed-btn-accent rounded-lg text-sm">
+                    Add section
+                  </button>
+                </ToastForm>
+              ),
+            },
+            {
+              key: "internal",
+              label: "New section",
+              content: (
+                <ToastForm action={newInternalArticle} errorTitle="Section not added" className="space-y-2">
+                  <p className="text-xs themed-muted mb-1">
+                    Create a section that lives only inside this book.
+                  </p>
+                  <input type="hidden" name="bookId" value={bookRow.id} />
+                  <input type="hidden" name="position" value={rows.length} />
+                  <input
+                    name="title"
+                    type="text"
+                    required
+                    placeholder="Section title"
+                    maxLength={200}
+                    className="themed-input text-sm"
+                  />
+                  <input
+                    name="slug"
+                    type="text"
+                    required
+                    placeholder="article-my-section"
+                    pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
+                    title="Must start with 'article-' followed by lowercase letters, numbers, and hyphens"
+                    className="themed-input text-sm"
+                  />
+                  <p className="text-xs themed-muted">Slug must start with &ldquo;article-&rdquo; (e.g. article-intro).</p>
+                  <button type="submit" className="themed-btn-accent rounded-lg text-sm">
+                    Create section
+                  </button>
+                </ToastForm>
+              ),
+            },
+            {
+              key: "part",
+              label: "Part",
+              content: (
+                <ToastForm action={addPartAction} errorTitle="Part not added" className="space-y-2">
+                  <p className="text-xs themed-muted mb-1">
+                    A part is the top-level heading. Chapters and sections after it belong to it until the next part.
+                  </p>
+                  <div className="flex gap-2">
+                    <input type="hidden" name="bookId" value={bookRow.id} />
+                    <input type="hidden" name="position" value={rows.length} />
+                    <input
+                      name="title"
+                      type="text"
+                      required
+                      maxLength={200}
+                      placeholder="Part I: Foundations"
+                      className="themed-input text-sm flex-1"
+                    />
+                    <button type="submit" className="themed-btn-accent rounded-lg text-sm shrink-0">
+                      Add part
+                    </button>
+                  </div>
+                </ToastForm>
+              ),
+            },
+            {
+              key: "chapter",
+              label: "Chapter",
+              content: (
+                <ToastForm action={addChapterDividerAction} errorTitle="Chapter not added" className="space-y-2">
+                  <p className="text-xs themed-muted mb-1">
+                    A chapter is the middle-level heading between a part and its sections.
+                  </p>
+                  <div className="flex gap-2">
+                    <input type="hidden" name="bookId" value={bookRow.id} />
+                    <input type="hidden" name="position" value={rows.length} />
+                    <input
+                      name="title"
+                      type="text"
+                      required
+                      maxLength={200}
+                      placeholder="Chapter 1: Getting started"
+                      className="themed-input text-sm flex-1"
+                    />
+                    <button type="submit" className="themed-btn-accent rounded-lg text-sm shrink-0">
+                      Add chapter
+                    </button>
+                  </div>
+                </ToastForm>
+              ),
+            },
+            {
+              key: "external",
+              label: "External section",
+              content: (
+                <ToastForm action={addExternal} errorTitle="Section not added" className="space-y-2">
+                  <p className="text-xs themed-muted mb-1">
+                    Borrow an article authored by another publisher. It must be visible to your account; original authorship is preserved.
+                  </p>
+                  <input type="hidden" name="bookId" value={bookRow.id} />
+                  <input type="hidden" name="position" value={rows.length} />
+                  <input
+                    name="targetPublisher"
+                    type="text"
+                    required
+                    placeholder="publisher-slug"
+                    className="themed-input text-sm"
+                  />
+                  <input
+                    name="articleSlug"
+                    type="text"
+                    required
+                    placeholder="article-my-section"
+                    pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
+                    title="Article slug, e.g. article-intro"
+                    className="themed-input text-sm"
+                  />
+                  <button type="submit" className="themed-btn-accent rounded-lg text-sm">
+                    Add external section
+                  </button>
+                </ToastForm>
+              ),
+            },
+          ]}
+        />
       </section>
 
       <section className="mt-12 border-t themed-border pt-8">
