@@ -2,6 +2,67 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+/**
+ * One sortable row: provides the drag handle (only the handle starts a drag,
+ * so the rename input, links, and action buttons inside stay interactive) and
+ * the transform/lift while dragging. The row's kind-specific markup is passed
+ * as children.
+ */
+function SortableRow({
+  id,
+  className,
+  children,
+}: {
+  id: number;
+  className: string;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+
+  return (
+    <li
+      ref={setNodeRef}
+      className={className}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        zIndex: isDragging ? 1 : undefined,
+      }}
+    >
+      <button
+        type="button"
+        className="themed-btn-ghost shrink-0 cursor-grab active:cursor-grabbing px-1"
+        style={{ fontSize: "0.9375rem", touchAction: "none" }}
+        aria-label="Drag to reorder"
+        {...attributes}
+        {...listeners}
+      >
+        ⠿
+      </button>
+      {children}
+    </li>
+  );
+}
 
 export type CurriculumRow =
   | {
@@ -62,6 +123,13 @@ export default function CurriculumList({
   const [orderIds, setOrderIds] = useState<number[] | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const sensors = useSensors(
+    // A small activation distance so a click on the handle can still fire
+    // buttons/inputs elsewhere without accidental drags.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   const byId = new Map(savedRows.map((r) => [r.entryId, r]));
   const rows =
     orderIds === null
@@ -70,10 +138,14 @@ export default function CurriculumList({
 
   const dirty = rows.some((r, i) => r.entryId !== savedRows[i]?.entryId);
 
-  function move(idx: number, delta: -1 | 1) {
-    const next = rows.map((r) => r.entryId);
-    [next[idx], next[idx + delta]] = [next[idx + delta], next[idx]];
-    setOrderIds(next);
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = rows.map((r) => r.entryId);
+    const from = ids.indexOf(active.id as number);
+    const to = ids.indexOf(over.id as number);
+    if (from === -1 || to === -1) return;
+    setOrderIds(arrayMove(ids, from, to));
   }
 
   function saveOrder() {
@@ -122,41 +194,18 @@ export default function CurriculumList({
           </button>
         </div>
       )}
+      <p className="text-xs themed-muted mb-2">Drag ⠿ to reorder parts, chapters, and sections.</p>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={rows.map((r) => r.entryId)} strategy={verticalListSortingStrategy}>
       <ol className="space-y-2">
-        {rows.map((row, idx) => {
-          const arrows = (
-            <>
-              {idx > 0 && (
-                <button
-                  type="button"
-                  onClick={() => move(idx, -1)}
-                  disabled={isPending}
-                  className="themed-btn-ghost text-xs px-2 py-1"
-                  title="Move up"
-                >
-                  ↑
-                </button>
-              )}
-              {idx < rows.length - 1 && (
-                <button
-                  type="button"
-                  onClick={() => move(idx, 1)}
-                  disabled={isPending}
-                  className="themed-btn-ghost text-xs px-2 py-1"
-                  title="Move down"
-                >
-                  ↓
-                </button>
-              )}
-            </>
-          );
-
+        {rows.map((row) => {
           if (row.kind === "part" || row.kind === "chapter") {
             const isChapter = row.kind === "chapter";
             const renameAction = isChapter ? renameChapterDivider : renamePart;
             return (
-              <li
+              <SortableRow
                 key={row.entryId}
+                id={row.entryId}
                 className={`flex items-center gap-2 p-3 border rounded themed-surface border-dashed ${isChapter ? "ml-4" : ""}`}
               >
                 <span className="text-sm themed-muted w-6 shrink-0">&sect;</span>
@@ -175,7 +224,6 @@ export default function CurriculumList({
                   <button type="submit" className="themed-btn-ghost text-xs px-2 py-1">Rename</button>
                 </form>
                 <div className="flex items-center gap-1 shrink-0">
-                  {arrows}
                   <form action={removeEntry}>
                     <input type="hidden" name="id" value={row.entryId} />
                     <input type="hidden" name="bookId" value={bookId} />
@@ -188,7 +236,7 @@ export default function CurriculumList({
                     </button>
                   </form>
                 </div>
-              </li>
+              </SortableRow>
             );
           }
 
@@ -196,8 +244,9 @@ export default function CurriculumList({
           const sectionNo = sectionNumbers.get(ch.entryId);
 
           return (
-            <li
+            <SortableRow
               key={ch.entryId}
+              id={ch.entryId}
               className="flex items-center gap-2 p-3 border rounded themed-surface ml-8"
             >
               <span className="text-sm themed-muted w-6 shrink-0">{sectionNo}.</span>
@@ -260,7 +309,6 @@ export default function CurriculumList({
                     in {ch.booksCount} books
                   </span>
                 )}
-                {arrows}
                 <form action={removeEntry}>
                   <input type="hidden" name="id" value={ch.entryId} />
                   <input type="hidden" name="bookId" value={bookId} />
@@ -273,10 +321,12 @@ export default function CurriculumList({
                   </button>
                 </form>
               </div>
-            </li>
+            </SortableRow>
           );
         })}
       </ol>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
