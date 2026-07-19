@@ -84,8 +84,12 @@ interface SuggestionHit {
 export function diagnosticAt(state: EditorState, pos: number): SuggestionHit | null {
   const hits: SuggestionHit[] = [];
   forEachDiagnostic(state, (d, from, to) => {
-    if (hits.length === 0 && from <= pos && pos <= to) {
-      hits.push({ from, to, expected: (d as GrammarDiagnostic).expected ?? [] });
+    // Only grammar diagnostics carry `expected`; other linters (e.g. the
+    // HTML-tag linter) coexist in the same lint state but must not open the
+    // grammar suggestion menu.
+    const expected = (d as GrammarDiagnostic).expected;
+    if (hits.length === 0 && Array.isArray(expected) && from <= pos && pos <= to) {
+      hits.push({ from, to, expected });
     }
   });
   return hits[0] ?? null;

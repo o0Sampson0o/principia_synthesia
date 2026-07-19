@@ -33,6 +33,12 @@ function findBlocks(state: EditorState): MathBlock[] {
     enter: (node) => {
       if (node.name !== "BlockMath") return;
       if (node.from < fmEnd) return false;
+      // Block math inside a callout/blockquote is rendered by calloutField
+      // (its lines carry `>` quote marks). Skipping it here prevents two
+      // overlapping block-replace decorations, which CM6 forbids.
+      for (let p = node.node.parent; p; p = p.parent) {
+        if (p.name === "Blockquote") return false;
+      }
       const text = state.doc.sliceString(node.from, node.to);
       const closed = text.length > 4 && text.endsWith("$$");
       if (!closed) return false; // unterminated → leave as source

@@ -7,6 +7,7 @@ import { Compartment } from "@codemirror/state";
 import { MarkdownMath } from "@/lib/codemirror-math";
 import { MarkdownWikilink } from "@/lib/codemirror-wikilink";
 import { grammarChecker } from "@/lib/codemirror-grammar";
+import { htmlTagLinter } from "@/lib/codemirror-tag-lint";
 import { livePreview } from "@/lib/live-preview";
 import { editorTheme } from "@/lib/live-preview/theme";
 import { slashMenu } from "@/lib/live-preview/slash-menu";
@@ -138,6 +139,7 @@ export default forwardRef<ContentEditorRef, {
     editorTheme,
     slashMenu,
     turnIntoKeymap,
+    htmlTagLinter(),
     grammarCompartment.of([]),
     modeCompartment.of(livePreview()),
     keymap.of([
