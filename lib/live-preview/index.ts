@@ -5,6 +5,7 @@ import { blockMath } from "./block-math";
 import { callout } from "./callout";
 import { blockTable } from "./block-table";
 import { mathTooltip } from "./math-tooltip";
+import { measureSync } from "./measure-sync";
 
 /**
  * Obsidian-style live preview: markdown renders in place, syntax reveals
@@ -19,5 +20,6 @@ export function livePreview(): Extension {
     callout,
     blockTable,
     mathTooltip,
+    measureSync,
   ];
 }

@@ -1050,6 +1050,16 @@ body {
   padding: 0.5em 0;
   cursor: pointer;
 }
+/* Callout live-preview widget: a BFC so the callout's child margins stay
+   inside the widget box — otherwise they escape (margin-collapse) and
+   CodeMirror measures a height shorter than what renders. */
+.cm-lp-callout-widget {
+  display: flow-root;
+  cursor: pointer;
+}
+.cm-lp-callout-widget .callout {
+  margin: 0.25em 0;
+}
 .cm-lp-math-error {
   font-family: var(--font-geist-mono), monospace;
   font-size: 0.8125em;
