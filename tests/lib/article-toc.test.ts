@@ -26,6 +26,20 @@ describe("extractToc", () => {
     expect(toc[0].text).toBe("The Big Idea of Energy");
   });
 
+  it("extracts headings from a CRLF body (Windows-synced markdown)", () => {
+    const toc = extractToc("# Hamiltonian\r\n## Atom\r\n\r\ntext\r\n\r\n## Bath\r\n");
+    expect(toc).toEqual([
+      { depth: 1, text: "Hamiltonian", id: "hamiltonian" },
+      { depth: 2, text: "Atom", id: "atom" },
+      { depth: 2, text: "Bath", id: "bath" },
+    ]);
+  });
+
+  it("still skips fenced code blocks with CRLF line endings", () => {
+    const toc = extractToc("# Real\r\n\r\n```md\r\n# Not a heading\r\n```\r\n\r\n## Also real\r\n");
+    expect(toc.map((t) => t.text)).toEqual(["Real", "Also real"]);
+  });
+
   it("skips h4+ and non-headings", () => {
     const toc = extractToc("#### Too deep\n\nplain # not heading\n");
     expect(toc).toEqual([]);

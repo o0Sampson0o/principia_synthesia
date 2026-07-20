@@ -22,13 +22,17 @@ function cleanInline(s: string): string {
  * skipping fenced code blocks. Ids come from github-slugger — the same
  * algorithm rehype-slug applies to the rendered headings, so TOC links land
  * on the anchors the page actually renders.
+ *
+ * CRLF is normalised first: `.` and `$` both treat a bare `\r` as a line
+ * terminator, so a CRLF body (anything synced from a Windows editor) would
+ * otherwise match no headings at all.
  */
 export function extractToc(body: string): TocEntry[] {
   const slugger = new GithubSlugger();
   const entries: TocEntry[] = [];
   let fenceMarker: string | null = null;
 
-  for (const line of body.split("\n")) {
+  for (const line of body.replace(/\r\n?/g, "\n").split("\n")) {
     const fence = line.match(/^\s*(```+|~~~+)/);
     if (fence) {
       if (fenceMarker === null) fenceMarker = fence[1][0];
