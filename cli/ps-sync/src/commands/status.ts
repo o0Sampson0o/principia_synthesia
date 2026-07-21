@@ -1,9 +1,12 @@
+import { basename } from "node:path";
 import { parseArgs } from "node:util";
 import { ApiClient } from "../api";
 import { loadConfig, resolveToken } from "../config";
+import { slugFromFilename } from "../content";
 import { indexByPsId, scanVault } from "../scan";
 import { loadState, stateKey } from "../state";
 import { analyzeEntry, findUntracked, type EntryStatus } from "../sync-status";
+import { Selection } from "../selection";
 
 const LABELS: Record<EntryStatus, string> = {
   clean: "",
@@ -19,13 +22,18 @@ const LABELS: Record<EntryStatus, string> = {
 export async function status(root: string, argv: string[]): Promise<number> {
   const { values } = parseArgs({
     args: argv,
-    options: { publisher: { type: "string" } },
+    options: {
+      publisher: { type: "string" },
+      only: { type: "string" },
+      except: { type: "string" },
+    },
   });
 
   const config = loadConfig(root);
   const api = new ApiClient(config.server, resolveToken(root));
   const state = loadState(root);
   const publishers = values.publisher ? [values.publisher] : config.publishers;
+  const selection = new Selection(values.only, values.except);
 
   const files = scanVault(root, config.extension);
   const { byId } = indexByPsId(files);
@@ -41,6 +49,7 @@ export async function status(root: string, argv: string[]): Promise<number> {
 
     for (const [key, st] of Object.entries(state.articles)) {
       if (st.publisher !== pub) continue;
+      if (!selection.isSelected(st.slug)) continue;
       const file = byId.get(st.articleId) ?? byPath.get(st.path) ?? null;
       const entry = analyzeEntry(key, st, file, remoteBySlug.get(st.slug) ?? null);
       if (entry.status === "clean" || entry.status === "gone") continue;
@@ -51,6 +60,7 @@ export async function status(root: string, argv: string[]): Promise<number> {
 
     // Remote articles never pulled
     for (const r of remoteList) {
+      if (!selection.isSelected(r.slug)) continue;
       if (!state.articles[stateKey(pub, r.slug)] && !byId.has(r.id)) {
         interesting++;
         console.log(`  N  not pulled yet            ${pub}/articles/${r.slug}.${config.extension}`);
@@ -58,10 +68,23 @@ export async function status(root: string, argv: string[]): Promise<number> {
     }
 
     for (const f of findUntracked(files, pub)) {
+      if (selection.active) {
+        let fileSlug: string | null = null;
+        try {
+          fileSlug = slugFromFilename(basename(f.path));
+        } catch {
+          // Undeterminable slug: an allowlist can't include it; --except keeps it.
+        }
+        if (fileSlug !== null ? !selection.isSelected(fileSlug) : selection.inclusive) {
+          continue;
+        }
+      }
       interesting++;
       console.log(`  A  new local (push --create)  ${f.path}`);
     }
   }
+
+  selection.warnUnmatched();
 
   if (interesting === 0) {
     console.log("\nEverything in sync.");

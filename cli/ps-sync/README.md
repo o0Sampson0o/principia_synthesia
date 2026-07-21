@@ -42,6 +42,22 @@ ps-sync push          # upload; conflicts are reported, never merged
 
 Run `ps-sync help` for all flags.
 
+### Syncing only some articles or books
+
+By default every command syncs all your articles and books. To narrow it down,
+`pull`, `push` and `status` accept two mutually exclusive slug filters:
+
+```bash
+ps-sync pull --only intro,chapter-1        # only these slugs, skip the rest
+ps-sync push --except draft-notes,scratch  # everything except these slugs
+```
+
+- `--only` is an **inclusive** allowlist — sync just the listed slugs.
+- `--except` is an **exclusive** denylist — sync everything but the listed slugs.
+- A slug may name an article *or* a book; a term matching both selects both.
+- Slugs are comma-separated; give neither flag to sync everything (the default).
+- A term that matches no real slug is reported, so typos don't fail silently.
+
 ## How it works
 
 - Articles round-trip as pure markdown; a single `ps-id` frontmatter key tracks

@@ -21,10 +21,17 @@ Commands:
               --extension <md|mdx>  --links <markdown|wikilink>
   pull      Download new/changed articles; refuses to overwrite local edits
               --publisher <slug>  --write-conflicts  --no-books
+              --only <a,b>  --except <a,b>
   push      Upload locally edited articles (If-Match guarded; rejects on conflict)
               --publisher <slug>  --dry-run  --create  --delete  --allow-invalid-frontmatter
+              --only <a,b>  --except <a,b>
   status    Show what would be pulled/pushed; exit code 1 if conflicts exist
-              --publisher <slug>
+              --publisher <slug>  --only <a,b>  --except <a,b>
+
+Selecting what to sync (article/book slugs; default is everything):
+  --only  a,b,c   sync only these slugs, skip the rest (inclusive)
+  --except a,b,c  sync everything except these slugs (exclusive)
+  The two are mutually exclusive; a slug may name an article or a book.
 
 Token: create one at <server>/settings/api-tokens. Provide via PS_SYNC_TOKEN or init.
 Layout: <publisher>/articles/<slug>.md (tracked) and <publisher>/books/<slug>.md (read-only).

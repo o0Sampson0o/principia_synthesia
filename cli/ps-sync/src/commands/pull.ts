@@ -8,6 +8,7 @@ import { parseBookNote, renderBookNote, structureLocalHash } from "../book-note"
 import { indexByPsId, scanVault } from "../scan";
 import { loadState, saveState, stateKey, type ArticleState, type SyncState } from "../state";
 import { analyzeEntry, localSemanticHash } from "../sync-status";
+import { Selection } from "../selection";
 
 interface PullCounts {
   created: number;
@@ -49,6 +50,8 @@ export async function pull(root: string, argv: string[]): Promise<number> {
       publisher: { type: "string" },
       "write-conflicts": { type: "boolean", default: false },
       "no-books": { type: "boolean", default: false },
+      only: { type: "string" },
+      except: { type: "string" },
     },
   });
 
@@ -57,6 +60,7 @@ export async function pull(root: string, argv: string[]): Promise<number> {
   const state = loadState(root);
   const ext = config.extension;
   const publishers = values.publisher ? [values.publisher] : config.publishers;
+  const selection = new Selection(values.only, values.except);
 
   const counts: PullCounts = { created: 0, updated: 0, deleted: 0, relinked: 0, conflicts: 0, missing: 0 };
 
@@ -71,6 +75,7 @@ export async function pull(root: string, argv: string[]): Promise<number> {
     const remoteSlugs = new Set(remoteList.map((r) => r.slug));
 
     for (const remote of remoteList) {
+      if (!selection.isSelected(remote.slug)) continue;
       const key = stateKey(pub, remote.slug);
       const st = state.articles[key];
 
@@ -145,6 +150,7 @@ export async function pull(root: string, argv: string[]): Promise<number> {
     // Articles deleted remotely
     for (const [key, st] of Object.entries(state.articles)) {
       if (st.publisher !== pub || remoteSlugs.has(st.slug)) continue;
+      if (!selection.isSelected(st.slug)) continue;
       const file = byId.get(st.articleId) ?? byPath.get(st.path) ?? null;
       const entry = analyzeEntry(key, st, file, null);
       if (entry.status === "gone") {
@@ -163,7 +169,9 @@ export async function pull(root: string, argv: string[]): Promise<number> {
     // Editable book index notes (reorder / re-part chapters here).
     if (!values["no-books"]) {
       const { books } = await api.listBooks(pub);
+      let booksRefreshed = 0;
       for (const b of books) {
+        if (!selection.isSelected(b.slug)) continue;
         const book = await api.getBook(pub, b.slug);
         const path = `${pub}/books/${b.slug}.${ext}`;
         const abs = join(root, path);
@@ -197,12 +205,14 @@ export async function pull(root: string, argv: string[]): Promise<number> {
             parseBookNote(rendered).sections
           ),
         };
+        booksRefreshed++;
       }
-      if (books.length > 0) console.log(`i refreshed ${books.length} book index note(s) for ${pub}`);
+      if (booksRefreshed > 0) console.log(`i refreshed ${booksRefreshed} book index note(s) for ${pub}`);
     }
   }
 
   saveState(root, state);
+  selection.warnUnmatched();
 
   console.log(
     `\npull done: ${counts.created} new, ${counts.updated} updated, ${counts.deleted} removed, ` +

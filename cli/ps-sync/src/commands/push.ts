@@ -16,6 +16,7 @@ import { indexByPsId, scanVault } from "../scan";
 import { loadState, saveState, stateKey } from "../state";
 import { findUntracked, localSemanticHash } from "../sync-status";
 import { cliCommand } from "../invocation";
+import { Selection } from "../selection";
 
 export async function push(root: string, argv: string[]): Promise<number> {
   const { values } = parseArgs({
@@ -26,6 +27,8 @@ export async function push(root: string, argv: string[]): Promise<number> {
       create: { type: "boolean", default: false },
       delete: { type: "boolean", default: false },
       "allow-invalid-frontmatter": { type: "boolean", default: false },
+      only: { type: "string" },
+      except: { type: "string" },
     },
   });
 
@@ -34,6 +37,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
   const state = loadState(root);
   const dryRun = values["dry-run"];
   const publishers = values.publisher ? [values.publisher] : config.publishers;
+  const selection = new Selection(values.only, values.except);
 
   const files = scanVault(root, config.extension);
   const { byId, duplicates } = indexByPsId(files);
@@ -53,6 +57,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
   // --- Tracked files: update or delete ------------------------------------
   for (const [key, st] of Object.entries(state.articles)) {
     if (!publishers.includes(st.publisher)) continue;
+    if (!selection.isSelected(st.slug)) continue;
 
     const file = byId.get(st.articleId) ?? byPath.get(st.path) ?? null;
 
@@ -129,6 +134,17 @@ export async function push(root: string, argv: string[]): Promise<number> {
   // --- Untracked files: create with --create -------------------------------
   for (const pub of publishers) {
     for (const file of findUntracked(files, pub)) {
+      if (selection.active) {
+        let fileSlug: string | null = null;
+        try {
+          fileSlug = slugFromFilename(basename(file.path));
+        } catch {
+          // Undeterminable slug: an allowlist can't include it; --except keeps it.
+        }
+        if (fileSlug !== null ? !selection.isSelected(fileSlug) : selection.inclusive) {
+          continue;
+        }
+      }
       if (!values.create) {
         pendingNew++;
         console.log(`+ ${file.path} — new file (run with --create to publish)`);
@@ -186,6 +202,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
   let booksPushed = 0;
   for (const bst of Object.values(state.books ?? {})) {
     if (!publishers.includes(bst.publisher)) continue;
+    if (!selection.isSelected(bst.slug)) continue;
     const abs = join(root, bst.path);
     if (!existsSync(abs)) continue;
     const parsed = parseBookNote(readFileSync(abs, "utf8"));
@@ -225,6 +242,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
   }
 
   if (!dryRun) saveState(root, state);
+  selection.warnUnmatched();
 
   const verb = dryRun ? "would push" : "pushed";
   console.log(
