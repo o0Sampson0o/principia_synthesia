@@ -20,41 +20,21 @@ import {
 import { createSnapshotIfPublished } from "@/lib/article-snapshots";
 import { createArticleCore, updateArticleCore, deleteArticleCore, ArticleSlugTakenError } from "@/lib/articles-write";
 import { isUniqueViolation } from "@/lib/db-errors";
-import { unified } from "unified";
-import remarkParse from "remark-parse";
-import remarkMath from "remark-math";
-import remarkGfm from "remark-gfm";
-import remarkRehype from "remark-rehype";
-import rehypeKatex from "rehype-katex";
-import rehypeSlug from "rehype-slug";
-import rehypeStringify from "rehype-stringify";
-import { remarkWikilinks } from "@/lib/remark-wikilinks";
-import { remarkCallouts } from "@/lib/remark-callouts";
-import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
-import { normalizeDetailsBlocks } from "@/lib/normalize-details";
+import { renderPreviewHtml } from "@/lib/preview-mdx-render";
 
 // ---------------------------------------------------------------------------
-// Preview compilation (server-side — eliminates unsafe-eval in the browser)
+// Preview compilation — renders the editor buffer through the SAME MDX parsing
+// + plugins as the published page (via remark-mdx), returning HTML. Server-safe
+// (no react-dom/server), so this stays a Server Action.
 // ---------------------------------------------------------------------------
 
 export async function previewMdx(
+  publisherSlug: string,
   source: string
 ): Promise<{ html: string } | { error: string }> {
   await requireSession();
   try {
-    const file = await unified()
-      .use(remarkParse)
-      .use(remarkMath)
-      .use(remarkGfm)
-      .use(remarkCallouts)
-      .use(remarkQuoteAttribution)
-      .use(remarkWikilinks)
-      .use(remarkRehype, { allowDangerousHtml: true })
-      .use(rehypeSlug)
-      .use(rehypeKatex)
-      .use(rehypeStringify, { allowDangerousHtml: true })
-      .process(normalizeDetailsBlocks(source));
-    return { html: String(file) };
+    return { html: await renderPreviewHtml(source, { publisherSlug }) };
   } catch (err: unknown) {
     return { error: err instanceof Error ? err.message : String(err) };
   }

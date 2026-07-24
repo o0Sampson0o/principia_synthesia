@@ -45,10 +45,11 @@ export interface ContentEditorRef {
 
 export default forwardRef<ContentEditorRef, {
   initial: string;
+  publisherSlug: string;
   onChange?: (value: string) => void;
   onError?: (hasError: boolean) => void;
   toolbar?: React.ReactNode;
-}>(function ContentEditor({ initial, onChange, onError, toolbar }, ref) {
+}>(function ContentEditor({ initial, publisherSlug, onChange, onError, toolbar }, ref) {
   const contentValue = useRef<string>(initial);
   const [altFindings, setAltFindings] = useState<AltTextFinding[]>([]);
   const [showAltList, setShowAltList] = useState(false);
@@ -93,7 +94,7 @@ export default forwardRef<ContentEditorRef, {
     setPreviewState({ status: "loading" });
     (async () => {
       try {
-        const result = await previewMdx(contentValue.current);
+        const result = await previewMdx(publisherSlug, contentValue.current);
         if (cancelled) return;
         if ("error" in result) {
           setPreviewState({ status: "error", message: result.error });
@@ -114,7 +115,7 @@ export default forwardRef<ContentEditorRef, {
     return () => {
       cancelled = true;
     };
-  }, [mode, onError]);
+  }, [mode, onError, publisherSlug]);
 
   // The in-editor keymap can't fire while CodeMirror is hidden — handle
   // Ctrl/Cmd+E at the window level when previewing so the cycle continues.
@@ -330,7 +331,7 @@ export default forwardRef<ContentEditorRef, {
             >
               Grammar {grammarOn ? "on" : "off"}
             </button>
-            <CheckMdxButton getSource={handleGetValue} onError={onError} triggerRef={checkTriggerRef} />
+            <CheckMdxButton publisherSlug={publisherSlug} getSource={handleGetValue} onError={onError} triggerRef={checkTriggerRef} />
           </div>
           {toolbar && <div className="flex items-center gap-2">{toolbar}</div>}
         </div>

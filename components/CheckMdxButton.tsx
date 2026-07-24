@@ -11,15 +11,17 @@ type CheckState =
 
 /**
  * Compile-check for the live-preview editor: runs the full server-side MDX
- * pipeline (previewMdx) as validation, since in-place rendering is a close
- * approximation rather than the exact publish pipeline. Result badge opens a
- * dialog with either the compile error or the rendered output.
+ * pipeline (previewMdx) — the exact same engine, plugins, and components the
+ * published article page uses — so a clean result means it will publish
+ * identically. Result badge opens a dialog with the compile error or output.
  */
 export default function CheckMdxButton({
+  publisherSlug,
   getSource,
   onError,
   triggerRef,
 }: {
+  publisherSlug: string;
   getSource: () => string;
   onError?: (hasError: boolean) => void;
   /** Lets the parent invoke the check imperatively (ContentEditorRef.compile). */
@@ -33,7 +35,7 @@ export default function CheckMdxButton({
     setState({ status: "checking" });
     startTransition(async () => {
       try {
-        const result = await previewMdx(getSource());
+        const result = await previewMdx(publisherSlug, getSource());
         if ("error" in result) {
           setState({ status: "error", message: result.error });
           onError?.(true);

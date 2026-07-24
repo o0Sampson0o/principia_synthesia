@@ -149,6 +149,7 @@ export default function ArticleEditorPanel({
       <ContentEditor
         ref={editorRef}
         initial={initial}
+        publisherSlug={publisherSlug}
         onChange={(val) => {
           frontmatterRef.current?.syncFromMdx(val);
           schedule();
