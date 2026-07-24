@@ -1,31 +1,25 @@
 import { db } from "@/db";
 import { formatDate } from "@/lib/format-date";
 import { articles, categories, articleCategories, articleViews, publishers, users } from "@/db/schema";
-import { eq, and, desc, isNull, inArray, or, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, or, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { headers } from "next/headers";
 import { MDXRemote } from "next-mdx-remote/rsc";
-import remarkMath from "remark-math";
-import remarkGfm from "remark-gfm";
-import rehypeKatex from "rehype-katex";
-import rehypeSlug from "rehype-slug";
-import { remarkWikilinks } from "@/lib/remark-wikilinks";
-import { remarkCallouts } from "@/lib/remark-callouts";
-import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { config } from "@/lib/config";
 import { resolvePublisher } from "@/lib/publisher";
 import { canEditContent } from "@/lib/roles";
-import DynamicAnimation from "@/components/DynamicAnimation";
-import ArticleImage from "@/components/ArticleImage";
-import MdxParagraph from "@/components/MdxParagraph";
 import ArticleMetadataDisplay from "@/components/ArticleMetadata";
-import { parseFrontmatter } from "@/lib/frontmatter";
-import { normalizeDetailsBlocks } from "@/lib/normalize-details";
+import {
+  articleComponents,
+  buildArticleMdxOptions,
+  prepareArticleBody,
+  resolveCitations,
+} from "@/lib/article-mdx";
 import RelatedEvents from "@/components/RelatedEvents";
 import LastVerifiedBadge, { StaleWarningBanner } from "@/components/LastVerifiedBadge";
 import MarkVerifiedForm from "@/components/MarkVerifiedForm";
@@ -37,16 +31,12 @@ import { getOrCreateSessionId } from "@/lib/analytics-session";
 import ForkButton from "@/components/ForkButton";
 import ForkLineageHeader from "@/components/ForkLineageHeader";
 import ForksList from "@/components/ForksList";
-import Cite from "@/components/Cite";
 import BibliographySection from "@/components/BibliographySection";
 import CommentThread from "@/components/CommentThread";
-import { MdH1, MdH2, MdH3 } from "@/components/MdHeadings";
 import MdxErrorBoundary from "@/components/MdxErrorBoundary";
 import ArticleToc from "@/components/ArticleToc";
 import ContinueReading from "@/components/ContinueReading";
 import { extractToc } from "@/lib/article-toc";
-import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
-import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-numbering";
 
 export async function generateMetadata({
   params,
@@ -180,7 +170,7 @@ export default async function ArticlePage({
     createdAt: article.createdAt,
     updatedAt: article.updatedAt,
   };
-  const { metadata, body } = parseFrontmatter(content ?? "");
+  const { metadata, body, renderedBody } = prepareArticleBody(content ?? "", { publisherSlug });
   const toc = extractToc(body);
 
   // Citation input computation
@@ -278,89 +268,9 @@ export default async function ArticlePage({
     }));
   const forksCount = forksWithPublisher.length;
 
-  // Build citation index for <Cite> components in the article body.
-  // Two batched queries total (previously two queries *per* citation).
-  const { slugToNumber, orderedSlugs } = buildCitationIndex(body);
-  const resolvedCitations = new Map<string, ResolvedCitation>();
-  if (orderedSlugs.length > 0) {
-    const parsed = orderedSlugs
-      .map((citeSlug) => {
-        const slashIdx = citeSlug.indexOf("/");
-        if (slashIdx === -1) return null;
-        return {
-          citeSlug,
-          publisherSlug: citeSlug.slice(0, slashIdx),
-          articleSlug: citeSlug.slice(slashIdx + 1),
-        };
-      })
-      .filter((p): p is NonNullable<typeof p> => p !== null);
-
-    const pubRows = parsed.length
-      ? await db
-          .select({
-            slug: publishers.slug,
-            kind: publishers.kind,
-            userId: publishers.userId,
-            orgId: publishers.orgId,
-          })
-          .from(publishers)
-          .where(inArray(publishers.slug, [...new Set(parsed.map((p) => p.publisherSlug))]))
-      : [];
-    const pubBySlug = new Map(pubRows.map((p) => [p.slug, p]));
-
-    const articleConds = parsed.flatMap((p) => {
-      const citePub = pubBySlug.get(p.publisherSlug);
-      if (!citePub) return [];
-      const citeOwnerId = citePub.kind === "user" ? citePub.userId : citePub.orgId;
-      if (citeOwnerId === null) return [];
-      return [
-        and(
-          eq(articles.ownerType, citePub.kind),
-          eq(articles.ownerId, citeOwnerId),
-          eq(articles.slug, p.articleSlug),
-          isNull(articles.deletedAt)
-        ),
-      ];
-    });
-
-    const citeArticleRows = articleConds.length
-      ? await db
-          .select({
-            ownerType: articles.ownerType,
-            ownerId: articles.ownerId,
-            slug: articles.slug,
-            title: articles.title,
-          })
-          .from(articles)
-          .where(or(...articleConds))
-      : [];
-    const titleByOwnerSlug = new Map(
-      citeArticleRows.map((a) => [`${a.ownerType}:${a.ownerId}:${a.slug}`, a.title])
-    );
-
-    for (const p of parsed) {
-      const citePub = pubBySlug.get(p.publisherSlug);
-      if (!citePub) continue;
-      const citeOwnerId = citePub.kind === "user" ? citePub.userId : citePub.orgId;
-      if (citeOwnerId === null) continue;
-      const title = titleByOwnerSlug.get(`${citePub.kind}:${citeOwnerId}:${p.articleSlug}`);
-      if (title === undefined) continue;
-      resolvedCitations.set(p.citeSlug, {
-        title,
-        href: `${config.siteUrl}/${p.publisherSlug}/articles/${p.articleSlug}`,
-      });
-    }
-  }
-
-  // Auto-prepend canvas animation if set
-  const safeCanvas =
-    metadata.canvas && /^anim-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(metadata.canvas)
-      ? metadata.canvas
-      : null;
-  const normalizedBody = normalizeDetailsBlocks(body);
-  const renderedBody = safeCanvas
-    ? `<DynamicAnimation publisher="${publisherSlug}" slug="${safeCanvas}" />\n\n${normalizedBody}`
-    : normalizedBody;
+  // Build the <Cite> numbering index + resolve citations (two batched queries).
+  const { slugToNumber, orderedSlugs, resolved: resolvedCitations } =
+    await resolveCitations(body);
 
   return (
     <main className="w-full max-w-3xl mx-auto px-5 py-12 sm:py-16">
@@ -491,20 +401,8 @@ export default async function ArticlePage({
       <div className="markdown-content">
         <MDXRemote
           source={renderedBody}
-          options={{
-            mdxOptions: {
-              remarkPlugins: [
-                remarkMath,
-                remarkGfm,
-                remarkCallouts,
-                remarkQuoteAttribution,
-                remarkWikilinks,
-                [remarkCiteNumbering, { slugToNumber, resolved: resolvedCitations }],
-              ],
-              rehypePlugins: [rehypeSlug, rehypeKatex],
-            },
-          }}
-          components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite, h1: MdH1, h2: MdH2, h3: MdH3 }}
+          options={buildArticleMdxOptions({ slugToNumber, resolved: resolvedCitations })}
+          components={articleComponents}
         />
       </div>
       </MdxErrorBoundary>

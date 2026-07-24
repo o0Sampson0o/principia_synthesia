@@ -8,26 +8,17 @@ import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { canEditContent } from "@/lib/roles";
 import { MDXRemote } from "next-mdx-remote/rsc";
-import remarkMath from "remark-math";
-import remarkGfm from "remark-gfm";
-import rehypeKatex from "rehype-katex";
-import rehypeSlug from "rehype-slug";
-import { remarkWikilinks } from "@/lib/remark-wikilinks";
-import { remarkCallouts } from "@/lib/remark-callouts";
-import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
-import DynamicAnimation from "@/components/DynamicAnimation";
-import ArticleImage from "@/components/ArticleImage";
-import MdxParagraph from "@/components/MdxParagraph";
-import Cite from "@/components/Cite";
-import { parseFrontmatter } from "@/lib/frontmatter";
-import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
-import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-numbering";
+import {
+  articleComponents,
+  buildArticleMdxOptions,
+  prepareArticleBody,
+  resolveCitations,
+} from "@/lib/article-mdx";
 import { headers } from "next/headers";
 import { classifyReferrer } from "@/lib/analytics-source";
 import { getOrCreateSessionId } from "@/lib/analytics-session";
 import { config } from "@/lib/config";
 import CommentThread from "@/components/CommentThread";
-import { MdH1, MdH2, MdH3 } from "@/components/MdHeadings";
 import ArticleToc from "@/components/ArticleToc";
 import { extractToc } from "@/lib/article-toc";
 
@@ -108,52 +99,11 @@ export default async function SectionPage({
   const prevSlug = currentIdx > 0 ? allEntries[currentIdx - 1].articleSlug : null;
   const nextSlug = currentIdx < allEntries.length - 1 ? allEntries[currentIdx + 1].articleSlug : null;
 
-  const { metadata, body } = parseFrontmatter(article.content ?? "");
+  const { body, renderedBody } = prepareArticleBody(article.content ?? "", { publisherSlug });
   const toc = extractToc(body);
 
-  const { slugToNumber, orderedSlugs } = buildCitationIndex(body);
-  const resolvedCitations = new Map<string, ResolvedCitation>();
-  if (orderedSlugs.length > 0) {
-    for (const citeSlug of orderedSlugs) {
-      const slashIdx = citeSlug.indexOf("/");
-      if (slashIdx === -1) continue;
-      const citePublisherSlug = citeSlug.slice(0, slashIdx);
-      const citeArticleSlug = citeSlug.slice(slashIdx + 1);
-      const [citePubRow] = await db
-        .select({ kind: publishers.kind, userId: publishers.userId, orgId: publishers.orgId })
-        .from(publishers)
-        .where(eq(publishers.slug, citePublisherSlug))
-        .limit(1);
-      if (!citePubRow) continue;
-      const citeOwnerId = citePubRow.kind === "user" ? citePubRow.userId : citePubRow.orgId;
-      if (citeOwnerId === null) continue;
-      const [citeArticleRow] = await db
-        .select({ title: articles.title })
-        .from(articles)
-        .where(
-          and(
-            eq(articles.ownerType, citePubRow.kind),
-            eq(articles.ownerId, citeOwnerId),
-            eq(articles.slug, citeArticleSlug),
-            isNull(articles.deletedAt)
-          )
-        )
-        .limit(1);
-      if (!citeArticleRow) continue;
-      resolvedCitations.set(citeSlug, {
-        title: citeArticleRow.title,
-        href: `${config.siteUrl}/${citePublisherSlug}/articles/${citeArticleSlug}`,
-      });
-    }
-  }
-
-  const safeCanvas =
-    metadata.canvas && /^anim-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(metadata.canvas)
-      ? metadata.canvas
-      : null;
-  const renderedBody = safeCanvas
-    ? `<DynamicAnimation publisher="${publisherSlug}" slug="${safeCanvas}" />\n\n${body}`
-    : body;
+  // Build the <Cite> numbering index + resolve citations (two batched queries).
+  const { slugToNumber, resolved: resolvedCitations } = await resolveCitations(body);
 
   return (
     <main className="flex-1">
@@ -236,13 +186,8 @@ export default async function SectionPage({
         <div className="markdown-content">
           <MDXRemote
             source={renderedBody}
-            options={{
-              mdxOptions: {
-                remarkPlugins: [remarkMath, remarkGfm, remarkCallouts, remarkQuoteAttribution, remarkWikilinks, [remarkCiteNumbering, { slugToNumber, resolved: resolvedCitations }]],
-                rehypePlugins: [rehypeSlug, rehypeKatex],
-              },
-            }}
-            components={{ DynamicAnimation, img: ArticleImage, p: MdxParagraph, Cite, h1: MdH1, h2: MdH2, h3: MdH3 }}
+            options={buildArticleMdxOptions({ slugToNumber, resolved: resolvedCitations })}
+            components={articleComponents}
           />
         </div>
       </div>
