@@ -1,13 +1,20 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { type ReactNode } from "react";
 import { db } from "@/db";
-import { books, articles, curriculumEntries, publishers, bookCategories, categories } from "@/db/schema";
-import { eq, and, asc, or, sql, isNull } from "drizzle-orm";
+import { books, bookCategories, categories } from "@/db/schema";
+import { eq, and, isNull } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { canEditContent } from "@/lib/roles";
 import CommentThread from "@/components/CommentThread";
+import {
+  loadBookStructure,
+  dividerHref,
+  sectionHref,
+  type SectionNode,
+} from "@/lib/book-structure";
 
 export default async function BookPage({
   params,
@@ -41,59 +48,75 @@ export default async function BookPage({
     .innerJoin(categories, eq(bookCategories.categoryId, categories.id))
     .where(eq(bookCategories.bookId, bookRow.id));
 
-  const entries = await db
-    .select({
-      id: curriculumEntries.id,
-      position: curriculumEntries.position,
-      partTitle: curriculumEntries.partTitle,
-      articleId: articles.id,
-      articleSlug: articles.slug,
-      articleTitle: articles.title,
-      articlePublisherSlug: publishers.slug,
-    })
-    .from(curriculumEntries)
-    .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
-    .leftJoin(
-      publishers,
-      or(
-        and(
-          eq(articles.ownerType, sql`'user'`),
-          eq(publishers.userId, articles.ownerId)
-        ),
-        and(
-          eq(articles.ownerType, sql`'org'`),
-          eq(publishers.orgId, articles.ownerId)
-        )
-      )
-    )
-    .where(eq(curriculumEntries.bookId, bookRow.id))
-    .orderBy(asc(curriculumEntries.position));
+  const structure = await loadBookStructure(bookRow.id);
+  // Global 1-based section number across the whole book (dividers don't count).
+  const sectionNo = new Map<string, number>();
+  structure.orderedSections.forEach((s, i) => sectionNo.set(s.slug, i + 1));
 
-  // Standalone dividers (entries with no article): Part and Chapter labels,
-  // interleaved with the sections by position. Section numbering skips them.
-  // Legacy rows (pre-0022) have a NULL dividerLevel and are treated as parts.
-  const dividers = await db
-    .select({
-      id: curriculumEntries.id,
-      position: curriculumEntries.position,
-      partTitle: curriculumEntries.partTitle,
-      dividerLevel: curriculumEntries.dividerLevel,
-    })
-    .from(curriculumEntries)
-    .where(and(eq(curriculumEntries.bookId, bookRow.id), isNull(curriculumEntries.articleId)))
-    .orderBy(asc(curriculumEntries.position));
+  const sectionRow = (s: SectionNode) => {
+    const isExternal = s.publisherSlug !== null && s.publisherSlug !== publisherSlug;
+    return (
+      <div key={`s-${s.slug}`} className="ps-content-row pl-8">
+        <div className="flex items-baseline gap-3 w-full min-w-0">
+          <span
+            className="tabular-nums shrink-0"
+            style={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}
+          >
+            {String(sectionNo.get(s.slug) ?? 0).padStart(2, "0")}
+          </span>
+          <Link
+            href={sectionHref(publisherSlug, bookSlug, s.slug)}
+            className="ps-list-link flex-1 min-w-0"
+          >
+            {s.title}
+          </Link>
+          {isExternal && (
+            <span className="themed-muted shrink-0" style={{ fontSize: "0.75rem" }}>
+              <Link
+                href={`/${s.publisherSlug}`}
+                className="themed-nav-link hover:text-[var(--foreground)] transition-colors"
+              >
+                @{s.publisherSlug}
+              </Link>
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
 
-  let sectionNo = 0;
-  const listing = [
-    ...entries.map((e) => ({ kind: "section" as const, position: e.position, entry: e })),
-    ...dividers.map((d) => ({
-      kind: (d.dividerLevel === "chapter" ? "chapter" : "part") as "part" | "chapter",
-      position: d.position,
-      part: d,
-    })),
-  ]
-    .sort((a, b) => a.position - b.position)
-    .map((item) => (item.kind === "section" ? { ...item, no: ++sectionNo } : item));
+  const dividerRow = (
+    key: string,
+    label: string,
+    href: string,
+    indent: boolean
+  ) => (
+    <div key={key} className={`ps-content-row ${indent ? "pl-4" : ""}`}>
+      <Link href={href} className="ps-eyebrow-muted hover:text-[var(--foreground)] transition-colors">
+        {label}
+      </Link>
+    </div>
+  );
+
+  const rows: ReactNode[] = [];
+  for (const child of structure.children) {
+    if (child.kind === "part") {
+      rows.push(dividerRow(`p-${child.slug}`, child.title, dividerHref(publisherSlug, bookSlug, child), false));
+      for (const c of child.children) {
+        if (c.kind === "chapter") {
+          rows.push(dividerRow(`ch-${c.slug}`, c.title, dividerHref(publisherSlug, bookSlug, c), true));
+          for (const s of c.children) rows.push(sectionRow(s));
+        } else {
+          rows.push(sectionRow(c));
+        }
+      }
+    } else if (child.kind === "chapter") {
+      rows.push(dividerRow(`ch-${child.slug}`, child.title, dividerHref(publisherSlug, bookSlug, child), true));
+      for (const s of child.children) rows.push(sectionRow(s));
+    } else {
+      rows.push(sectionRow(child));
+    }
+  }
 
   return (
     <main className="w-full max-w-4xl mx-auto px-5 py-12 sm:py-16">
@@ -144,51 +167,11 @@ export default async function BookPage({
 
       <hr className="themed-hr" />
 
-      {/* ── Sections ── */}
-      {listing.length === 0 ? (
+      {/* ── Contents ── */}
+      {rows.length === 0 ? (
         <p className="themed-muted mt-8" style={{ fontSize: "0.9375rem" }}>No sections yet.</p>
       ) : (
-        <div className="ps-content-box mt-0 border-t-0 rounded-none rounded-b-lg">
-          {listing.map((item) => {
-            if (item.kind !== "section") {
-              const isChapter = item.kind === "chapter";
-              return (
-                <div
-                  key={`${item.kind}-${item.part.id}`}
-                  className={`ps-content-row ${isChapter ? "pl-4" : ""}`}
-                >
-                  <p className="ps-eyebrow-muted" style={isChapter ? { opacity: 0.8 } : undefined}>
-                    {item.part.partTitle}
-                  </p>
-                </div>
-              );
-            }
-            const e = item.entry;
-            const isExternal = e.articlePublisherSlug !== null && e.articlePublisherSlug !== publisherSlug;
-            return (
-              <div key={e.id} className="ps-content-row flex-col items-start gap-0.5 pl-8">
-                {e.partTitle && (
-                  <p className="ps-eyebrow-muted mb-2">{e.partTitle}</p>
-                )}
-                <div className="flex items-baseline gap-3 w-full min-w-0">
-                  <span className="tabular-nums shrink-0" style={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>
-                    {String(item.no).padStart(2, "0")}
-                  </span>
-                  <Link href={`/${publisherSlug}/books/${bookSlug}/${e.articleSlug}`} className="ps-list-link flex-1 min-w-0">
-                    {e.articleTitle}
-                  </Link>
-                  {isExternal && (
-                    <span className="themed-muted shrink-0" style={{ fontSize: "0.75rem" }}>
-                      <Link href={`/${e.articlePublisherSlug}`} className="themed-nav-link hover:text-[var(--foreground)] transition-colors">
-                        @{e.articlePublisherSlug}
-                      </Link>
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <div className="ps-content-box mt-0 border-t-0 rounded-none rounded-b-lg">{rows}</div>
       )}
 
       {/* ── Book discussion ──────────────────────────────────────── */}

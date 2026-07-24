@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
-import { books, articles, curriculumEntries, articleViews, publishers } from "@/db/schema";
-import { eq, and, asc, isNull } from "drizzle-orm";
+import { books, articles, articleViews, publishers } from "@/db/schema";
+import { eq, and, isNull } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
@@ -21,14 +21,24 @@ import { config } from "@/lib/config";
 import CommentThread from "@/components/CommentThread";
 import ArticleToc from "@/components/ArticleToc";
 import { extractToc } from "@/lib/article-toc";
+import {
+  loadBookStructure,
+  resolvePath,
+  sectionHref,
+  dividerHref,
+} from "@/lib/book-structure";
+import BookBreadcrumb, { type Crumb } from "@/components/book/BookBreadcrumb";
+import BookDividerToc from "@/components/book/BookDividerToc";
 
-export default async function SectionPage({
+export default async function BookSectionPage({
   params,
 }: {
-  // The dynamic segment holds the article slug — the public URL is unchanged.
-  params: Promise<{ publisher: string; bookSlug: string; section: string }>;
+  // Catch-all: flexible path of part/chapter/article slugs. Resolution keys off
+  // the LAST segment (see lib/book-structure resolvePath), so intermediate
+  // segments are optional — /book/part/chapter/article, /book/article, etc.
+  params: Promise<{ publisher: string; bookSlug: string; section: string[] }>;
 }) {
-  const { publisher: publisherSlug, bookSlug, section: sectionSlug } = await params;
+  const { publisher: publisherSlug, bookSlug, section } = await params;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -46,31 +56,45 @@ export default async function SectionPage({
   const session = await getSession();
   if (!(await canView({ type: "book", ownerType, ownerId, slug: bookSlug }, session))) notFound();
 
-  const [entryRow] = await db
-    .select({ article: articles })
-    .from(curriculumEntries)
-    .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
-    .where(and(eq(curriculumEntries.bookId, bookRow.id), eq(articles.slug, sectionSlug)))
+  const structure = await loadBookStructure(bookRow.id);
+  const resolved = resolvePath(structure, section);
+  if (!resolved) notFound();
+
+  // ── Part / Chapter → on-the-fly Table of Contents ─────────────────────────
+  if (resolved.type === "divider") {
+    return (
+      <BookDividerToc
+        publisherSlug={publisherSlug}
+        bookSlug={bookSlug}
+        bookTitle={bookRow.title}
+        node={resolved.node}
+        part={resolved.part}
+      />
+    );
+  }
+
+  // ── Section (article) ─────────────────────────────────────────────────────
+  const { loc } = resolved;
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(and(eq(articles.id, loc.section.articleId), isNull(articles.deletedAt)))
     .limit(1);
-
-  const article = entryRow?.article;
   if (!article) notFound();
-
   if (article.isInternal && article.parentBookId !== bookRow.id) notFound();
 
   {
     const siteHost = new URL(config.siteUrl).host;
-    const [hdrs, sessionId] = await Promise.all([
-      headers(),
-      getOrCreateSessionId(),
-    ]);
+    const [hdrs, sessionId] = await Promise.all([headers(), getOrCreateSessionId()]);
     const referrer = hdrs.get("referer");
-    db.insert(articleViews).values({
-      articleId: article.id,
-      referrer: referrer?.slice(0, 2000) ?? null,
-      referrerSource: classifyReferrer(referrer, siteHost),
-      sessionId,
-    }).catch(() => {});
+    db.insert(articleViews)
+      .values({
+        articleId: article.id,
+        referrer: referrer?.slice(0, 2000) ?? null,
+        referrerSource: classifyReferrer(referrer, siteHost),
+        sessionId,
+      })
+      .catch(() => {});
   }
 
   const articleOwnerType = article.ownerType as "user" | "org";
@@ -88,22 +112,23 @@ export default async function SectionPage({
 
   const isEditor = await canEditContent(session, articleOwnerType, articleOwnerId);
 
-  const allEntries = await db
-    .select({ articleSlug: articles.slug, position: curriculumEntries.position })
-    .from(curriculumEntries)
-    .innerJoin(articles, and(eq(curriculumEntries.articleId, articles.id), isNull(articles.deletedAt)))
-    .where(eq(curriculumEntries.bookId, bookRow.id))
-    .orderBy(asc(curriculumEntries.position));
-
-  const currentIdx = allEntries.findIndex((e) => e.articleSlug === sectionSlug);
-  const prevSlug = currentIdx > 0 ? allEntries[currentIdx - 1].articleSlug : null;
-  const nextSlug = currentIdx < allEntries.length - 1 ? allEntries[currentIdx + 1].articleSlug : null;
+  // Prev/next span the flat section order (dividers excluded).
+  const total = structure.orderedSections.length;
+  const idx = loc.flatIndex;
+  const prevSlug = idx > 0 ? structure.orderedSections[idx - 1].slug : null;
+  const nextSlug = idx < total - 1 ? structure.orderedSections[idx + 1].slug : null;
 
   const { body, renderedBody } = prepareArticleBody(article.content ?? "", { publisherSlug });
   const toc = extractToc(body);
-
-  // Build the <Cite> numbering index + resolve citations (two batched queries).
   const { slugToNumber, resolved: resolvedCitations } = await resolveCitations(body);
+
+  const crumbs: Crumb[] = [
+    { label: `@${publisherSlug}`, href: `/${publisherSlug}` },
+    { label: bookRow.title, href: `/${publisherSlug}/books/${bookSlug}` },
+  ];
+  if (loc.part) crumbs.push({ label: loc.part.title, href: dividerHref(publisherSlug, bookSlug, loc.part) });
+  if (loc.chapter) crumbs.push({ label: loc.chapter.title, href: dividerHref(publisherSlug, bookSlug, loc.chapter) });
+  crumbs.push({ label: article.title });
 
   return (
     <main className="flex-1">
@@ -117,39 +142,22 @@ export default async function SectionPage({
             className="flex items-center justify-between py-3.5"
             style={{ borderBottom: "1px solid var(--border)" }}
           >
-            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-              <Link
-                href={`/${publisherSlug}`}
-                className="ps-eyebrow hover:opacity-70 transition-opacity"
-              >
-                @{publisherSlug}
-              </Link>
-              <span className="themed-muted" style={{ fontSize: "0.625rem" }}>/</span>
-              <Link
-                href={`/${publisherSlug}/books/${bookSlug}`}
-                className="themed-muted hover:text-[var(--foreground)] transition-colors truncate"
-                style={{ fontSize: "0.6875rem" }}
-              >
-                {bookRow.title}
-              </Link>
-            </div>
+            <BookBreadcrumb crumbs={crumbs} />
             <div className="flex items-center gap-3 shrink-0 ml-4">
-              {currentIdx >= 0 && (
-                <span
-                  className="themed-muted hidden sm:block"
-                  style={{
-                    fontSize: "0.5625rem",
-                    fontFamily: "ui-monospace, monospace",
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {currentIdx + 1} / {allEntries.length}
-                </span>
-              )}
+              <span
+                className="themed-muted hidden sm:block"
+                style={{
+                  fontSize: "0.5625rem",
+                  fontFamily: "ui-monospace, monospace",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {idx + 1} / {total}
+              </span>
               {isEditor && (
                 <Link
-                  href={`/${articlePublisherSlug}/articles/${sectionSlug}/edit`}
+                  href={`/${articlePublisherSlug}/articles/${article.slug}/edit`}
                   className="themed-nav-link hover:text-[var(--foreground)] transition-colors"
                   style={{ fontSize: "0.8125rem" }}
                 >
@@ -201,7 +209,7 @@ export default async function SectionPage({
           >
             {prevSlug ? (
               <Link
-                href={`/${publisherSlug}/books/${bookSlug}/${prevSlug}`}
+                href={sectionHref(publisherSlug, bookSlug, prevSlug)}
                 className="group flex items-center gap-2 themed-nav-link hover:text-[var(--foreground)] transition-colors"
                 style={{ fontSize: "0.875rem" }}
               >
@@ -226,7 +234,7 @@ export default async function SectionPage({
             )}
             {nextSlug ? (
               <Link
-                href={`/${publisherSlug}/books/${bookSlug}/${nextSlug}`}
+                href={sectionHref(publisherSlug, bookSlug, nextSlug)}
                 className="group flex items-center gap-2 themed-nav-link hover:text-[var(--foreground)] transition-colors"
                 style={{ fontSize: "0.875rem" }}
               >
