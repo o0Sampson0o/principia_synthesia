@@ -10,7 +10,6 @@
     "test": "vitest",
     "test:run": "vitest run",
     "generate:katex-css": "node scripts/generate-katex-css.mjs",
-    "seed": "npx tsx --env-file-if-exists=.env.local db/seed-demo.ts",
     "seed:admin": "npx tsx --env-file-if-exists=.env.local db/seed-admin.ts",
     "test:e2e": "playwright test",
     "cli:build": "node cli/ps-sync/build.mjs",

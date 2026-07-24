@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { loginAs } from "./helpers/auth";
 
-// Credentials seeded by db/seed-demo.ts
+// Credentials for the root admin. The demo seeder that used to create this
+// user was removed; set SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD to match and run
+// `npm run seed:admin` against the target database before running these specs.
 const ADMIN_EMAIL = "admin@principia.dev";
 const ADMIN_PASSWORD = "1!aA1234567";
 const ADMIN_SLUG = "principia-official";

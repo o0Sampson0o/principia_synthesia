@@ -78,9 +78,11 @@ Key design decisions for developers extending the system:
 
 5. Seed the database with an admin user:
    ```bash
-   npm run seed
+   npm run seed:admin
    ```
-   This creates an admin user with email `admin@example.com` and password `<redacted>`.
+   Creates a single root-admin user from `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`.
+   Skips silently if either is unset. It touches no content — no articles, books or
+   curriculum entries.
 
 6. Start the development server:
    ```bash
@@ -125,7 +127,7 @@ principia-synthesia/
 ├── db/                           # Database layer
 │   ├── index.ts                  # Drizzle client (postgres driver)
 │   ├── schema.ts                 # All table definitions + ThemeTokens type
-│   └── seed.ts                   # Seed admin user script
+│   └── seed-admin.ts             # Seed root-admin user from env vars
 ├── lib/                          # Shared utilities
 │   ├── auth.ts                   # bcrypt + JWT helpers, session cookie read/write
 │   ├── book-toc.ts               # Book table-of-contents helpers
@@ -220,7 +222,7 @@ guide including all available `window.theme` tokens.
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm start` - Start production server
-- `npm run seed` - Seed database with admin user
+- `npm run seed:admin` - Create the root-admin user from `SEED_ADMIN_*` env vars
 - `npx drizzle-kit generate` - Generate database migrations
 - `npx drizzle-kit migrate` - Run database migrations
 - `npx drizzle-kit studio` - Open Drizzle Studio
