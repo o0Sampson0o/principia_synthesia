@@ -31,6 +31,7 @@ import rehypeStringify from "rehype-stringify";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import { remarkCallouts } from "@/lib/remark-callouts";
 import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
+import { normalizeDetailsBlocks } from "@/lib/normalize-details";
 
 // ---------------------------------------------------------------------------
 // Preview compilation (server-side — eliminates unsafe-eval in the browser)
@@ -52,7 +53,7 @@ export async function previewMdx(
       .use(rehypeSlug)
       .use(rehypeKatex)
       .use(rehypeStringify, { allowDangerousHtml: true })
-      .process(source);
+      .process(normalizeDetailsBlocks(source));
     return { html: String(file) };
   } catch (err: unknown) {
     return { error: err instanceof Error ? err.message : String(err) };

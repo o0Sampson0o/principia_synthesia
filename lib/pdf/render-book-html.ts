@@ -8,6 +8,7 @@ import rehypeKatex from "rehype-katex";
 import rehypeSanitize from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import { mdxSanitizeSchema } from "@/lib/mdx-sanitize";
+import { normalizeDetailsBlocks } from "@/lib/normalize-details";
 import type { EventRow } from "@/lib/timeline-utils";
 import { renderTimelineHtml } from "@/lib/events-html";
 
@@ -19,7 +20,7 @@ export interface BookSection {
 }
 
 export function cleanMdx(mdx: string): string {
-  return mdx
+  return normalizeDetailsBlocks(mdx)
     .replace(/\[\[([^\]]+)\]\]/g, (_, inner) => {
       const parts = inner.split("|");
       return parts[parts.length - 1].split(":").pop() ?? inner;

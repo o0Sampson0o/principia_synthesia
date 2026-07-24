@@ -10,6 +10,7 @@ import { visit } from "unist-util-visit";
 import { fromHtml } from "hast-util-from-html";
 import type { Root, Element, Parent } from "hast";
 import { mdxSanitizeSchemaEpub } from "./mdx-sanitize";
+import { normalizeDetailsBlocks } from "@/lib/normalize-details";
 import type { EventRow } from "@/lib/timeline-utils";
 import { renderTimelineHtml } from "@/lib/events-html";
 
@@ -169,7 +170,7 @@ function rehypeNormaliseHeadings() {
 // ─── MDX → HTML ───────────────────────────────────────────────────────────────
 
 function cleanMdx(mdx: string): string {
-  return mdx
+  return normalizeDetailsBlocks(mdx)
     .replace(/\[\[([^\]]+)\]\]/g, (_, inner) => {
       const parts = inner.split("|");
       return parts[parts.length - 1].split(":").pop() ?? inner;

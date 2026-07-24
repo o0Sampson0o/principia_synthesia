@@ -25,6 +25,7 @@ import ArticleImage from "@/components/ArticleImage";
 import MdxParagraph from "@/components/MdxParagraph";
 import ArticleMetadataDisplay from "@/components/ArticleMetadata";
 import { parseFrontmatter } from "@/lib/frontmatter";
+import { normalizeDetailsBlocks } from "@/lib/normalize-details";
 import RelatedEvents from "@/components/RelatedEvents";
 import LastVerifiedBadge, { StaleWarningBanner } from "@/components/LastVerifiedBadge";
 import MarkVerifiedForm from "@/components/MarkVerifiedForm";
@@ -356,9 +357,10 @@ export default async function ArticlePage({
     metadata.canvas && /^anim-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(metadata.canvas)
       ? metadata.canvas
       : null;
+  const normalizedBody = normalizeDetailsBlocks(body);
   const renderedBody = safeCanvas
-    ? `<DynamicAnimation publisher="${publisherSlug}" slug="${safeCanvas}" />\n\n${body}`
-    : body;
+    ? `<DynamicAnimation publisher="${publisherSlug}" slug="${safeCanvas}" />\n\n${normalizedBody}`
+    : normalizedBody;
 
   return (
     <main className="w-full max-w-3xl mx-auto px-5 py-12 sm:py-16">
