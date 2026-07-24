@@ -52,6 +52,48 @@ describe("renderCalloutBody", () => {
     expect(a.textContent).toBe("t");
   });
 
+  it("renders a `-` list as a <ul> with one <li> per item", () => {
+    const el = parse(
+      renderCalloutBody("- World 1: rocks\n- World 2: minds\n- World 3: theories")
+    );
+    const ul = el.querySelector("ul");
+    expect(ul).not.toBeNull();
+    const items = ul!.querySelectorAll("li");
+    expect(items).toHaveLength(3);
+    expect(items[0].textContent).toBe("World 1: rocks");
+    expect(items[2].textContent).toBe("World 3: theories");
+    // The literal dash marker must not leak into the text.
+    expect(el.textContent).not.toContain("- World");
+  });
+
+  it("renders a numbered list as an <ol>", () => {
+    const el = parse(renderCalloutBody("1. first\n2. second"));
+    const ol = el.querySelector("ol");
+    expect(ol).not.toBeNull();
+    expect(el.querySelector("ul")).toBeNull();
+    expect(ol!.querySelectorAll("li")).toHaveLength(2);
+  });
+
+  it("separates an intro paragraph from a following list within one block", () => {
+    const el = parse(renderCalloutBody("Intro line\n- a\n- b"));
+    expect(el.querySelector("p")!.textContent).toBe("Intro line");
+    expect(el.querySelectorAll("ul li")).toHaveLength(2);
+  });
+
+  it("joins an indented continuation line into its list item", () => {
+    const el = parse(renderCalloutBody("- long item that wraps\n  onto a second line"));
+    const items = el.querySelectorAll("ul li");
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toBe("long item that wraps onto a second line");
+  });
+
+  it("renders inline markup inside list items", () => {
+    const el = parse(renderCalloutBody("- energy $E=mc^2$ and **bold**"));
+    const li = el.querySelector("ul li")!;
+    expect(li.querySelector("strong")!.textContent).toBe("bold");
+    expect(li.querySelector("span.cm-lp-math .katex")).not.toBeNull();
+  });
+
   it("HTML-escapes text nodes to prevent injection", () => {
     const html = renderCalloutBody("a <script>alert(1)</script> b");
     expect(html).not.toContain("<script>");

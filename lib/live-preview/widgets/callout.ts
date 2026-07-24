@@ -79,24 +79,77 @@ function renderInline(text: string): string {
   return html;
 }
 
+/** A list-item line: optional indent, a `-`/`*`/`+` or `1.`/`1)` marker, text. */
+const LIST_ITEM_RE = /^[ \t]*([-*+]|\d+[.)])[ \t]+(.*)$/;
+
+/**
+ * Render one block (no blank lines inside) that isn't display math: a run of
+ * list items becomes a `<ul>`/`<ol>`, and everything else joins into a `<p>`.
+ * List and paragraph runs can alternate within the block (e.g. an intro line
+ * immediately followed by bullets with no blank line between them).
+ */
+function renderBlock(block: string): string {
+  const lines = block.split("\n");
+  let html = "";
+  let i = 0;
+  while (i < lines.length) {
+    const first = LIST_ITEM_RE.exec(lines[i]);
+    if (first) {
+      // A list run: consecutive items sharing ordered-ness. A non-item line
+      // that is indented continues the previous item (soft-wrapped text);
+      // an un-indented one ends the list.
+      const ordered = /\d/.test(first[1]);
+      const items: string[] = [];
+      while (i < lines.length) {
+        const m = LIST_ITEM_RE.exec(lines[i]);
+        if (m) {
+          if (/\d/.test(m[1]) !== ordered) break; // ordered/unordered switch
+          items.push(m[2]);
+          i++;
+        } else if (items.length && /^[ \t]+\S/.test(lines[i])) {
+          items[items.length - 1] += " " + lines[i].trim();
+          i++;
+        } else {
+          break;
+        }
+      }
+      const tag = ordered ? "ol" : "ul";
+      html +=
+        `<${tag}>` +
+        items.map((it) => `<li>${renderInline(it)}</li>`).join("") +
+        `</${tag}>`;
+    } else {
+      // A paragraph run: gather until the next list item. Soft-wrapped source
+      // lines join with spaces (line breaks aren't hard breaks in markdown).
+      const para: string[] = [];
+      while (i < lines.length && !LIST_ITEM_RE.test(lines[i])) {
+        para.push(lines[i]);
+        i++;
+      }
+      const text = para.join(" ").replace(/[ \t]+/g, " ").trim();
+      if (text) html += `<p>${renderInline(text)}</p>`;
+    }
+  }
+  return html;
+}
+
 /**
  * Render a callout body (its lines already stripped of the `>` quote marks and
  * the leading `[!type] title` marker line). Blocks are separated by blank
- * lines; a `$$…$$` block renders as display math, everything else as a
- * paragraph. Returns an HTML string.
+ * lines; a `$$…$$` block renders as display math, a run of `-`/`*`/`+` or
+ * numbered lines as a list, everything else as a paragraph. Returns HTML.
  */
 export function renderCalloutBody(bodyText: string): string {
   let html = "";
   for (const raw of bodyText.split(/\n[ \t]*\n/)) {
-    const block = raw.trim();
-    if (!block) continue;
-    if (block.startsWith("$$") && block.endsWith("$$") && block.length > 4) {
-      const inner = block.slice(2, -2).trim();
+    const block = raw.replace(/^\n+|\n+$/g, "");
+    const trimmed = block.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith("$$") && trimmed.endsWith("$$") && trimmed.length > 4) {
+      const inner = trimmed.slice(2, -2).trim();
       html += `<div class="cm-lp-math-block">${renderKatex(inner, true)}</div>`;
     } else {
-      // Soft-wrapped lines join into one paragraph (source line breaks are
-      // not hard breaks in markdown).
-      html += `<p>${renderInline(block.replace(/\n[ \t]*/g, " "))}</p>`;
+      html += renderBlock(block);
     }
   }
   return html;
