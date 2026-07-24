@@ -217,6 +217,7 @@ export default async function SearchPage({
                     slug={a.slug}
                     title={a.title}
                     description={a.summary}
+                    parentBookSlug={a.parentBookSlug}
                   />
                 ))}
               </section>

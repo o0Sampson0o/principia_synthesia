@@ -137,7 +137,13 @@ export default function CommandPalette({ userSlug = null }: { userSlug?: string 
                         icon="article"
                         label={a.title}
                         sublabel={`@${a.publisherSlug}`}
-                        onClick={() => navigate(`/${a.publisherSlug}/articles/${a.slug}`)}
+                        onClick={() =>
+                          navigate(
+                            a.parentBookSlug
+                              ? `/${a.publisherSlug}/books/${a.parentBookSlug}/${a.slug}`
+                              : `/${a.publisherSlug}/articles/${a.slug}`
+                          )
+                        }
                       />
                     ))}
                   </ResultGroup>

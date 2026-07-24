@@ -4,9 +4,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // ─── DB mock ─────────────────────────────────────────────────────────────────
 
 const mockSelectWhereLimit = vi.hoisted(() => vi.fn());
-const mockSelectWhere = vi.hoisted(() => vi.fn());
-const mockSelectFrom = vi.hoisted(() => vi.fn());
-const mockSelectLeftJoin = vi.hoisted(() => vi.fn());
 const mockSelect = vi.hoisted(() => vi.fn());
 
 vi.mock("@/db", () => ({
@@ -45,13 +42,17 @@ import { and } from "drizzle-orm";
 
 function setupEmptyResults() {
   mockSelectWhereLimit.mockResolvedValue([]);
-  mockSelectWhere.mockReturnValue({ limit: mockSelectWhereLimit });
-  // Second leftJoin returns the where chain
-  const secondLeftJoin = { where: mockSelectWhere };
-  // First leftJoin returns an object that supports a second leftJoin
-  mockSelectLeftJoin.mockReturnValue({ leftJoin: () => secondLeftJoin, where: mockSelectWhere });
-  mockSelectFrom.mockReturnValue({ leftJoin: mockSelectLeftJoin, where: mockSelectWhere });
-  mockSelect.mockReturnValue({ from: mockSelectFrom });
+  // Self-referential fluent chain — supports any depth of from/leftJoin/where so
+  // the article query's several joins (article + parent-book + book-visibility +
+  // publisher) all resolve. `.limit(n)` is the terminal that returns the rows.
+  const chain: Record<string, unknown> = {};
+  chain.from = () => chain;
+  chain.leftJoin = () => chain;
+  chain.innerJoin = () => chain;
+  chain.where = () => chain;
+  chain.orderBy = () => chain;
+  chain.limit = mockSelectWhereLimit;
+  mockSelect.mockReturnValue(chain);
 }
 
 /**
@@ -128,5 +129,26 @@ describe("searchAll — article status filtering", () => {
     expect(result).toHaveProperty("objects");
     // Anonymous session is non-admin → status filter must be present
     expect(hasStatusCondition(capturedAndCalls)).toBe(true);
+  });
+
+  it("includes book-internal articles and passes through their parentBookSlug", async () => {
+    mockGetSession.mockResolvedValue({
+      userId: 5,
+      email: "bob@example.com",
+      userSlug: "bob",
+      isRootAdmin: false,
+    });
+    // Article query resolves first (Promise.all order: articles, books, objects).
+    mockSelectWhereLimit
+      .mockResolvedValueOnce([
+        { id: 1, title: "Chapter One", slug: "article-ch1", publisherSlug: "alice", summary: null, parentBookSlug: "my-book" },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await searchAll("math");
+
+    expect(result.articles).toHaveLength(1);
+    expect(result.articles[0].parentBookSlug).toBe("my-book");
   });
 });

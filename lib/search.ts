@@ -2,7 +2,8 @@
 
 import { db } from "@/db";
 import { articles, books, objects, publishers, resourceVisibility } from "@/db/schema";
-import { ilike, and, eq, sql, or, isNull } from "drizzle-orm";
+import { ilike, and, eq, sql, or, isNull, isNotNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { getSession } from "@/lib/auth";
 
 export interface SearchArticleResult {
@@ -11,6 +12,8 @@ export interface SearchArticleResult {
   slug: string;
   publisherSlug: string;
   summary?: string | null;
+  /** Set when the article is a book-internal section — used to build its URL. */
+  parentBookSlug?: string | null;
 }
 
 export interface SearchBookResult {
@@ -48,17 +51,22 @@ export async function searchAll(
   options?: { categorySlug?: string; tags?: string[] }
 ): Promise<SearchAllResult> {
   const session = await getSession();
+  const isAdmin = !!session?.isRootAdmin;
   const { categorySlug, tags: filterTags } = options ?? {};
   const q = `%${query}%`;
 
+  // Book-internal articles are addressed under their parent book, so we join the
+  // parent book (for its slug + status) and the book's visibility row.
+  const parentBook = alias(books, "parent_book");
+  const bookVis = alias(resourceVisibility, "book_vis");
+
   // ── Article conditions ────────────────────────────────────────────────────
-  const articleConditions: any[] = [
-    eq(articles.isInternal, false),
-    isNull(articles.deletedAt),
-  ];
+  const articleConditions: any[] = [isNull(articles.deletedAt)];
 
   if (query) {
-    articleConditions.push(or(ilike(articles.title, q), ilike(articles.summary, q)));
+    articleConditions.push(
+      or(ilike(articles.title, q), ilike(articles.summary, q), ilike(articles.content, q))
+    );
   }
   if (categorySlug) {
     articleConditions.push(
@@ -81,12 +89,28 @@ export async function searchAll(
       )`
     );
   }
-  if (!session?.isRootAdmin) {
+  // The article itself must be published (both standalone and internal).
+  if (!isAdmin) {
     articleConditions.push(sql`${articles.metadata}->>'status' = 'published'`);
-    articleConditions.push(
-      or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
-    );
   }
+  // Include standalone articles (own visibility) OR book-internal articles that
+  // live in a visible, published parent book.
+  const standaloneCond = isAdmin
+    ? eq(articles.isInternal, false)
+    : and(
+        eq(articles.isInternal, false),
+        or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public"))
+      );
+  const internalCond = isAdmin
+    ? and(eq(articles.isInternal, true), isNotNull(articles.parentBookId), isNull(parentBook.deletedAt))
+    : and(
+        eq(articles.isInternal, true),
+        isNotNull(articles.parentBookId),
+        isNull(parentBook.deletedAt),
+        sql`${parentBook.metadata}->>'status' = 'published'`,
+        or(isNull(bookVis.visibility), eq(bookVis.visibility, "public"))
+      );
+  articleConditions.push(or(standaloneCond, internalCond));
 
   // ── Book conditions ───────────────────────────────────────────────────────
   const bookConditions: any[] = [];
@@ -136,6 +160,7 @@ export async function searchAll(
         slug: articles.slug,
         publisherSlug: publishers.slug,
         summary: articles.summary,
+        parentBookSlug: parentBook.slug,
       })
       .from(articles)
       .leftJoin(
@@ -145,6 +170,16 @@ export async function searchAll(
           eq(resourceVisibility.ownerType, articles.ownerType),
           eq(resourceVisibility.ownerId, articles.ownerId),
           eq(resourceVisibility.resourceKey, articles.slug)
+        )
+      )
+      .leftJoin(parentBook, eq(articles.parentBookId, parentBook.id))
+      .leftJoin(
+        bookVis,
+        and(
+          eq(bookVis.resourceType, "book"),
+          eq(bookVis.ownerType, parentBook.ownerType),
+          eq(bookVis.ownerId, parentBook.ownerId),
+          eq(bookVis.resourceKey, parentBook.slug)
         )
       )
       .leftJoin(

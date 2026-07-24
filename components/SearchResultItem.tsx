@@ -7,10 +7,14 @@ interface Props {
   title: string;
   description?: string | null;
   objectType?: string;
+  /** For book-internal articles: the parent book's slug (links under the book). */
+  parentBookSlug?: string | null;
 }
 
-export default function SearchResultItem({ type, publisherSlug, slug, title, description, objectType }: Props) {
-  let href = `/${publisherSlug}/articles/${slug}`;
+export default function SearchResultItem({ type, publisherSlug, slug, title, description, objectType, parentBookSlug }: Props) {
+  let href = parentBookSlug
+    ? `/${publisherSlug}/books/${parentBookSlug}/${slug}`
+    : `/${publisherSlug}/articles/${slug}`;
   if (type === "book") href = `/${publisherSlug}/books/${slug}`;
   else if (type === "object") href = `/${publisherSlug}/objects/${slug}`;
 
