@@ -5,9 +5,10 @@ import { eq, and } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
-import { updateKaoObject, updateDiagram, deleteKaoObject } from "../../actions";
+import { updateKaoObject, updateDiagram, updateAnimationObject, deleteKaoObject } from "../../actions";
 import { isDiagramContent, type KaoContent } from "@/lib/kao";
 import EditObjectFormClient from "@/components/EditObjectFormClient";
+import AnimationEditor from "@/components/AnimationEditor";
 
 export default async function EditObjectPage({
   params,
@@ -39,6 +40,7 @@ export default async function EditObjectPage({
 
   const content = obj.content as KaoContent;
   const isDiagram = obj.type === "diagram" && isDiagramContent(content);
+  const isAnimation = obj.type === "animation";
 
   async function updateAction(formData: FormData): Promise<void> {
     "use server";
@@ -47,6 +49,14 @@ export default async function EditObjectPage({
     } else {
       await updateKaoObject(publisherSlug, null, formData);
     }
+  }
+
+  async function updateAnimationAction(
+    prevState: Awaited<ReturnType<typeof updateAnimationObject>> | null,
+    formData: FormData
+  ) {
+    "use server";
+    return updateAnimationObject(publisherSlug, prevState, formData);
   }
 
   async function deleteAction(formData: FormData): Promise<void> {
@@ -60,22 +70,36 @@ export default async function EditObjectPage({
         <p className="ps-eyebrow mb-1.5">Object</p>
         <h1 className="ps-display themed-heading" style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Edit object</h1>
       </div>
-      <EditObjectFormClient
-        id={obj.id}
-        slug={obj.slug}
-        name={obj.name}
-        type={obj.type}
-        description={obj.description ?? ""}
-        content={content}
-        isDiagram={isDiagram}
-        diagramFormat={isDiagram ? (content as { format: "mermaid" | "graphviz"; source: string }).format : "mermaid"}
-        diagramSource={isDiagram ? (content as { format: "mermaid" | "graphviz"; source: string }).source : ""}
-        rawContentJson={isDiagram ? "" : JSON.stringify(content, null, 2)}
-        updateAction={updateAction}
-        deleteAction={deleteAction}
-        publisherSlug={publisherSlug}
-        objSlug={objSlug}
-      />
+      {isAnimation ? (
+        <AnimationEditor
+          publisherSlug={publisherSlug}
+          objSlug={objSlug}
+          id={obj.id}
+          slug={obj.slug}
+          name={obj.name}
+          description={obj.description ?? ""}
+          initialCode={(content as { code?: string }).code ?? ""}
+          updateAction={updateAnimationAction}
+          deleteAction={deleteAction}
+        />
+      ) : (
+        <EditObjectFormClient
+          id={obj.id}
+          slug={obj.slug}
+          name={obj.name}
+          type={obj.type}
+          description={obj.description ?? ""}
+          content={content}
+          isDiagram={isDiagram}
+          diagramFormat={isDiagram ? (content as { format: "mermaid" | "graphviz"; source: string }).format : "mermaid"}
+          diagramSource={isDiagram ? (content as { format: "mermaid" | "graphviz"; source: string }).source : ""}
+          rawContentJson={isDiagram ? "" : JSON.stringify(content, null, 2)}
+          updateAction={updateAction}
+          deleteAction={deleteAction}
+          publisherSlug={publisherSlug}
+          objSlug={objSlug}
+        />
+      )}
     </main>
   );
 }

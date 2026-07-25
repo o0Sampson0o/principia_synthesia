@@ -1,14 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import { javascript } from "@codemirror/lang-javascript";
+import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 
 const DiagramEditor = dynamic(() => import("./DiagramEditor"), { ssr: false });
+const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
 type KaoType = "animation" | "dataset" | "diagram";
 
 export default function NewObjectFormClient() {
   const [type, setType] = useState<KaoType>("animation");
+  const [code, setCode] = useState("");
+  const [isDark, setIsDark] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+  const contentRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Keep the hidden `content` field ({ code }) in sync while editing an animation.
+  useEffect(() => {
+    if (contentRef.current) contentRef.current.value = JSON.stringify({ code });
+  }, [code]);
 
   return (
     <>
@@ -69,10 +89,26 @@ export default function NewObjectFormClient() {
 
       {type === "diagram" ? (
         <DiagramEditor initialFormat="mermaid" initialSource="" nameInputId="name" />
+      ) : type === "animation" ? (
+        <div>
+          <label className="block text-sm font-medium themed-secondary mb-1">
+            Animation code (JavaScript)
+          </label>
+          <input ref={contentRef} type="hidden" name="content" defaultValue={JSON.stringify({ code: "" })} />
+          <div className="themed-border border rounded overflow-hidden">
+            <CodeMirror
+              value={code}
+              height="400px"
+              theme={isDark ? vscodeDark : "light"}
+              extensions={[javascript()]}
+              onChange={setCode}
+            />
+          </div>
+        </div>
       ) : (
         <div>
           <label htmlFor="content" className="block text-sm font-medium themed-secondary mb-1">
-            Content (JSON or JS code for animations)
+            Content (JSON)
           </label>
           <textarea
             id="content"
@@ -80,11 +116,7 @@ export default function NewObjectFormClient() {
             rows={15}
             required
             className="themed-input w-full font-mono text-sm resize-y"
-            placeholder={
-              type === "animation"
-                ? '{"code": "// animation code here"}'
-                : '{"headers": ["Col A", "Col B"], "rows": [["val1", "val2"]]}'
-            }
+            placeholder='{"headers": ["Col A", "Col B"], "rows": [["val1", "val2"]]}'
           />
         </div>
       )}

@@ -45,7 +45,6 @@ export default function EditObjectFormClient({
     <div className="space-y-6">
       <form action={updateAction} className="space-y-4">
         <input type="hidden" name="id" value={id} />
-        <input type="hidden" name="slug" value={slug} />
         <input type="hidden" name="type" value={type} />
 
         <div>
@@ -61,6 +60,23 @@ export default function EditObjectFormClient({
             defaultValue={name}
             className="themed-input"
           />
+        </div>
+
+        <div>
+          <label htmlFor="slug" className="block text-sm font-medium themed-secondary mb-1">
+            Slug
+          </label>
+          <input
+            id="slug"
+            name="slug"
+            type="text"
+            required
+            defaultValue={slug}
+            className="themed-input font-mono text-sm"
+          />
+          <p className="text-xs themed-muted mt-1">
+            Must start with <code>object-</code>. Renaming changes the URL and any references.
+          </p>
         </div>
 
         <div>

@@ -67,26 +67,87 @@ export async function updateKaoObject(
     return { errors: { content: ["Invalid JSON"] } };
   }
 
-  await db
-    .update(objects)
-    .set({
-      name: parsed.data.name,
-      type: parsed.data.type,
-      content,
-      description: parsed.data.description ?? null,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(objects.id, parsed.data.id),
-        eq(objects.ownerType, ownerType),
-        eq(objects.ownerId, ownerId)
-      )
-    );
+  try {
+    await db
+      .update(objects)
+      .set({
+        name: parsed.data.name,
+        type: parsed.data.type,
+        content,
+        description: parsed.data.description ?? null,
+        slug: parsed.data.slug,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(objects.id, parsed.data.id),
+          eq(objects.ownerType, ownerType),
+          eq(objects.ownerId, ownerId)
+        )
+      );
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { errors: { slug: ["An object with this slug already exists"] } };
+    }
+    throw err;
+  }
 
   revalidatePath(`/${publisherSlug}/objects`);
   revalidatePath(`/${publisherSlug}/objects/${parsed.data.slug}`);
   redirect(`/${publisherSlug}/objects/${parsed.data.slug}`);
+}
+
+/**
+ * Animation-specific update: like updateKaoObject but RETURNS the result instead
+ * of redirecting, so the CodeMirror animation editor can stay on the page and
+ * refresh its preview after saving. Also updates the slug (rename).
+ */
+export async function updateAnimationObject(
+  publisherSlug: string,
+  _prevState: unknown,
+  formData: FormData
+): Promise<{ ok: true; slug: string } | { errors: Partial<Record<string, string[]>> }> {
+  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
+
+  const raw = { ...Object.fromEntries(formData), ownerType, ownerId };
+  const parsed = updateKaoSchema.safeParse(raw);
+  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+
+  let content: unknown;
+  try {
+    content = JSON.parse(parsed.data.content);
+  } catch {
+    return { errors: { content: ["Invalid JSON"] } };
+  }
+
+  try {
+    await db
+      .update(objects)
+      .set({
+        name: parsed.data.name,
+        type: parsed.data.type,
+        content,
+        description: parsed.data.description ?? null,
+        slug: parsed.data.slug,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(objects.id, parsed.data.id),
+          eq(objects.ownerType, ownerType),
+          eq(objects.ownerId, ownerId)
+        )
+      );
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { errors: { slug: ["An object with this slug already exists"] } };
+    }
+    throw err;
+  }
+
+  revalidatePath(`/${publisherSlug}/objects`);
+  revalidatePath(`/${publisherSlug}/objects/${parsed.data.slug}`);
+  return { ok: true, slug: parsed.data.slug };
 }
 
 export async function createDiagram(publisherSlug: string, _prevState: unknown, formData: FormData) {
@@ -137,22 +198,30 @@ export async function updateDiagram(
 
   const content = { format: parsed.data.format, source: parsed.data.source };
 
-  await db
-    .update(objects)
-    .set({
-      name: parsed.data.name,
-      type: "diagram",
-      content,
-      description: parsed.data.description ?? null,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(objects.id, parsed.data.id),
-        eq(objects.ownerType, ownerType),
-        eq(objects.ownerId, ownerId)
-      )
-    );
+  try {
+    await db
+      .update(objects)
+      .set({
+        name: parsed.data.name,
+        type: "diagram",
+        content,
+        description: parsed.data.description ?? null,
+        slug: parsed.data.slug,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(objects.id, parsed.data.id),
+          eq(objects.ownerType, ownerType),
+          eq(objects.ownerId, ownerId)
+        )
+      );
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { errors: { slug: ["An object with this slug already exists"] } };
+    }
+    throw err;
+  }
 
   revalidatePath(`/${publisherSlug}/objects`);
   revalidatePath(`/${publisherSlug}/objects/${parsed.data.slug}`);
