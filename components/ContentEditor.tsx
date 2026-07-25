@@ -12,7 +12,6 @@ import { livePreview } from "@/lib/live-preview";
 import { editorTheme } from "@/lib/live-preview/theme";
 import { slashMenu } from "@/lib/live-preview/slash-menu";
 import { turnIntoKeymap } from "@/lib/live-preview/turn-into";
-import { frontmatterExtent } from "@/lib/live-preview/reveal";
 import CheckMdxButton from "./CheckMdxButton";
 import { findMissingAlt } from "@/lib/alt-text-lint";
 import type { AltTextFinding } from "@/lib/alt-text-lint";
@@ -34,22 +33,22 @@ export interface ContentEditorRef {
   insertText: (text: string) => void;
   getValue: () => string;
   setValue: (text: string) => void;
-  /**
-   * Replaces only the leading YAML frontmatter block (inserting one when the
-   * document has none). Unlike setValue this leaves the body untouched, so
-   * the cursor, scroll position, and live-preview decorations survive
-   * frontmatter edits.
-   */
-  replaceFrontmatter: (fmBlock: string) => void;
 }
 
 export default forwardRef<ContentEditorRef, {
+  /** The article BODY (frontmatter is owned by the Frontmatter panel, not shown here). */
   initial: string;
   publisherSlug: string;
   onChange?: (value: string) => void;
   onError?: (hasError: boolean) => void;
   toolbar?: React.ReactNode;
-}>(function ContentEditor({ initial, publisherSlug, onChange, onError, toolbar }, ref) {
+  /**
+   * Returns the FULL source (frontmatter + body) for Preview / Check-MDX so the
+   * rendered output matches what publishes (canvas prepend, etc.). Falls back to
+   * the body alone when not provided.
+   */
+  getPreviewSource?: () => string;
+}>(function ContentEditor({ initial, publisherSlug, onChange, onError, toolbar, getPreviewSource }, ref) {
   const contentValue = useRef<string>(initial);
   const [altFindings, setAltFindings] = useState<AltTextFinding[]>([]);
   const [showAltList, setShowAltList] = useState(false);
@@ -94,7 +93,7 @@ export default forwardRef<ContentEditorRef, {
     setPreviewState({ status: "loading" });
     (async () => {
       try {
-        const result = await previewMdx(publisherSlug, contentValue.current);
+        const result = await previewMdx(publisherSlug, getPreviewSource?.() ?? contentValue.current);
         if (cancelled) return;
         if ("error" in result) {
           setPreviewState({ status: "error", message: result.error });
@@ -115,7 +114,7 @@ export default forwardRef<ContentEditorRef, {
     return () => {
       cancelled = true;
     };
-  }, [mode, onError, publisherSlug]);
+  }, [mode, onError, publisherSlug, getPreviewSource]);
 
   // The in-editor keymap can't fire while CodeMirror is hidden — handle
   // Ctrl/Cmd+E at the window level when previewing so the cycle continues.
@@ -173,9 +172,6 @@ export default forwardRef<ContentEditorRef, {
     contentValue.current = val;
     onChange?.(val);
 
-    const field = document.getElementById("content-field") as HTMLInputElement | null;
-    if (field) field.value = val;
-
     if (altLintTimer.current) {
       clearTimeout(altLintTimer.current);
     }
@@ -183,12 +179,6 @@ export default forwardRef<ContentEditorRef, {
       setAltFindings(findMissingAlt(val));
     }, 800);
   }, [onChange]);
-
-  useEffect(() => {
-    const field = document.getElementById("content-field") as HTMLInputElement | null;
-    if (field) field.value = initial;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleInsertText = useCallback((text: string) => {
     const view = editorViewRef.current;
@@ -204,6 +194,12 @@ export default forwardRef<ContentEditorRef, {
 
   const handleGetValue = useCallback(() => contentValue.current, []);
 
+  // Full source (frontmatter + body) for Preview / Check-MDX.
+  const handleGetSource = useCallback(
+    () => getPreviewSource?.() ?? contentValue.current,
+    [getPreviewSource]
+  );
+
   const handleSetValue = useCallback((text: string) => {
     const view = editorViewRef.current;
     if (view) {
@@ -212,19 +208,7 @@ export default forwardRef<ContentEditorRef, {
       });
     }
     contentValue.current = text;
-    const field = document.getElementById("content-field") as HTMLInputElement | null;
-    if (field) field.value = text;
     setAltFindings(findMissingAlt(text));
-  }, []);
-
-  const handleReplaceFrontmatter = useCallback((fmBlock: string) => {
-    const view = editorViewRef.current;
-    if (!view) return;
-    const fmEnd = frontmatterExtent(view.state.doc);
-    // No existing block: insert one, separated from the body by a blank line.
-    const insert = fmEnd > 0 ? fmBlock : `${fmBlock}\n\n`;
-    view.dispatch({ changes: { from: 0, to: fmEnd, insert } });
-    // contentValue / hidden field / onChange all update via CM's onChange.
   }, []);
 
   // The ref's compile() contract now points at the server-side MDX check.
@@ -238,13 +222,10 @@ export default forwardRef<ContentEditorRef, {
     insertText: handleInsertText,
     getValue: handleGetValue,
     setValue: handleSetValue,
-    replaceFrontmatter: handleReplaceFrontmatter,
   }));
 
   return (
     <div data-tour="editor-content">
-      <input type="hidden" name="content" id="content-field" />
-
       {altFindings.length > 0 && (
         <div className="mb-2 flex items-center gap-2 flex-wrap">
           <button
@@ -331,7 +312,7 @@ export default forwardRef<ContentEditorRef, {
             >
               Grammar {grammarOn ? "on" : "off"}
             </button>
-            <CheckMdxButton publisherSlug={publisherSlug} getSource={handleGetValue} onError={onError} triggerRef={checkTriggerRef} />
+            <CheckMdxButton publisherSlug={publisherSlug} getSource={handleGetSource} onError={onError} triggerRef={checkTriggerRef} />
           </div>
           {toolbar && <div className="flex items-center gap-2">{toolbar}</div>}
         </div>

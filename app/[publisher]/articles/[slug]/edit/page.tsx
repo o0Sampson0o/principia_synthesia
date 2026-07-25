@@ -51,7 +51,7 @@ export default async function EditArticlePage({
   // the published `content`.
   const hasDraft = article.draftContent != null;
   const editorInitial = article.draftContent ?? article.content ?? "";
-  const { metadata: initialMetadata } = parseFrontmatter(editorInitial);
+  const { metadata: initialMetadata, body: initialBody } = parseFrontmatter(editorInitial);
 
   const articleCats = await db
     .select({ slug: categories.slug })
@@ -164,7 +164,7 @@ export default async function EditArticlePage({
         <ArticleEditorPanel
           publisherSlug={publisherSlug}
           draftKey={`${publisherSlug}:article-${article.id}`}
-          initial={editorInitial}
+          initial={initialBody}
           initialMetadata={initialMetadata}
           saveDraftAction={saveDraftAction}
           initialDraftSavedAt={article.draftSavedAt?.toISOString() ?? null}

@@ -6,6 +6,7 @@ import InsertImageButton from "./InsertImageButton";
 import FrontmatterPanel, { type FrontmatterPanelRef } from "./FrontmatterPanel";
 import { useDraftAutosave, type DraftData } from "@/lib/useDraftAutosave";
 import type { ArticleMetadata } from "@/lib/validations";
+import { assembleContent, parseFrontmatterClient } from "@/lib/frontmatter-client";
 
 // Sibling form fields (outside this panel) that are worth recovering alongside
 // the MDX content. Missing fields (e.g. `editNote` on the new-article form) are
@@ -23,6 +24,7 @@ export default function ArticleEditorPanel({
   publisherSlug: string;
   /** Stable per-article key for the localStorage draft (e.g. `slug:article-12`). */
   draftKey: string;
+  /** The article BODY (frontmatter is managed by the Frontmatter panel). */
   initial?: string;
   initialMetadata: ArticleMetadata;
   /**
@@ -37,9 +39,25 @@ export default function ArticleEditorPanel({
   const editorRef = useRef<ContentEditorRef>(null);
   const frontmatterRef = useRef<FrontmatterPanelRef>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const contentFieldRef = useRef<HTMLInputElement>(null);
+
+  // The two sources of truth: the panel's metadata and the editor's body. The
+  // stored `content` is always their recombination.
+  const metaRef = useRef<ArticleMetadata>(initialMetadata);
+  const bodyRef = useRef<string>(initial);
 
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(initialDraftSavedAt);
   const [isSaving, startSaving] = useTransition();
+
+  const fullContent = useCallback(
+    () => assembleContent(metaRef.current, bodyRef.current),
+    []
+  );
+
+  // Keep the hidden form field (submitted as `content`) in sync.
+  const syncContentField = useCallback(() => {
+    if (contentFieldRef.current) contentFieldRef.current.value = fullContent();
+  }, [fullContent]);
 
   const getForm = useCallback(
     () => rootRef.current?.closest("form") ?? null,
@@ -47,7 +65,7 @@ export default function ArticleEditorPanel({
   );
 
   const getSnapshot = useCallback((): DraftData => {
-    const data: DraftData = { content: editorRef.current?.getValue() ?? initial };
+    const data: DraftData = { content: fullContent() };
     const form = getForm();
     if (form) {
       for (const name of SNAPSHOT_FIELDS) {
@@ -59,7 +77,7 @@ export default function ArticleEditorPanel({
       }
     }
     return data;
-  }, [getForm, initial]);
+  }, [getForm, fullContent]);
 
   const { schedule, clear, restorable, dismissRestorable } =
     useDraftAutosave({ storageKey: draftKey, getSnapshot });
@@ -79,15 +97,21 @@ export default function ArticleEditorPanel({
     };
   }, [getForm, schedule, clear]);
 
-  // Only prompt to recover when the local draft actually diverges from what the
-  // server loaded (a draft equal to `initial` was already saved).
+  // The initial full content (frontmatter + body) as loaded — used to detect a
+  // genuinely divergent local draft.
+  const initialFull = assembleContent(initialMetadata, initial);
   const showRestore =
-    restorable !== null && restorable.data.content.trim() !== initial.trim();
+    restorable !== null && restorable.data.content.trim() !== initialFull.trim();
 
   const handleRestore = useCallback(() => {
     if (!restorable) return;
-    editorRef.current?.setValue(restorable.data.content);
+    // The stored draft is full content — split it back into body + metadata.
+    const { body } = parseFrontmatterClient(restorable.data.content);
+    editorRef.current?.setValue(body);
+    bodyRef.current = body;
     frontmatterRef.current?.syncFromMdx(restorable.data.content);
+    metaRef.current = parseFrontmatterClient(restorable.data.content).metadata;
+    syncContentField();
     const form = getForm();
     if (form) {
       for (const name of SNAPSHOT_FIELDS) {
@@ -101,22 +125,28 @@ export default function ArticleEditorPanel({
       }
     }
     dismissRestorable();
-  }, [restorable, getForm, dismissRestorable]);
+  }, [restorable, getForm, dismissRestorable, syncContentField]);
 
   // Save the current content as a server-side draft, staying in the editor.
   // The published article is untouched until a real save.
   const handleSaveDraft = useCallback(() => {
     if (!saveDraftAction) return;
-    const content = editorRef.current?.getValue() ?? initial;
+    const content = fullContent();
     startSaving(async () => {
       const res = await saveDraftAction(content);
       setDraftSavedAt(res.savedAt);
       clear(); // server now holds the draft — drop the local copy
     });
-  }, [saveDraftAction, initial, clear]);
+  }, [saveDraftAction, fullContent, clear]);
 
   return (
     <div ref={rootRef} className="space-y-3">
+      <input
+        type="hidden"
+        name="content"
+        ref={contentFieldRef}
+        defaultValue={initialFull}
+      />
       {showRestore && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/30 px-4 py-2 text-sm">
           <span className="themed-secondary">
@@ -143,15 +173,21 @@ export default function ArticleEditorPanel({
       )}
       <FrontmatterPanel
         ref={frontmatterRef}
-        editorRef={editorRef}
         initialMetadata={initialMetadata}
+        onChange={(meta) => {
+          metaRef.current = meta;
+          syncContentField();
+          schedule();
+        }}
       />
       <ContentEditor
         ref={editorRef}
         initial={initial}
         publisherSlug={publisherSlug}
+        getPreviewSource={fullContent}
         onChange={(val) => {
-          frontmatterRef.current?.syncFromMdx(val);
+          bodyRef.current = val;
+          syncContentField();
           schedule();
         }}
         toolbar={
