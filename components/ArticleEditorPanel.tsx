@@ -49,8 +49,10 @@ export default function ArticleEditorPanel({
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(initialDraftSavedAt);
   const [isSaving, startSaving] = useTransition();
 
+  // Read the body LIVE from the editor (falling back to the last-known body) so
+  // the value is never stale — the editor's current doc is the source of truth.
   const fullContent = useCallback(
-    () => assembleContent(metaRef.current, bodyRef.current),
+    () => assembleContent(metaRef.current, editorRef.current?.getValue() ?? bodyRef.current),
     []
   );
 
@@ -89,13 +91,22 @@ export default function ArticleEditorPanel({
     if (!form) return;
     const onInput = () => schedule();
     const onSubmit = () => clear();
+    // Authoritatively set `content` from the live editor + panel the moment the
+    // form serializes (React 19 builds FormData via `new FormData(form)`, which
+    // fires `formdata`). This is immune to any hidden-field/re-render timing, so
+    // a save can never persist a stale document.
+    const onFormData = (e: FormDataEvent) => {
+      e.formData.set("content", fullContent());
+    };
     form.addEventListener("input", onInput);
     form.addEventListener("submit", onSubmit);
+    form.addEventListener("formdata", onFormData);
     return () => {
       form.removeEventListener("input", onInput);
       form.removeEventListener("submit", onSubmit);
+      form.removeEventListener("formdata", onFormData);
     };
-  }, [getForm, schedule, clear]);
+  }, [getForm, schedule, clear, fullContent]);
 
   // The initial full content (frontmatter + body) as loaded — used to detect a
   // genuinely divergent local draft.
