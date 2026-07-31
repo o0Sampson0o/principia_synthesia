@@ -1,8 +1,8 @@
 import { db } from "@/db";
 import { formatDate } from "@/lib/format-date";
-import { articles, categories, articleCategories, articleViews, publishers, users } from "@/db/schema";
+import { articles, books, categories, articleCategories, articleViews, publishers, users } from "@/db/schema";
 import { eq, and, desc, isNull, or, sql } from "drizzle-orm";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { headers } from "next/headers";
@@ -37,6 +37,7 @@ import MdxErrorBoundary from "@/components/MdxErrorBoundary";
 import ArticleToc from "@/components/ArticleToc";
 import ContinueReading from "@/components/ContinueReading";
 import { extractToc } from "@/lib/article-toc";
+import { sectionHref } from "@/lib/book-structure";
 
 export async function generateMetadata({
   params,
@@ -119,8 +120,22 @@ export default async function ArticlePage({
   if (!articleRows[0]) notFound();
   const article = articleRows[0];
 
-  // Internal articles are not accessible via the /articles/ route
-  if (article.isInternal) notFound();
+  // Internal articles have no standalone page — send readers to their place in
+  // the book. Wikilinks (`[[pub:articles:slug]]`) are built by string template
+  // with no DB lookup (lib/remark-wikilinks.ts), so this route is where a link
+  // to a book chapter lands; redirecting keeps those links working.
+  if (article.isInternal) {
+    if (article.parentBookId === null) notFound();
+    const [parentBook] = await db
+      .select({ slug: books.slug })
+      .from(books)
+      .where(and(eq(books.id, article.parentBookId), isNull(books.deletedAt)))
+      .limit(1);
+    if (!parentBook) notFound();
+    // Canonical 2-segment section URL; the [...section] catch-all resolves off
+    // the last segment (lib/book-structure.ts sectionHref / resolvePath).
+    redirect(sectionHref(publisherSlug, parentBook.slug, slug));
+  }
 
   if (!(await canView({ type: "article", ownerType, ownerId, slug }, session))) notFound();
 
