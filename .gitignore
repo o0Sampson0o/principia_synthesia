@@ -71,5 +71,22 @@ COPILOT.md
 # Image ?
 *.png
 
+# ...except brand assets. These are build inputs: Next generates the
+# /apple-icon.png, /opengraph-image.png and PWA icon routes from them,
+# so they must be committed or the routes 404 in production.
+!app/apple-icon.png
+!app/opengraph-image.png
+!public/icon-192.png
+!public/icon-512.png
+!public/icon-maskable-512.png
+
+# ...and the mark's reference renders (drop this block if logo-vectorize/
+# is not kept in the repo; the README there links these).
+!logo-vectorize/*.png
+!logo-vectorize/**/*.png
+
 # ps-sync npm build output
 /cli/ps-sync/dist/
+
+# Local Playwright auth state (session cookies — never commit)
+tests/e2e/.auth/
