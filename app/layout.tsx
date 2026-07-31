@@ -38,6 +38,18 @@ export const metadata: Metadata = {
   metadataBase: new URL(config.siteUrl),
   title: "Principia Synthesia",
   description: "A personal textbook of everything.",
+  openGraph: {
+    type: "website",
+    siteName: "Principia Synthesia",
+    title: "Principia Synthesia",
+    description: "A personal textbook of everything.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Principia Synthesia",
+    description: "A personal textbook of everything.",
+  },
   verification: {
     google: "5YT4p4zVX0_lqKaz_4CYRU8PA_r8p6zwB-_1XC9Lh7E",
   },

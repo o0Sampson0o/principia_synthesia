@@ -4,6 +4,7 @@ import Link from "next/link"
 import type { SessionPayload } from "@/lib/auth"
 import { useNavMenu } from "@/components/useNavMenu"
 import NotificationsBell from "@/components/NotificationsBell"
+import PrincipiaMark from "@/components/PrincipiaMark"
 
 const NOTIFICATIONS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_NOTIFICATIONS === "true";
 
@@ -22,9 +23,10 @@ export default function NavClient({ session }: { session: SessionPayload | null 
 
         <Link
           href="/"
-          className="themed-heading shrink-0 font-semibold hover:opacity-60 transition-opacity"
+          className="themed-heading shrink-0 font-semibold hover:opacity-60 transition-opacity inline-flex items-center gap-2"
           style={{ fontSize: "0.875rem", letterSpacing: "-0.05em" }}
         >
+          <PrincipiaMark size={17} className="shrink-0" />
           Principia Synthesia
         </Link>
 

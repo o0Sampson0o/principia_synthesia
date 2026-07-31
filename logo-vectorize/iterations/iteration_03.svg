@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="292" height="327" viewBox="0 0 292 327" fill="none">
+  <defs>
+    <linearGradient id="psBase" gradientUnits="userSpaceOnUse" x1="57.536" y1="127.095" x2="130.237" y2="287.690">
+      <stop offset="0.0179" stop-color="#534562"/>
+      <stop offset="0.0536" stop-color="#5A4B69"/>
+      <stop offset="0.0893" stop-color="#625270"/>
+      <stop offset="0.1250" stop-color="#6A5978"/>
+      <stop offset="0.1607" stop-color="#706080"/>
+      <stop offset="0.1964" stop-color="#776588"/>
+      <stop offset="0.2321" stop-color="#7D6A8F"/>
+      <stop offset="0.2679" stop-color="#846F96"/>
+      <stop offset="0.3036" stop-color="#87739A"/>
+      <stop offset="0.3393" stop-color="#8B779F"/>
+      <stop offset="0.3750" stop-color="#8E79A2"/>
+      <stop offset="0.4107" stop-color="#8E79A2"/>
+      <stop offset="0.4464" stop-color="#8D77A1"/>
+      <stop offset="0.4821" stop-color="#8B759E"/>
+      <stop offset="0.5179" stop-color="#88739C"/>
+      <stop offset="0.5536" stop-color="#867199"/>
+      <stop offset="0.5893" stop-color="#847097"/>
+      <stop offset="0.6250" stop-color="#836F95"/>
+      <stop offset="0.6607" stop-color="#836F95"/>
+      <stop offset="0.6964" stop-color="#846F95"/>
+      <stop offset="0.7321" stop-color="#857096"/>
+      <stop offset="0.7679" stop-color="#877299"/>
+      <stop offset="0.8036" stop-color="#8B759D"/>
+      <stop offset="0.8393" stop-color="#8E78A1"/>
+      <stop offset="0.8750" stop-color="#927CA4"/>
+      <stop offset="0.9107" stop-color="#957EA6"/>
+      <stop offset="0.9464" stop-color="#9780A9"/>
+      <stop offset="0.9821" stop-color="#9982AB"/>
+    </linearGradient>
+    <radialGradient id="psSheen" gradientUnits="userSpaceOnUse" cx="67.760" cy="249.406" r="157.935"
+        gradientTransform="translate(16.947 0) scale(0.7499 1)">
+      <stop offset="0.0323" stop-color="#E8D3FF" stop-opacity="0.500"/>
+      <stop offset="0.0968" stop-color="#E8D3FF" stop-opacity="0.500"/>
+      <stop offset="0.1613" stop-color="#E8D3FF" stop-opacity="0.476"/>
+      <stop offset="0.2258" stop-color="#E8D3FF" stop-opacity="0.435"/>
+      <stop offset="0.2903" stop-color="#E8D3FF" stop-opacity="0.395"/>
+      <stop offset="0.3548" stop-color="#E8D3FF" stop-opacity="0.350"/>
+      <stop offset="0.4194" stop-color="#E8D3FF" stop-opacity="0.309"/>
+      <stop offset="0.4839" stop-color="#E8D3FF" stop-opacity="0.242"/>
+      <stop offset="0.5484" stop-color="#E8D3FF" stop-opacity="0.200"/>
+      <stop offset="0.6129" stop-color="#E8D3FF" stop-opacity="0.170"/>
+      <stop offset="0.6774" stop-color="#E8D3FF" stop-opacity="0.143"/>
+      <stop offset="0.7419" stop-color="#E8D3FF" stop-opacity="0.120"/>
+      <stop offset="0.8065" stop-color="#E8D3FF" stop-opacity="0.097"/>
+      <stop offset="0.8710" stop-color="#E8D3FF" stop-opacity="0.077"/>
+      <stop offset="0.9355" stop-color="#E8D3FF" stop-opacity="0.032"/>
+      <stop offset="1.0000" stop-color="#E8D3FF" stop-opacity="0.000"/>
+      <stop offset="1" stop-color="#E8D3FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="psArm" gradientUnits="userSpaceOnUse" x1="120.74" y1="0" x2="190.32" y2="0">
+      <stop offset="0.0000" stop-color="#5E4F6B" stop-opacity="0.000"/>
+      <stop offset="0.1000" stop-color="#5E4F6B" stop-opacity="0.021"/>
+      <stop offset="0.2000" stop-color="#5E4F6B" stop-opacity="0.070"/>
+      <stop offset="0.3000" stop-color="#5E4F6B" stop-opacity="0.122"/>
+      <stop offset="0.4000" stop-color="#5E4F6B" stop-opacity="0.215"/>
+      <stop offset="0.5000" stop-color="#5E4F6B" stop-opacity="0.319"/>
+      <stop offset="0.6000" stop-color="#5E4F6B" stop-opacity="0.441"/>
+      <stop offset="0.7000" stop-color="#5E4F6B" stop-opacity="0.550"/>
+      <stop offset="0.8000" stop-color="#5E4F6B" stop-opacity="0.689"/>
+      <stop offset="0.9000" stop-color="#5E4F6B" stop-opacity="0.828"/>
+      <stop offset="1.0000" stop-color="#5E4F6B" stop-opacity="0.995"/>
+    </linearGradient>
+    <clipPath id="psClip"><path d="M 37.60 310.45 L 37.60 162.58 A 45.00 45.00 0 0 1 82.60 117.58 L 120.74 117.58 L 120.74 158.81 L 169.52 158.81 A 20.80 20.80 0 0 0 190.29 139.14 L 190.32 192.60 A 45.00 45.00 0 0 1 145.32 237.60 L 120.74 237.60 L 120.74 265.45 A 45.00 45.00 0 0 1 75.74 310.45 Z"/></clipPath>
+  </defs>
+  <g transform="translate(0.5 0.5)">
+  <path id="ps-bowl" fill-rule="evenodd" fill="#E9E8ED" d="M 37.60 83.18 A 45.00 45.00 0 0 1 82.60 38.18 L 171.58 38.18 A 99.72 99.72 0 1 1 171.58 237.60 L 120.74 237.60 L 120.74 265.45 A 45.00 45.00 0 0 1 75.74 310.45 L 37.60 310.45 Z M 120.74 117.58 L 167.62 117.58 A 22.70 22.70 0 0 1 190.29 139.14 A 20.80 20.80 0 0 1 169.52 158.81 L 120.74 158.81 Z"/>
+  <path id="ps-mark" fill="url(#psBase)" d="M 37.60 310.45 L 37.60 162.58 A 45.00 45.00 0 0 1 82.60 117.58 L 120.74 117.58 L 120.74 158.81 L 169.52 158.81 A 20.80 20.80 0 0 0 190.29 139.14 L 190.32 192.60 A 45.00 45.00 0 0 1 145.32 237.60 L 120.74 237.60 L 120.74 265.45 A 45.00 45.00 0 0 1 75.74 310.45 Z"/>
+  <g clip-path="url(#psClip)">
+    <rect x="0" y="0" width="292" height="327" fill="url(#psSheen)"/>
+    <rect x="0" y="0" width="292" height="327" fill="url(#psArm)"/>
+  </g>
+  </g>
+</svg>
