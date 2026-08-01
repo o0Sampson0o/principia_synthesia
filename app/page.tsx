@@ -1,74 +1,53 @@
 import Link from "next/link";
-import { unstable_cache } from "next/cache";
 import { db } from "@/db";
 import { articles, articleViews, publishers, resourceVisibility, books } from "@/db/schema";
 import { desc, eq, count, min, sql, and, isNull, or } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
-/**
- * Most-viewed public articles over the last 30 days.
- *
- * The root layout reads cookies, so every route — including this one — renders
- * dynamically and cannot be statically served. That makes this aggregate (a
- * four-way join over `article_views`, grouped and sorted) run on *every*
- * homepage hit, which is the single heaviest recurring query in the app and a
- * standing drain on the Neon compute budget.
- *
- * The result is identical for every visitor (it is filtered to public,
- * published articles and never reads session state), so it is safe to cache
- * globally rather than per-request. Five minutes is well inside the tolerance
- * for a "top articles" list.
- */
-const getTopArticles = unstable_cache(
-  async () =>
-    db
-      .select({
-        id: articles.id,
-        slug: articles.slug,
-        title: articles.title,
-        summary: articles.summary,
-        isInternal: articles.isInternal,
-        viewCount: count(articleViews.id).as("view_count"),
-        publisherSlug: min(publishers.slug),
-        parentBookSlug: min(books.slug),
-      })
-      .from(articles)
-      .innerJoin(articleViews, eq(articleViews.articleId, articles.id))
-      .leftJoin(
-        resourceVisibility,
-        and(
-          eq(resourceVisibility.resourceType, "article"),
-          eq(resourceVisibility.ownerType, articles.ownerType),
-          eq(resourceVisibility.ownerId, articles.ownerId),
-          eq(resourceVisibility.resourceKey, articles.slug)
-        )
-      )
-      .leftJoin(
-        publishers,
-        or(
-          and(eq(articles.ownerType, "user"), eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
-          and(eq(articles.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
-        )
-      )
-      .leftJoin(books, and(eq(books.id, articles.parentBookId), isNull(books.deletedAt)))
-      .where(
-        and(
-          sql`${articles.metadata}->>'status' = 'published'`,
-          sql`${articleViews.viewedAt} > NOW() - INTERVAL '30 days'`,
-          or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public")),
-          isNull(articles.deletedAt)
-        )
-      )
-      .groupBy(articles.id, articles.slug, articles.title, articles.summary, articles.isInternal)
-      .orderBy(desc(count(articleViews.id)))
-      .limit(5),
-  ["home:top-articles"],
-  { tags: ["articles"], revalidate: 300 }
-);
-
 export default async function HomePage() {
   const session = await getSession();
-  const topArticles = await getTopArticles();
+
+  const topArticles = await db
+    .select({
+      id: articles.id,
+      slug: articles.slug,
+      title: articles.title,
+      summary: articles.summary,
+      isInternal: articles.isInternal,
+      viewCount: count(articleViews.id).as("view_count"),
+      publisherSlug: min(publishers.slug),
+      parentBookSlug: min(books.slug),
+    })
+    .from(articles)
+    .innerJoin(articleViews, eq(articleViews.articleId, articles.id))
+    .leftJoin(
+      resourceVisibility,
+      and(
+        eq(resourceVisibility.resourceType, "article"),
+        eq(resourceVisibility.ownerType, articles.ownerType),
+        eq(resourceVisibility.ownerId, articles.ownerId),
+        eq(resourceVisibility.resourceKey, articles.slug)
+      )
+    )
+    .leftJoin(
+      publishers,
+      or(
+        and(eq(articles.ownerType, "user"), eq(publishers.kind, "user"), eq(publishers.userId, articles.ownerId)),
+        and(eq(articles.ownerType, "org"), eq(publishers.kind, "org"), eq(publishers.orgId, articles.ownerId))
+      )
+    )
+    .leftJoin(books, and(eq(books.id, articles.parentBookId), isNull(books.deletedAt)))
+    .where(
+      and(
+        sql`${articles.metadata}->>'status' = 'published'`,
+        sql`${articleViews.viewedAt} > NOW() - INTERVAL '30 days'`,
+        or(isNull(resourceVisibility.visibility), eq(resourceVisibility.visibility, "public")),
+        isNull(articles.deletedAt)
+      )
+    )
+    .groupBy(articles.id, articles.slug, articles.title, articles.summary, articles.isInternal)
+    .orderBy(desc(count(articleViews.id)))
+    .limit(5);
 
   const hasArticles = topArticles.length > 0;
 
