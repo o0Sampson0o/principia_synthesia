@@ -966,6 +966,8 @@ body {
 }
 .cm-lp-animation-frame {
   width: 100%;
+  /* Starting height only — replaced by the height the frame reports on load.
+     Keep in sync with DEFAULT_ANIMATION_HEIGHT in lib/animation-dimensions.ts. */
   height: 400px;
   border: 0;
   border-radius: 0.375rem;

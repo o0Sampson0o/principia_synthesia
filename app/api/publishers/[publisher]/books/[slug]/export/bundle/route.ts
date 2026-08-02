@@ -4,6 +4,7 @@ import { articles, books, curriculumEntries, events, objects, publishers, resour
 import { eq, asc, and, inArray, isNull, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { buildBookBundle } from "@/lib/bundle/build-book-bundle";
+import { readAnimationHeight } from "@/lib/animation-dimensions";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { getLicenseFromRequest, featureEnabled } from "@/lib/license";
@@ -74,7 +75,7 @@ export async function GET(
   const animSlugsRaw = [...allContent.matchAll(/<DynamicAnimation[^>]+slug="([^"]+)"/g)];
   const animSlugs = [...new Set(animSlugsRaw.map((m) => m[1]))];
 
-  const animCodes = new Map<string, string>();
+  const animCodes = new Map<string, { code: string; height: number }>();
   if (animSlugs.length > 0) {
     const rows = await db
       .select({ slug: objects.slug, content: objects.content })
@@ -89,7 +90,8 @@ export async function GET(
       );
     for (const row of rows) {
       const code = (row.content as { code?: string }).code;
-      if (code) animCodes.set(row.slug, code);
+      // Carry the stored frame height so the export matches the web embed.
+      if (code) animCodes.set(row.slug, { code, height: readAnimationHeight(row.content) });
     }
   }
 

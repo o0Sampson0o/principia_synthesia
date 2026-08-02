@@ -6,6 +6,7 @@ import { defaultLight, defaultDark } from "@/lib/theme";
 import type { ThemeTokens } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
+import { ANIMATION_HEIGHT_MESSAGE, readAnimationHeight } from "@/lib/animation-dimensions";
 
 /**
  * GET /api/publishers/[publisher]/animations/[slug]
@@ -13,7 +14,7 @@ import { canView } from "@/lib/access";
  * Serves the animation as a self-contained HTML page suitable for embedding in
  * an `<iframe>`. The page contains a full-screen `<canvas>`, an inline
  * `<script>` with the stored animation code, and a `window.theme` object
- * populated with the 15 color tokens.
+ * populated with all 17 color tokens.
  *
  * Theme tokens are read from the `?theme=` query parameter, which must be a
  * URL-encoded JSON string of the form `{ light: ThemeTokens, dark: ThemeTokens }`.
@@ -69,6 +70,8 @@ export async function GET(
   const code = content.code ?? "";
   if (!code) return new NextResponse("Not found", { status: 404 });
 
+  const height = readAnimationHeight(row.content);
+
   const fnMatch = code.match(/function\s+(\w+)/);
   const fnCall = fnMatch ? `${fnMatch[1]}();` : "";
 
@@ -106,6 +109,12 @@ export async function GET(
     const _dark_mq = window.matchMedia('(prefers-color-scheme: dark)');
     window.theme = _dark_mq.matches ? _dark : _light;
     _dark_mq.addEventListener('change', e => { window.theme = e.matches ? _dark : _light; });
+
+    // Tell the embedder how tall this animation wants to be. The height lives on
+    // the object, so no embedder needs its own query to size the frame.
+    try {
+      parent.postMessage({ type: ${JSON.stringify(ANIMATION_HEIGHT_MESSAGE)}, height: ${height} }, '*');
+    } catch (e) {}
 
     window.addEventListener('DOMContentLoaded', function() {
       ${code}

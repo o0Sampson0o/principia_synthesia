@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { objects } from "@/db/schema";
+import { normalizeAnimationHeight } from "@/lib/animation-dimensions";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -118,6 +119,15 @@ export async function updateAnimationObject(
     content = JSON.parse(parsed.data.content);
   } catch {
     return { errors: { content: ["Invalid JSON"] } };
+  }
+
+  // The frame height reaches the DOM as a CSS length and the bundle export as an
+  // attribute, so clamp it here rather than trusting the submitted JSON.
+  if (content && typeof content === "object") {
+    content = {
+      ...content,
+      height: normalizeAnimationHeight((content as { height?: unknown }).height),
+    };
   }
 
   try {

@@ -14,7 +14,7 @@ export async function buildBookBundle(
   bookSlug: string,
   bookTitle: string,
   sections: BookSection[],
-  animationCodes: Map<string, string>,
+  animationCodes: Map<string, { code: string; height: number }>,
   events?: EventRow[]
 ): Promise<ArrayBuffer> {
   const zip = new JSZip();
@@ -29,8 +29,9 @@ export async function buildBookBundle(
     const withAnimations = raw.replace(
       /<DynamicAnimation[^>]+slug="([^"]+)"[^>]*\/?>/g,
       (_, slug) => {
-        const code = animationCodes.get(slug);
-        if (!code) return "";
+        const anim = animationCodes.get(slug);
+        if (!anim) return "";
+        const { code, height } = anim;
         const canvasId = `canvas-${slug}`;
         const patchedCode = code.replace(
           /document\.getElementById\(['"]canvas['"]\)/,
@@ -38,7 +39,7 @@ export async function buildBookBundle(
         );
         return `
 <div class="animation-container" style="margin:2rem 0;text-align:center">
-  <canvas id="${canvasId}" width="600" height="400" style="max-width:100%;border:1px solid #e5e7eb;border-radius:0.5rem"></canvas>
+  <canvas id="${canvasId}" width="600" height="${height}" style="max-width:100%;border:1px solid #e5e7eb;border-radius:0.5rem"></canvas>
   <script>
     (function() {
       ${patchedCode}

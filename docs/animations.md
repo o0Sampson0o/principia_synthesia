@@ -77,9 +77,32 @@ has `max-width: 100%; max-height: 100vh; object-fit: contain` set via CSS, so
 it scales to fit the iframe without scrollbars. Set its internal resolution via
 `canvas.width` and `canvas.height` inside your function.
 
+### Frame height
+
+There are two separate dimensions, and they do different jobs:
+
+- **Canvas resolution** — `canvas.width` / `canvas.height`, set in your code.
+  This is the drawing surface and its aspect ratio.
+- **Frame height** — how tall the embedded iframe is, in pixels. Stored *on the
+  animation object* and edited in the "Frame height" field in the animation
+  editor. Between 120 and 1600; defaults to 400.
+
+Because the height belongs to the object, one animation is the same size
+everywhere it appears — article embeds, the object page, the editor preview,
+and exported book bundles. It is deliberately **not** a prop on
+`<DynamicAnimation>`: an embedding article cannot override it.
+
+If your canvas is much taller than the frame, `object-fit: contain` shrinks it
+and leaves empty space at the sides. Match the frame height to your canvas
+aspect ratio to avoid that.
+
+Mechanically, the iframe route reads the stored height and `postMessage`s it to
+the embedder on load, so no page needs its own query to size the frame. See
+`lib/animation-dimensions.ts` and `components/AnimationFrame.tsx`.
+
 ### The `window.theme` API
 
-All 15 design tokens are available as `window.theme.<tokenName>` (camelCase).
+All 17 design tokens are available as `window.theme.<tokenName>` (camelCase).
 The correct set (light or dark) is chosen at load time based on
 `prefers-color-scheme` and switches live if the user changes their OS setting.
 
@@ -90,7 +113,9 @@ The correct set (light or dark) is chosen at load time based on
 | `muted` | `--muted` | Subdued background areas |
 | `mutedForeground` | `--muted-foreground` | Secondary labels |
 | `border` | `--border` | Dividers, axis lines |
-| `link` | `--link` | Accent / highlight color |
+| `accent` | `--accent` | Brand accent, emphasis |
+| `accentForeground` | `--accent-foreground` | Text on an accent fill |
+| `link` | `--link` | Link color |
 | `linkHover` | `--link-hover` | Emphasized accent |
 | `codeBackground` | `--code-background` | Code block backgrounds |
 | `surface` | `--surface` | Raised surfaces (cards, nav) |
@@ -129,10 +154,15 @@ function CircleDemo() {
 Use the `<DynamicAnimation />` MDX component:
 
 ```mdx
-<DynamicAnimation slug="your-animation-slug" />
+<DynamicAnimation publisher="your-publisher-slug" slug="anim-your-animation" />
 ```
 
-This renders a 400 px tall iframe. The component reads CSS custom properties
+Both props are required. Articles with a `canvas:` frontmatter value get this
+tag prepended automatically, with `publisher` filled in — see
+`prepareArticleBody` in `lib/article-mdx.tsx`.
+
+The iframe is sized by the animation's stored frame height (see above), not by
+the embed. The component reads CSS custom properties
 from the live page (`getComputedStyle(document.documentElement)`) and encodes
 them as the `?theme=` parameter before the iframe loads, so the animation
 always matches the site's current color scheme.

@@ -9,6 +9,7 @@ import { updateKaoObject, updateDiagram, updateAnimationObject, deleteKaoObject 
 import { isDiagramContent, type KaoContent } from "@/lib/kao";
 import EditObjectFormClient from "@/components/EditObjectFormClient";
 import AnimationEditor from "@/components/AnimationEditor";
+import { readAnimationHeight } from "@/lib/animation-dimensions";
 
 export default async function EditObjectPage({
   params,
@@ -79,6 +80,7 @@ export default async function EditObjectPage({
           name={obj.name}
           description={obj.description ?? ""}
           initialCode={(content as { code?: string }).code ?? ""}
+          initialHeight={readAnimationHeight(content)}
           updateAction={updateAnimationAction}
           deleteAction={deleteAction}
         />

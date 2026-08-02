@@ -1,5 +1,6 @@
 import { WidgetType } from "@codemirror/view";
 import { buildAnimationSrc } from "@/lib/useAnimationSrc";
+import { ANIMATION_HEIGHT_MESSAGE, normalizeAnimationHeight } from "@/lib/animation-dimensions";
 
 /**
  * Live-preview widget for `<DynamicAnimation publisher="…" slug="anim-…" />`.
@@ -41,6 +42,24 @@ export class AnimationWidget extends WidgetType {
       iframe.setAttribute("sandbox", "allow-scripts");
       iframe.className = "cm-lp-animation-frame";
       iframe.title = `Animation: ${this.slug}`;
+
+      // The frame reports its stored height on load. Sandboxed without
+      // allow-same-origin, so its origin is opaque — identify it by window.
+      const onMessage = (event: MessageEvent) => {
+        if (event.source !== iframe.contentWindow) return;
+        if (!event.data || event.data.type !== ANIMATION_HEIGHT_MESSAGE) return;
+        iframe.style.height = `${normalizeAnimationHeight(event.data.height)}px`;
+      };
+      window.addEventListener("message", onMessage);
+      // CodeMirror discards widget DOM without a teardown hook, so drop the
+      // listener once the frame leaves the document.
+      new MutationObserver((_records, observer) => {
+        if (!iframe.isConnected) {
+          window.removeEventListener("message", onMessage);
+          observer.disconnect();
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+
       card.replaceChildren(iframe);
     });
 
