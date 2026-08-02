@@ -16,7 +16,7 @@ Principia Synthesia is a personal knowledge base / wiki application built with N
 - **Revision History**: Automatic revision tracking with ability to view and restore previous versions
 - **Search**: Search across article titles, content, and summaries
 - **Authentication**: JWT-based admin authentication with bcrypt password hashing
-- **Theming**: Per-user CSS variable theme system (15 tokens × light/dark) with a live editor and preset palettes
+- **Theming**: Per-user CSS variable theme system (17 tokens × light/dark) with a live editor and preset palettes
 - **PDF / EPUB Export**: Download any curriculum book as a PDF (Playwright + KaTeX) or EPUB3 (MathJax SVG), cached in the database with content-hash invalidation
 
 ## Architecture Overview

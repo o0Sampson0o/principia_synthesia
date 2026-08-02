@@ -652,7 +652,7 @@ export const colorTokenSchema = z
     "Invalid color value"
   );
 
-/** Full theme-tokens shape; all 15 fields are required and validated. */
+/** Full theme-tokens shape; all 17 fields are required and validated. */
 export const themeTokensSchema = z.object({
   background:       colorTokenSchema,
   foreground:       colorTokenSchema,

@@ -2,7 +2,7 @@
 
 ## Theme system
 
-Theme tokens (15 color values × light/dark) are defined in `lib/theme.ts` with defaults and presets. The root layout (`app/layout.tsx`) injects a `<style>` block with CSS custom properties (e.g. `--background`, `--primary-btn`) derived from the user's saved theme (from `userThemes` table) or the defaults.
+Theme tokens (17 color values × light/dark) are defined in `lib/theme.ts` with defaults and presets. The root layout (`app/layout.tsx`) injects a `<style>` block with CSS custom properties (e.g. `--background`, `--primary-btn`) derived from the user's saved theme (from `userThemes` table) or the defaults.
 
 Tailwind utility classes beginning with `themed-` (e.g. `themed-btn-primary`, `themed-input`, `themed-surface`) are defined in `app/globals.css` using these CSS variables — they are not standard Tailwind tokens.
 

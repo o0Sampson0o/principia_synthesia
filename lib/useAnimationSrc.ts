@@ -2,13 +2,24 @@
 
 import { useState, useEffect } from "react";
 
-const TOKEN_KEYS = [
+/**
+ * The theme tokens forwarded into the animation iframe as `window.theme.*`.
+ * This is the authoritative list — the editor's colour reference is derived
+ * from it so the two cannot drift apart.
+ */
+export const ANIMATION_THEME_TOKENS = [
   "background", "foreground", "muted", "mutedForeground", "border",
-  "link", "linkHover", "codeBackground", "surface", "surfaceHover",
-  "primaryBtn", "primaryBtnText", "inputBorder", "inputFocusBorder", "secondaryText",
+  "accent", "accentForeground", "link", "linkHover", "codeBackground",
+  "surface", "surfaceHover", "primaryBtn", "primaryBtnText", "inputBorder",
+  "inputFocusBorder", "secondaryText",
 ] as const;
 
-function camelToKebab(s: string) {
+export type AnimationThemeToken = (typeof ANIMATION_THEME_TOKENS)[number];
+
+const TOKEN_KEYS = ANIMATION_THEME_TOKENS;
+
+/** `mutedForeground` → `muted-foreground`, matching the CSS custom property name. */
+export function camelToKebab(s: string) {
   return s.replace(/([A-Z])/g, (m) => `-${m.toLowerCase()}`);
 }
 

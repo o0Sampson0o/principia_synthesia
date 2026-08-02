@@ -9,7 +9,7 @@ system.
 
 ## Token model
 
-A theme is made of **15 color tokens**, each expressed as a CSS color string
+A theme is made of **17 color tokens**, each expressed as a CSS color string
 (hex, rgb, etc.). Every token maps to a CSS custom property on `:root`:
 
 | Token (camelCase) | CSS custom property | Role |
@@ -104,7 +104,7 @@ Users with a valid session can edit their theme at `/settings/theme`. The
 `ThemeEditor` component (a client component) lets the user:
 
 1. Toggle between editing light and dark mode independently.
-2. Apply a built-in preset (applies all 15 tokens at once).
+2. Apply a built-in preset (applies all 17 tokens at once).
 3. Use color pickers to fine-tune individual tokens (changes are applied to
    CSS variables on `document.documentElement` in real time for instant preview).
 4. Save the current mode's tokens via the `saveTheme` server action

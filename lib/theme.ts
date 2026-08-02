@@ -329,7 +329,7 @@ function camel2kebab(str: string): string {
 }
 
 /**
- * Generates a CSS `<style>` block that declares all 15 theme tokens as CSS
+ * Generates a CSS `<style>` block that declares all 17 theme tokens as CSS
  * custom properties on `:root`. The dark variants are wrapped in a
  * `prefers-color-scheme: dark` media query so the browser picks the right set
  * automatically.

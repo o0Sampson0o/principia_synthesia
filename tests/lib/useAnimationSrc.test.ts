@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useAnimationSrc, buildAnimationSrc } from "@/lib/useAnimationSrc";
+import { useAnimationSrc, buildAnimationSrc, ANIMATION_THEME_TOKENS } from "@/lib/useAnimationSrc";
+import { themeTokensSchema } from "@/lib/validations";
 
 // Helper: create a mock getComputedStyle that returns predictable CSS var values
 function mockGetComputedStyle(tokenValues: Record<string, string> = {}) {
@@ -43,21 +44,19 @@ describe("buildAnimationSrc", () => {
     expect(typeof parsed.dark).toBe("object");
   });
 
-  it("theme JSON has the 15 expected token keys", () => {
+  it("forwards every ThemeTokens field, and nothing else", () => {
     const src = buildAnimationSrc(TEST_PUBLISHER, "anim-my-slug");
     const url = new URL(src, "http://localhost");
     const raw = url.searchParams.get("theme")!;
     const parsed = JSON.parse(decodeURIComponent(raw));
-    const expectedKeys = [
-      "background", "foreground", "muted", "mutedForeground", "border",
-      "link", "linkHover", "codeBackground", "surface", "surfaceHover",
-      "primaryBtn", "primaryBtnText", "inputBorder", "inputFocusBorder",
-      "secondaryText",
-    ];
-    for (const key of expectedKeys) {
-      expect(parsed.light).toHaveProperty(key);
-      expect(parsed.dark).toHaveProperty(key);
-    }
+
+    // The forwarded set must match the theme schema exactly — a token added to
+    // ThemeTokens but not forwarded silently falls back to the built-in default
+    // inside the animation iframe.
+    const schemaKeys = Object.keys(themeTokensSchema.shape).sort();
+    expect([...ANIMATION_THEME_TOKENS].sort()).toEqual(schemaKeys);
+    expect(Object.keys(parsed.light).sort()).toEqual(schemaKeys);
+    expect(Object.keys(parsed.dark).sort()).toEqual(schemaKeys);
   });
 
   it("reads from getComputedStyle(document.documentElement)", () => {
