@@ -75,10 +75,22 @@ const ARTICLE_ROW = {
 
 function setupArticleSelect(rows: object[]) {
   const limitFn = vi.fn().mockResolvedValue(rows);
-  const whereFn = vi.fn().mockReturnValue({ limit: limitFn });
-  // list route: .where(...).orderBy(...); single route: .where(...).limit(1)
-  whereFn.mockReturnValue({ limit: limitFn, orderBy: vi.fn().mockResolvedValue(rows) });
-  const fromFn = vi.fn().mockReturnValue({ where: whereFn });
+  // Three call shapes reach this stub:
+  //   list route:   .where(...).orderBy(...)
+  //   book lookup:  .where(...).limit(1)
+  //   article find: .where(...)            ← awaited directly, since it must see
+  //                                          every row to detect an ambiguous slug
+  const whereFn = vi.fn().mockReturnValue({
+    limit: limitFn,
+    orderBy: vi.fn().mockResolvedValue(rows),
+    then: (resolve: (v: object[]) => unknown, reject: (e: unknown) => unknown) =>
+      Promise.resolve(rows).then(resolve, reject),
+  });
+  // The list route joins books to carry `parentBookSlug`, so `.from()` must
+  // offer `.leftJoin()` as well as `.where()`.
+  const fromResult: Record<string, unknown> = { where: whereFn };
+  fromResult.leftJoin = vi.fn().mockReturnValue(fromResult);
+  const fromFn = vi.fn().mockReturnValue(fromResult);
   mockSelect.mockReturnValue({ from: fromFn });
 }
 
@@ -325,5 +337,65 @@ describe("DELETE /articles/[slug]", () => {
     const { DELETE } = await import("@/app/api/v1/publishers/[publisher]/articles/[slug]/route");
     const res = await DELETE(req("DELETE", { slug: "article-x", ifMatch: "stale" }), slugParams);
     expect(res.status).toBe(412);
+  });
+});
+
+// ─── Book-scoped slug resolution ─────────────────────────────────────────────
+
+describe("GET /articles/[slug] — book-internal slug resolution", () => {
+  /** Two sections in different books sharing one slug. */
+  const IN_BOOK_3 = { ...ARTICLE_ROW, id: 91, isInternal: true, parentBookId: 3 };
+  const IN_BOOK_4 = { ...ARTICLE_ROW, id: 92, isInternal: true, parentBookId: 4 };
+
+  it("404 when a bare slug matches sections of two books", async () => {
+    authOk();
+    setupArticleSelect([IN_BOOK_3, IN_BOOK_4]);
+    const { GET } = await import("@/app/api/v1/publishers/[publisher]/articles/[slug]/route");
+    // Ambiguous: refusing beats silently syncing whichever row came back first.
+    const res = await GET(req("GET", { slug: "article-x" }), slugParams);
+    expect(res.status).toBe(404);
+  });
+
+  it("resolves a lone internal article without a book qualifier", async () => {
+    authOk();
+    setupArticleSelect([IN_BOOK_3]);
+    const { GET } = await import("@/app/api/v1/publishers/[publisher]/articles/[slug]/route");
+    const res = await GET(req("GET", { slug: "article-x" }), slugParams);
+    expect(res.status).toBe(200);
+  });
+
+  it("prefers the standalone article when a section shares its slug", async () => {
+    authOk();
+    setupArticleSelect([IN_BOOK_3, ARTICLE_ROW]);
+    const { GET } = await import("@/app/api/v1/publishers/[publisher]/articles/[slug]/route");
+    const res = await GET(req("GET", { slug: "article-x" }), slugParams);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.parentBookId).toBeNull();
+  });
+
+  it("?book= resolves the ambiguity", async () => {
+    authOk();
+    // The book lookup and the article query share this stub, so the book row
+    // must satisfy `.limit(1)` while the article query is awaited directly.
+    const limitFn = vi.fn().mockResolvedValue([{ id: 4 }]);
+    const rows = [IN_BOOK_3, IN_BOOK_4];
+    const whereFn = vi.fn().mockReturnValue({
+      limit: limitFn,
+      then: (resolve: (v: object[]) => unknown, reject: (e: unknown) => unknown) =>
+        Promise.resolve(rows).then(resolve, reject),
+    });
+    mockSelect.mockReturnValue({ from: vi.fn().mockReturnValue({ where: whereFn }) });
+
+    const { GET } = await import("@/app/api/v1/publishers/[publisher]/articles/[slug]/route");
+    const res = await GET(
+      new Request(`${BASE}/article-x?book=mechanics`, {
+        headers: { Authorization: "Bearer pst_test" },
+      }),
+      slugParams
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.parentBookId).toBe(4);
   });
 });

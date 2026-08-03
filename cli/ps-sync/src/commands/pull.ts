@@ -6,7 +6,8 @@ import { loadConfig, resolveToken } from "../config";
 import { injectPsId, semanticHash } from "../content";
 import { parseBookNote, renderBookNote, structureLocalHash } from "../book-note";
 import { indexByPsId, scanVault } from "../scan";
-import { loadState, saveState, stateKey, type ArticleState, type SyncState } from "../state";
+import { articleKey, loadState, saveState, stateKey, type ArticleState, type SyncState } from "../state";
+import { articlePath, bookNotePath } from "../layout";
 import { analyzeEntry, localSemanticHash } from "../sync-status";
 import { Selection } from "../selection";
 
@@ -31,10 +32,11 @@ function recordState(
   article: RemoteArticle,
   path: string
 ): void {
-  state.articles[stateKey(publisher, article.slug)] = {
+  state.articles[articleKey(publisher, article.slug, article.parentBookSlug)] = {
     articleId: article.id,
     slug: article.slug,
     publisher,
+    book: article.parentBookSlug,
     path,
     baseHash: article.contentHash,
     baseSemanticHash: semanticHash(article.content),
@@ -72,16 +74,18 @@ export async function pull(root: string, argv: string[]): Promise<number> {
     }
     const byPath = new Map(files.map((f) => [f.path, f]));
     const { articles: remoteList } = await api.listArticles(pub);
-    const remoteSlugs = new Set(remoteList.map((r) => r.slug));
+    const remoteKeys = new Set(
+      remoteList.map((r) => articleKey(pub, r.slug, r.parentBookSlug))
+    );
 
     for (const remote of remoteList) {
-      if (!selection.isSelected(remote.slug)) continue;
-      const key = stateKey(pub, remote.slug);
+      if (!selection.isSelected(remote.slug, remote.parentBookSlug)) continue;
+      const key = articleKey(pub, remote.slug, remote.parentBookSlug);
       const st = state.articles[key];
 
       if (!st) {
         const local = byId.get(remote.id) ?? null;
-        const full = await api.getArticle(pub, remote.slug);
+        const full = await api.getArticle(pub, remote.slug, remote.parentBookSlug);
 
         if (local) {
           // File carries this article's ps-id but state has no record (state
@@ -99,7 +103,7 @@ export async function pull(root: string, argv: string[]): Promise<number> {
           continue;
         }
 
-        const path = `${pub}/articles/${remote.slug}.${ext}`;
+        const path = articlePath(pub, remote, ext);
         if (byPath.has(path)) {
           counts.conflicts++;
           console.warn(`C ${path} — untracked local file is in the way of a new remote article`);
@@ -120,7 +124,7 @@ export async function pull(root: string, argv: string[]): Promise<number> {
 
       switch (entry.status) {
         case "remote-changed": {
-          const full = await api.getArticle(pub, remote.slug);
+          const full = await api.getArticle(pub, remote.slug, remote.parentBookSlug);
           writeArticleFile(root, st.path, full);
           recordState(state, pub, full, st.path);
           counts.updated++;
@@ -131,7 +135,7 @@ export async function pull(root: string, argv: string[]): Promise<number> {
           counts.conflicts++;
           console.warn(`C ${st.path} — edited both locally and remotely (pull left it untouched)`);
           if (values["write-conflicts"]) {
-            const full = await api.getArticle(pub, remote.slug);
+            const full = await api.getArticle(pub, remote.slug, remote.parentBookSlug);
             const sidePath = st.path.replace(/\.[^.]+$/, `.remote.${ext}`);
             writeFileSync(join(root, sidePath), full.content);
             console.warn(`  wrote remote version to ${sidePath}`);
@@ -149,8 +153,8 @@ export async function pull(root: string, argv: string[]): Promise<number> {
 
     // Articles deleted remotely
     for (const [key, st] of Object.entries(state.articles)) {
-      if (st.publisher !== pub || remoteSlugs.has(st.slug)) continue;
-      if (!selection.isSelected(st.slug)) continue;
+      if (st.publisher !== pub || remoteKeys.has(key)) continue;
+      if (!selection.isSelected(st.slug, st.book)) continue;
       const file = byId.get(st.articleId) ?? byPath.get(st.path) ?? null;
       const entry = analyzeEntry(key, st, file, null);
       if (entry.status === "gone") {
@@ -171,9 +175,9 @@ export async function pull(root: string, argv: string[]): Promise<number> {
       const { books } = await api.listBooks(pub);
       let booksRefreshed = 0;
       for (const b of books) {
-        if (!selection.isSelected(b.slug)) continue;
+        if (!selection.isSelected(b.slug, null)) continue;
         const book = await api.getBook(pub, b.slug);
-        const path = `${pub}/books/${b.slug}.${ext}`;
+        const path = bookNotePath(pub, b.slug, ext);
         const abs = join(root, path);
         const key = stateKey(pub, b.slug);
         const st = state.books![key];

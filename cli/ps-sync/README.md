@@ -48,15 +48,34 @@ By default every command syncs all your articles and books. To narrow it down,
 `pull`, `push` and `status` accept two mutually exclusive slug filters:
 
 ```bash
-ps-sync pull --only intro,chapter-1        # only these slugs, skip the rest
-ps-sync push --except draft-notes,scratch  # everything except these slugs
+ps-sync pull --only intro,chapter-1         # only these, skip the rest
+ps-sync push --except draft-notes,scratch   # everything except these
+ps-sync pull --only relativity              # a whole book, sections included
+ps-sync pull --only relativity/intro        # one section of one book
+ps-sync push --except mechanics/intro       # all but that one section
 ```
 
-- `--only` is an **inclusive** allowlist — sync just the listed slugs.
-- `--except` is an **exclusive** denylist — sync everything but the listed slugs.
-- A slug may name an article *or* a book; a term matching both selects both.
-- Slugs are comma-separated; give neither flag to sync everything (the default).
+- `--only` is an **inclusive** allowlist — sync just the listed terms.
+- `--except` is an **exclusive** denylist — sync everything but the listed terms.
+- A bare term may name an article, a book (which selects every section in it),
+  or a section slug — and section slugs repeat across books, so a bare `intro`
+  matches the `intro` of *every* book.
+- Use the qualified `book/section` form to pin down exactly one section.
+- Terms are comma-separated; give neither flag to sync everything (the default).
 - A term that matches no real slug is reported, so typos don't fail silently.
+
+### Folder layout
+
+```
+<publisher>/articles/<slug>.md          standalone articles   (tracked)
+<publisher>/books/<book>/<slug>.md      book sections         (tracked)
+<publisher>/books/<book>.md             book index note       (reorder here)
+```
+
+Sections live under their book because a book-internal slug is only unique
+*within* that book — two books can each have an `intro`, and a flat folder
+would map both onto one file. Files are tracked by their `ps-id`, not their
+path, so you can move or rename them freely and the next sync re-links them.
 
 ## How it works
 

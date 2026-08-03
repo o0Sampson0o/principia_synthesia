@@ -4,7 +4,8 @@ import { ApiClient } from "../api";
 import { loadConfig, resolveToken } from "../config";
 import { slugFromFilename } from "../content";
 import { indexByPsId, scanVault } from "../scan";
-import { loadState, stateKey } from "../state";
+import { articleKey, loadState } from "../state";
+import { articlePath, bookFromPath } from "../layout";
 import { analyzeEntry, findUntracked, type EntryStatus } from "../sync-status";
 import { Selection } from "../selection";
 
@@ -44,14 +45,16 @@ export async function status(root: string, argv: string[]): Promise<number> {
 
   for (const pub of publishers) {
     const { articles: remoteList } = await api.listArticles(pub);
-    const remoteBySlug = new Map(remoteList.map((r) => [r.slug, r]));
+    const remoteByKey = new Map(
+      remoteList.map((r) => [articleKey(pub, r.slug, r.parentBookSlug), r])
+    );
     console.log(`\n${pub}:`);
 
     for (const [key, st] of Object.entries(state.articles)) {
       if (st.publisher !== pub) continue;
-      if (!selection.isSelected(st.slug)) continue;
+      if (!selection.isSelected(st.slug, st.book)) continue;
       const file = byId.get(st.articleId) ?? byPath.get(st.path) ?? null;
-      const entry = analyzeEntry(key, st, file, remoteBySlug.get(st.slug) ?? null);
+      const entry = analyzeEntry(key, st, file, remoteByKey.get(key) ?? null);
       if (entry.status === "clean" || entry.status === "gone") continue;
       interesting++;
       if (entry.status.includes("conflict") || entry.status === "conflict") conflicts++;
@@ -60,10 +63,10 @@ export async function status(root: string, argv: string[]): Promise<number> {
 
     // Remote articles never pulled
     for (const r of remoteList) {
-      if (!selection.isSelected(r.slug)) continue;
-      if (!state.articles[stateKey(pub, r.slug)] && !byId.has(r.id)) {
+      if (!selection.isSelected(r.slug, r.parentBookSlug)) continue;
+      if (!state.articles[articleKey(pub, r.slug, r.parentBookSlug)] && !byId.has(r.id)) {
         interesting++;
-        console.log(`  N  not pulled yet            ${pub}/articles/${r.slug}.${config.extension}`);
+        console.log(`  N  not pulled yet            ${articlePath(pub, r, config.extension)}`);
       }
     }
 
@@ -75,7 +78,8 @@ export async function status(root: string, argv: string[]): Promise<number> {
         } catch {
           // Undeterminable slug: an allowlist can't include it; --except keeps it.
         }
-        if (fileSlug !== null ? !selection.isSelected(fileSlug) : selection.inclusive) {
+        const fileBook = bookFromPath(f.path);
+        if (fileSlug !== null ? !selection.isSelected(fileSlug, fileBook) : selection.inclusive) {
           continue;
         }
       }

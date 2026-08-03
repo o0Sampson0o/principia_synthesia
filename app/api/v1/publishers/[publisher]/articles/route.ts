@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { articles } from "@/db/schema";
+import { articles, books } from "@/db/schema";
 import { parentBookNotBinned } from "@/lib/curriculum";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { authorizePublisherRequest } from "@/lib/api-v1";
@@ -40,10 +40,15 @@ export async function GET(
       metadata: articles.metadata,
       isInternal: articles.isInternal,
       parentBookId: articles.parentBookId,
+      // Book slug travels with every internal article: clients need it to lay
+      // files out per book and to qualify writes with `?book=`, since a
+      // book-internal slug is only unique inside its own book.
+      parentBookSlug: books.slug,
       updatedAt: articles.updatedAt,
       content: articles.content,
     })
     .from(articles)
+    .leftJoin(books, eq(articles.parentBookId, books.id))
     .where(
       and(
         eq(articles.ownerType, auth.ownerType),
@@ -64,6 +69,7 @@ export async function GET(
       status: r.metadata?.status ?? "published",
       isInternal: r.isInternal,
       parentBookId: r.parentBookId,
+      parentBookSlug: r.parentBookSlug,
       updatedAt: r.updatedAt,
       contentHash: computeContentHash(r.content ?? ""),
     })),

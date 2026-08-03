@@ -60,8 +60,21 @@ export function analyzeEntry(
   return { key, st, file, remote, localDirty, remoteChanged, status };
 }
 
-/** Untracked candidate files for `push --create`: no ps-id, inside <publisher>/articles/. */
+/** Untracked candidate files for `push --create`: no ps-id, in an article slot. */
 export function findUntracked(files: LocalFile[], publisher: string): LocalFile[] {
-  const prefix = `${publisher}/articles/`;
-  return files.filter((f) => f.psId === null && f.path.startsWith(prefix));
+  return files.filter((f) => f.psId === null && isArticleSlot(f.path, publisher));
+}
+
+/**
+ * True for paths where an article file belongs:
+ *   <publisher>/articles/<slug>.<ext>       standalone
+ *   <publisher>/books/<book>/<slug>.<ext>   section
+ * The book *index* note lives at <publisher>/books/<book>.<ext> — one level
+ * shallower — so it is deliberately excluded.
+ */
+function isArticleSlot(path: string, publisher: string): boolean {
+  const parts = path.split("/");
+  if (parts[0] !== publisher) return false;
+  if (parts.length === 3 && parts[1] === "articles") return true;
+  return parts.length === 4 && parts[1] === "books";
 }

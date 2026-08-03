@@ -13,7 +13,8 @@ import {
   validateFrontmatter,
 } from "../content";
 import { indexByPsId, scanVault } from "../scan";
-import { loadState, saveState, stateKey } from "../state";
+import { articleKey, loadState, saveState } from "../state";
+import { bookFromPath } from "../layout";
 import { findUntracked, localSemanticHash } from "../sync-status";
 import { cliCommand } from "../invocation";
 import { Selection } from "../selection";
@@ -57,7 +58,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
   // --- Tracked files: update or delete ------------------------------------
   for (const [key, st] of Object.entries(state.articles)) {
     if (!publishers.includes(st.publisher)) continue;
-    if (!selection.isSelected(st.slug)) continue;
+    if (!selection.isSelected(st.slug, st.book)) continue;
 
     const file = byId.get(st.articleId) ?? byPath.get(st.path) ?? null;
 
@@ -72,7 +73,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
         continue;
       }
       try {
-        await api.deleteArticle(st.publisher, st.slug, st.baseHash);
+        await api.deleteArticle(st.publisher, st.slug, st.baseHash, st.book);
         delete state.articles[key];
         deleted++;
         console.log(`- deleted remotely: ${st.publisher}/${st.slug}`);
@@ -114,7 +115,10 @@ export async function push(root: string, argv: string[]): Promise<number> {
         st.publisher,
         st.slug,
         { content: stripped, editNote: "Synced via ps-sync" },
-        st.baseHash
+        st.baseHash,
+        // Without the book, a slug shared by two books is ambiguous and the
+        // server refuses the write rather than picking one.
+        st.book
       );
       st.baseHash = res.contentHash;
       st.baseSemanticHash = localHash;
@@ -141,7 +145,8 @@ export async function push(root: string, argv: string[]): Promise<number> {
         } catch {
           // Undeterminable slug: an allowlist can't include it; --except keeps it.
         }
-        if (fileSlug !== null ? !selection.isSelected(fileSlug) : selection.inclusive) {
+        const fileBook = bookFromPath(file.path);
+        if (fileSlug !== null ? !selection.isSelected(fileSlug, fileBook) : selection.inclusive) {
           continue;
         }
       }
@@ -176,10 +181,13 @@ export async function push(root: string, argv: string[]): Promise<number> {
       try {
         const res = await api.createArticle(pub, { slug, title, content: file.content });
         writeFileSync(join(root, file.path), injectPsId(file.content, res.id));
-        state.articles[stateKey(pub, slug)] = {
+        state.articles[articleKey(pub, slug, null)] = {
           articleId: res.id,
           slug,
           publisher: pub,
+          // POST always creates a standalone article; sections are made in the
+          // web UI, so a file dropped into a book folder still lands standalone.
+          book: null,
           path: file.path,
           baseHash: res.contentHash,
           baseSemanticHash: semanticHash(file.content),
@@ -202,7 +210,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
   let booksPushed = 0;
   for (const bst of Object.values(state.books ?? {})) {
     if (!publishers.includes(bst.publisher)) continue;
-    if (!selection.isSelected(bst.slug)) continue;
+    if (!selection.isSelected(bst.slug, null)) continue;
     const abs = join(root, bst.path);
     if (!existsSync(abs)) continue;
     const parsed = parseBookNote(readFileSync(abs, "utf8"));

@@ -28,13 +28,22 @@ Commands:
   status    Show what would be pulled/pushed; exit code 1 if conflicts exist
               --publisher <slug>  --only <a,b>  --except <a,b>
 
-Selecting what to sync (article/book slugs; default is everything):
-  --only  a,b,c   sync only these slugs, skip the rest (inclusive)
-  --except a,b,c  sync everything except these slugs (exclusive)
-  The two are mutually exclusive; a slug may name an article or a book.
+Selecting what to sync (default is everything):
+  --only  a,b,c   sync only these, skip the rest (inclusive)
+  --except a,b,c  sync everything except these (exclusive)
+  The two are mutually exclusive. A term is either:
+    <slug>          an article, a book (which selects all its sections),
+                    or a same-named section in any book
+    <book>/<slug>   one specific section of one book
+  Section slugs repeat across books, so use the qualified form to pin one down:
+    --only relativity            whole book
+    --only relativity/intro      just that section
+    --except mechanics/intro     everything but that section
 
 Token: create one at <server>/settings/api-tokens. Provide via PS_SYNC_TOKEN or init.
-Layout: <publisher>/articles/<slug>.md (tracked) and <publisher>/books/<slug>.md (read-only).
+Layout: <publisher>/articles/<slug>.md          standalone articles (tracked)
+        <publisher>/books/<book>/<slug>.md      book sections (tracked)
+        <publisher>/books/<book>.md             book index note (reorder here)
 `;
 
 async function main(): Promise<number> {

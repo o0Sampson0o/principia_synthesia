@@ -30,6 +30,8 @@ export interface RemoteArticleSummary {
   status: string;
   isInternal: boolean;
   parentBookId: number | null;
+  /** Slug of the owning book for internal articles; null for standalone ones. */
+  parentBookSlug: string | null;
   updatedAt: string | null;
   contentHash: string;
 }
@@ -68,6 +70,15 @@ export interface MeResponse {
   email: string;
   publisherSlug: string;
   publishers: Array<{ slug: string; kind: "user" | "org" }>;
+}
+
+/**
+ * `?book=` qualifier for the article endpoints. A book-internal slug is only
+ * unique inside its own book, so without this the server cannot tell two
+ * same-named sections apart and answers 404 rather than guessing.
+ */
+function bookQuery(book?: string | null): string {
+  return book ? `?book=${encodeURIComponent(book)}` : "";
 }
 
 export class ApiClient {
@@ -161,8 +172,11 @@ export class ApiClient {
     return this.request("GET", `/api/v1/publishers/${publisher}/articles`);
   }
 
-  getArticle(publisher: string, slug: string): Promise<RemoteArticle> {
-    return this.request("GET", `/api/v1/publishers/${publisher}/articles/${slug}`);
+  getArticle(publisher: string, slug: string, book?: string | null): Promise<RemoteArticle> {
+    return this.request(
+      "GET",
+      `/api/v1/publishers/${publisher}/articles/${slug}${bookQuery(book)}`
+    );
   }
 
   createArticle(
@@ -176,19 +190,26 @@ export class ApiClient {
     publisher: string,
     slug: string,
     body: { title?: string; summary?: string; content: string; editNote?: string },
-    baseHash: string
+    baseHash: string,
+    book?: string | null
   ): Promise<{ contentHash: string; updatedAt: string }> {
-    return this.request("PUT", `/api/v1/publishers/${publisher}/articles/${slug}`, {
+    return this.request("PUT", `/api/v1/publishers/${publisher}/articles/${slug}${bookQuery(book)}`, {
       body,
       ifMatch: baseHash,
     });
   }
 
-  deleteArticle(publisher: string, slug: string, baseHash: string): Promise<void> {
-    return this.request("DELETE", `/api/v1/publishers/${publisher}/articles/${slug}`, {
-      ifMatch: baseHash,
-      expectNoContent: true,
-    });
+  deleteArticle(
+    publisher: string,
+    slug: string,
+    baseHash: string,
+    book?: string | null
+  ): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/publishers/${publisher}/articles/${slug}${bookQuery(book)}`,
+      { ifMatch: baseHash, expectNoContent: true }
+    );
   }
 
   listBooks(publisher: string): Promise<{ books: RemoteBookSummary[] }> {

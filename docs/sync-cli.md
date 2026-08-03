@@ -47,13 +47,21 @@ authoring API). Rate limit: 240 req/min per user. Content cap: 2 MB.
 |---|---|---|
 | GET | `/api/v1/me` | Token check; lists writable publishers. |
 | GET | `/api/v1/publishers/:pub/articles` | Summaries + `contentHash` (sha256 of stored content). `?since=` optional. |
-| GET | `/api/v1/publishers/:pub/articles/:slug` | Full raw MDX + `contentHash` (also the `ETag`). |
+| GET | `/api/v1/publishers/:pub/articles/:slug` `?book=` | Full raw MDX + `contentHash` (also the `ETag`). |
 | POST | `/api/v1/publishers/:pub/articles` | `{ slug, title, summary?, content }` → 201. 409 `slug_exists`, 422 validation. |
-| PUT | `/api/v1/publishers/:pub/articles/:slug` | Requires `If-Match: "<baseHash>"` (else 428). Stale base → **412** with `remoteContentHash`. Body `{ title?, summary?, content, editNote? }`; omitted title/summary are kept. |
-| DELETE | `/api/v1/publishers/:pub/articles/:slug` | Same If-Match semantics; soft delete → 204. |
+| PUT | `/api/v1/publishers/:pub/articles/:slug` `?book=` | Requires `If-Match: "<baseHash>"` (else 428). Stale base → **412** with `remoteContentHash`. Body `{ title?, summary?, content, editNote? }`; omitted title/summary are kept. |
+| DELETE | `/api/v1/publishers/:pub/articles/:slug` `?book=` | Same If-Match semantics; soft delete → 204. |
 | GET | `/api/v1/publishers/:pub/books` | Read-only list. |
 | GET | `/api/v1/publishers/:pub/books/:slug` | Ordered chapter list + `structureHash` (also the `ETag`). |
 | PUT | `/api/v1/publishers/:pub/books/:slug` | Reorder / re-group chapters. Requires `If-Match: "<structureHash>"` (else 428); stale base → **412**; a changed chapter *set* → **409** (`chapter_set_mismatch`). Body `{ chapters: [{ articleSlug, partTitle }] }`. |
+
+**`?book=` on the article endpoints.** Book-internal article slugs are only
+unique within their own book, so a bare `:slug` can match sections of two
+different books. Resolution order is: the section of `?book=<book-slug>` when
+given, else the standalone article with that slug, else the single internal
+match. A slug matching sections of two books with no `?book=` is **404** — the
+API refuses to guess rather than syncing the wrong file. Standalone articles are
+still unique publisher-wide and never need the qualifier.
 
 Book index files (`<publisher>/books/<slug>.md`) are editable: reorder the
 chapter lines and move them under `## Part` headings, then `push`. **Only order
@@ -96,7 +104,10 @@ for the downloaded file, `ps-sync …` for the installed bin).
 - `init` — prompts for server URL + token, validates via `/me`, writes
   `.ps-sync.json` (no secrets) and `.ps-sync/token` (gitignored). Token can
   also come from `PS_SYNC_TOKEN`.
-- `pull` — writes `<publisher>/articles/<slug>.md`; overwrites only clean
+- `pull` — writes standalone articles to `<publisher>/articles/<slug>.md` and
+  book sections to `<publisher>/books/<book>/<slug>.md` (sections nest under
+  their book because a book-internal slug is only unique within that book —
+  a flat folder would map two books' `intro` onto one file); overwrites only clean
   files; conflicts leave the local file untouched (`--write-conflicts` drops a
   `*.remote.md` beside it). Also refreshes read-only book index notes at
   `<publisher>/books/<slug>.md` — ordered chapter lists using relative
@@ -109,6 +120,16 @@ for the downloaded file, `ps-sync …` for the installed bin).
   what was deleted locally.
 - `status` — table of modified / remote-changed / conflicts / new; exit 1 on
   conflicts.
+- **Selecting a subset** — `pull`, `push` and `status` take mutually exclusive
+  `--only a,b` / `--except a,b`. A bare term names an article, a book (which
+  selects all of its sections), or a section slug in *any* book; the qualified
+  `book/section` form pins exactly one section. Unmatched terms are reported so
+  typos don't silently sync nothing.
+- **State** — `.ps-sync/state.json` keys articles by
+  `<publisher>/books/<book>/<slug>` or `<publisher>/articles/<slug>`. A v1
+  state file (flat, slug-keyed) is upgraded by discarding the article
+  baselines; the next pull re-links every file by its `ps-id`, so nothing is
+  lost.
 
 ### Round-trip design (editor-agnostic)
 
