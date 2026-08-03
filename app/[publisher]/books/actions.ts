@@ -7,7 +7,6 @@ import {
   curriculumEntries,
   bookSnapshots,
   bookSnapshotEntries,
-  publishers,
   resourceVisibility,
 } from "@/db/schema";
 import { eq, asc, and, isNull } from "drizzle-orm";
