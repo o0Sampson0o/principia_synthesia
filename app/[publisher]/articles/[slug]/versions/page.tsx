@@ -1,19 +1,21 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { db } from "@/db";
-import { articles } from "@/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { listSnapshots } from "@/lib/article-snapshots";
+import { findArticleBySlug } from "@/lib/article-lookup";
 
 export default async function ArticleVersionsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publisher: string; slug: string }>;
+  /** `?book=` scopes the lookup to one book's section (slugs are book-unique). */
+  searchParams: Promise<{ book?: string }>;
 }) {
   const { publisher: publisherSlug, slug } = await params;
+  const { book: bookScope } = await searchParams;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -24,23 +26,14 @@ export default async function ArticleVersionsPage({
   const session = await getSession();
   if (!(await canEditContent(session, ownerType as "user" | "org", ownerId))) notFound();
 
-  const [articleRows] = await Promise.all([
-    db
-      .select({ id: articles.id, title: articles.title })
-      .from(articles)
-      .where(
-        and(
-          eq(articles.slug, slug),
-          eq(articles.ownerType, ownerType),
-          eq(articles.ownerId, ownerId),
-          isNull(articles.deletedAt)
-        )
-      )
-      .limit(1),
-  ]);
-
-  if (!articleRows[0]) notFound();
-  const article = articleRows[0];
+  const lookup = await findArticleBySlug({
+    ownerType: ownerType as "user" | "org",
+    ownerId,
+    slug,
+    bookSlug: bookScope,
+  });
+  if (lookup.kind !== "found") notFound();
+  const article = lookup.article;
 
   const snapshots = await listSnapshots(article.id);
 

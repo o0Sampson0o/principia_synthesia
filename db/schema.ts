@@ -7,6 +7,7 @@ import {
   integer,
   boolean,
   unique,
+  uniqueIndex,
   jsonb,
   index,
   check,
@@ -191,7 +192,24 @@ export const articles = pgTable(
     }),
   },
   (t) => [
-    unique().on(t.ownerType, t.ownerId, t.slug),
+    // Slug uniqueness is scoped differently for standalone and book-internal
+    // articles, so it takes two partial indexes rather than one constraint.
+    //
+    // A plain unique(owner, book, slug) would NOT work: Postgres treats NULLs as
+    // distinct, so every standalone article (parent_book_id IS NULL) would be
+    // exempt and duplicates would slip through.
+    //
+    // Standalone articles stay globally unique per publisher — they are addressed
+    // by /[publisher]/articles/[slug] and by bare `[[pub:articles:slug]]`
+    // wikilinks, which carry no book context.
+    uniqueIndex("articles_owner_slug_standalone_idx")
+      .on(t.ownerType, t.ownerId, t.slug)
+      .where(sql`${t.parentBookId} IS NULL`),
+    // Book-internal articles only need to be unique within their own book, so
+    // two books can each have a "intro" section.
+    uniqueIndex("articles_owner_book_slug_idx")
+      .on(t.ownerType, t.ownerId, t.parentBookId, t.slug)
+      .where(sql`${t.parentBookId} IS NOT NULL`),
     index("articles_owner_idx").on(t.ownerType, t.ownerId),
     index("articles_forked_from_idx").on(t.forkedFromId),
   ]

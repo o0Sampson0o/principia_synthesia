@@ -3,17 +3,22 @@ import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
-import { articles, resourceVisibility, accessGrants, users, organizations } from "@/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { resourceVisibility, accessGrants, users, organizations } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import Link from "next/link";
 import { setArticleVisibility, addArticleGrant, removeArticleGrant } from "./actions";
+import { findArticleBySlug } from "@/lib/article-lookup";
 
 export default async function ArticleAccessPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publisher: string; slug: string }>;
+  /** `?book=` scopes the lookup to one book's section (slugs are book-unique). */
+  searchParams: Promise<{ book?: string }>;
 }) {
   const { publisher: publisherSlug, slug } = await params;
+  const { book: bookScope } = await searchParams;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -26,13 +31,9 @@ export default async function ArticleAccessPage({
     redirect(`/${publisherSlug}/articles/${slug}`);
   }
 
-  const [article] = await db
-    .select({ id: articles.id, title: articles.title })
-    .from(articles)
-    .where(and(eq(articles.slug, slug), eq(articles.ownerType, ownerType), eq(articles.ownerId, ownerId), isNull(articles.deletedAt)))
-    .limit(1);
-
-  if (!article) notFound();
+  const lookup = await findArticleBySlug({ ownerType, ownerId, slug, bookSlug: bookScope });
+  if (lookup.kind !== "found") notFound();
+  const article = lookup.article;
 
   const [visRow] = await db
     .select({ visibility: resourceVisibility.visibility })

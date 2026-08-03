@@ -545,9 +545,10 @@ export async function createInternalArticle(publisherSlug: string, formData: For
       });
     });
   } catch (err) {
-    // Section slugs share the article namespace — duplicates are user input
+    // Section slugs are unique within this book only, so another book may hold
+    // the same slug quite legitimately — the clash is always in-book here.
     if (isUniqueViolation(err)) {
-      return { error: "A section or article with that slug already exists. Pick a different slug." };
+      return { error: "This book already has a section with that slug. Pick a different slug." };
     }
     throw err;
   }
@@ -607,6 +608,30 @@ export async function promoteArticleToStandalone(
         .where(eq(books.id, parentBookId))
         .limit(1)
     : [];
+
+  // Book-internal slugs are only unique within their book, but standalone slugs
+  // are unique publisher-wide — so promoting can collide with an existing
+  // standalone article in a way that was impossible when everything shared one
+  // namespace. Check first: the partial unique index would otherwise reject the
+  // UPDATE with a raw constraint error.
+  const [clash] = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .where(
+      and(
+        eq(articles.slug, article.slug),
+        eq(articles.ownerType, ownerType),
+        eq(articles.ownerId, ownerId),
+        isNull(articles.parentBookId),
+        isNull(articles.deletedAt)
+      )
+    )
+    .limit(1);
+  if (clash) {
+    throw new Error(
+      `A standalone article with the slug "${article.slug}" already exists. Rename this section before making it standalone.`
+    );
+  }
 
   // Flip the flags. The article now stands on its own (no longer
   // cascade-deletes with the book).

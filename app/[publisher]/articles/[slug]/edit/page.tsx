@@ -4,22 +4,28 @@ import { resolvePublisher } from "@/lib/publisher";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { db } from "@/db";
-import { articles, articleCategories, categories, revisions } from "@/db/schema";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { articleCategories, categories, revisions } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { updateArticle, saveArticleDraft, discardArticleDraft } from "../../actions";
 import DeleteArticleButton from "@/components/DeleteArticleButton";
 import ArticleEditorPanel from "@/components/ArticleEditorPanel";
 import CategoryPicker from "@/components/CategoryPicker";
 import RevisionHistory from "@/components/RevisionHistory";
 import { parseFrontmatter } from "@/lib/frontmatter";
+import { findArticleBySlug } from "@/lib/article-lookup";
 import Link from "next/link";
 
 export default async function EditArticlePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ publisher: string; slug: string }>;
+  // `?book=` scopes the lookup to one book's section — book-internal slugs are
+  // only unique within their book, so editing needs the book to disambiguate.
+  searchParams: Promise<{ book?: string }>;
 }) {
   const { publisher: publisherSlug, slug } = await params;
+  const { book: bookScope } = await searchParams;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -32,20 +38,9 @@ export default async function EditArticlePage({
     redirect(`/${publisherSlug}/articles/${slug}`);
   }
 
-  const [article] = await db
-    .select()
-    .from(articles)
-    .where(
-      and(
-        eq(articles.slug, slug),
-        eq(articles.ownerType, ownerType),
-        eq(articles.ownerId, ownerId),
-        isNull(articles.deletedAt)
-      )
-    )
-    .limit(1);
-
-  if (!article) notFound();
+  const lookup = await findArticleBySlug({ ownerType, ownerId, slug, bookSlug: bookScope });
+  if (lookup.kind !== "found") notFound();
+  const article = lookup.article;
 
   // When an unsaved draft exists, the editor opens on it; visitors still see
   // the published `content`.

@@ -157,7 +157,11 @@ export default async function BookSectionPage({
               </span>
               {isEditor && (
                 <Link
-                  href={`/${articlePublisherSlug}/articles/${article.slug}/edit`}
+                  /* `?book=` disambiguates: two books may hold a section with
+                     this slug, so the bare slug is not enough to edit by. */
+                  href={`/${articlePublisherSlug}/articles/${article.slug}/edit${
+                    article.isInternal ? `?book=${encodeURIComponent(bookSlug)}` : ""
+                  }`}
                   className="themed-nav-link hover:text-[var(--foreground)] transition-colors"
                   style={{ fontSize: "0.8125rem" }}
                 >

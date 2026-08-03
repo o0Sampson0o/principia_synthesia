@@ -38,32 +38,33 @@ import ArticleToc from "@/components/ArticleToc";
 import ContinueReading from "@/components/ContinueReading";
 import { extractToc } from "@/lib/article-toc";
 import { sectionHref } from "@/lib/book-structure";
+import { findArticleBySlug } from "@/lib/article-lookup";
+import AmbiguousArticle from "@/components/AmbiguousArticle";
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ publisher: string; slug: string }>;
+  searchParams: Promise<{ v?: string; book?: string }>;
 }): Promise<Metadata> {
   const { publisher: publisherSlug, slug } = await params;
+  const { book: bookScope } = await searchParams;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) return {};
   const ownerType = pub.kind;
   const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
 
-  const [article] = await db
-    .select({ title: articles.title, summary: articles.summary, isInternal: articles.isInternal })
-    .from(articles)
-    .where(
-      and(
-        eq(articles.slug, slug),
-        eq(articles.ownerType, ownerType),
-        eq(articles.ownerId, ownerId),
-        isNull(articles.deletedAt)
-      )
-    )
-    .limit(1);
-  if (!article || article.isInternal) return {};
+  const lookup = await findArticleBySlug({
+    ownerType: ownerType as "user" | "org",
+    ownerId,
+    slug,
+    bookSlug: bookScope,
+  });
+  if (lookup.kind !== "found") return {};
+  const article = lookup.article;
+  if (article.isInternal) return {};
 
   // Same visibility gate as the page — private articles stay untitled.
   const session = await getSession();
@@ -86,7 +87,7 @@ export default async function ArticlePage({
   searchParams,
 }: {
   params: Promise<{ publisher: string; slug: string }>;
-  searchParams: Promise<{ v?: string }>;
+  searchParams: Promise<{ v?: string; book?: string }>;
 }) {
   const [{ publisher: publisherSlug, slug }, resolvedSearchParams] = await Promise.all([
     params,
@@ -94,6 +95,7 @@ export default async function ArticlePage({
   ]);
 
   const versionHash = resolvedSearchParams.v;
+  const bookScope = resolvedSearchParams.book;
 
   const pub = await resolvePublisher(publisherSlug);
   if (!pub) notFound();
@@ -101,24 +103,24 @@ export default async function ArticlePage({
   const ownerType = pub.kind;
   const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
 
-  const [session, articleRows] = await Promise.all([
+  const [session, lookup] = await Promise.all([
     getSession(),
-    db
-      .select()
-      .from(articles)
-      .where(
-        and(
-          eq(articles.slug, slug),
-          eq(articles.ownerType, ownerType),
-          eq(articles.ownerId, ownerId),
-          isNull(articles.deletedAt)
-        )
-      )
-      .limit(1),
+    findArticleBySlug({
+      ownerType: ownerType as "user" | "org",
+      ownerId,
+      slug,
+      bookSlug: bookScope,
+    }),
   ]);
 
-  if (!articleRows[0]) notFound();
-  const article = articleRows[0];
+  // Sections of two different books can share a slug, so a bare slug with no
+  // book context can be genuinely ambiguous. Offer the choice instead of
+  // silently picking one.
+  if (lookup.kind === "ambiguous") {
+    return <AmbiguousArticle publisherSlug={publisherSlug} slug={slug} matches={lookup.matches} />;
+  }
+  if (lookup.kind !== "found") notFound();
+  const article = lookup.article;
 
   // Internal articles have no standalone page — send readers to their place in
   // the book. Wikilinks (`[[pub:articles:slug]]`) are built by string template
