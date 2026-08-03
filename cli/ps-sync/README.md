@@ -72,6 +72,12 @@ ps-sync push --except mechanics/intro       # all but that one section
 <publisher>/books/<book>.md             book index note       (reorder here)
 ```
 
+New files in `<publisher>/articles/` can be published with `push --create`.
+New files inside a book folder are **not** created by sync — a section also
+needs a position in the book's curriculum, so add it in the web UI and `pull`.
+ps-sync reports these rather than quietly publishing them as standalone
+articles in the wrong place.
+
 Sections live under their book because a book-internal slug is only unique
 *within* that book — two books can each have an `intro`, and a flat folder
 would map both onto one file. Files are tracked by their `ps-id`, not their

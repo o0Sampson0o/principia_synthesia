@@ -84,7 +84,13 @@ export async function status(root: string, argv: string[]): Promise<number> {
         }
       }
       interesting++;
-      console.log(`  A  new local (push --create)  ${f.path}`);
+      // Sections can't be created by sync — flag them as such rather than
+      // promising `push --create` will publish them.
+      if (bookFromPath(f.path) !== null) {
+        console.log(`  A  new section (web UI only)  ${f.path}`);
+      } else {
+        console.log(`  A  new local (push --create)  ${f.path}`);
+      }
     }
   }
 

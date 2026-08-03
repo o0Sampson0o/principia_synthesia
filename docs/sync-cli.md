@@ -115,9 +115,11 @@ for the downloaded file, `ps-sync …` for the installed bin).
   `.ps-sync.json` for wikilink-native editors. `--no-books` skips.
 - `push` — uploads locally modified tracked files with `If-Match`; 412 →
   reported as a conflict ("pull, merge, push again"). `--dry-run`;
-  `--create` publishes untracked files (slug from filename, `article-`
-  auto-prefixed; title from first `#` heading); `--delete` removes remotely
-  what was deleted locally.
+  `--create` publishes untracked files from `<publisher>/articles/` (slug from
+  filename, `article-` auto-prefixed; title from first `#` heading); untracked
+  files inside a book folder are reported and skipped, since the API creates
+  only standalone articles and a section also needs a curriculum position;
+  `--delete` removes remotely what was deleted locally.
 - `status` — table of modified / remote-changed / conflicts / new; exit 1 on
   conflicts.
 - **Selecting a subset** — `pull`, `push` and `status` take mutually exclusive

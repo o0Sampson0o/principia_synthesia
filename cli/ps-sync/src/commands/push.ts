@@ -54,6 +54,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
   let skippedInvalid = 0;
   let pendingNew = 0;
   let pendingDelete = 0;
+  let skippedSections = 0;
 
   // --- Tracked files: update or delete ------------------------------------
   for (const [key, st] of Object.entries(state.articles)) {
@@ -150,6 +151,20 @@ export async function push(root: string, argv: string[]): Promise<number> {
           continue;
         }
       }
+      // A file inside a book folder implies a new *section*, which the sync
+      // API cannot create — POST only makes standalone articles, and a section
+      // also needs a curriculum position. Creating it standalone would put the
+      // article somewhere the author did not ask for, so refuse and say why.
+      const targetBook = bookFromPath(file.path);
+      if (targetBook !== null) {
+        skippedSections++;
+        console.warn(
+          `! ${file.path} — new sections can't be created by sync; ` +
+            `add it to "${targetBook}" in the web UI, then pull`
+        );
+        continue;
+      }
+
       if (!values.create) {
         pendingNew++;
         console.log(`+ ${file.path} — new file (run with --create to publish)`);
@@ -185,8 +200,7 @@ export async function push(root: string, argv: string[]): Promise<number> {
           articleId: res.id,
           slug,
           publisher: pub,
-          // POST always creates a standalone article; sections are made in the
-          // web UI, so a file dropped into a book folder still lands standalone.
+          // Always standalone: files inside a book folder are refused above.
           book: null,
           path: file.path,
           baseHash: res.contentHash,
@@ -257,7 +271,8 @@ export async function push(root: string, argv: string[]): Promise<number> {
     `\npush done: ${pushed} ${verb}, ${created} created, ${deleted} deleted, ` +
       `${booksPushed} book structure(s), ` +
       `${pendingNew} new pending --create, ${pendingDelete} pending --delete, ` +
-      `${skippedInvalid} skipped (invalid frontmatter), ${conflicts} conflict(s)`
+      `${skippedInvalid} skipped (invalid frontmatter), ` +
+      `${skippedSections} skipped (new sections), ${conflicts} conflict(s)`
   );
   return conflicts > 0 ? 1 : 0;
 }
