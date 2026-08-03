@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import { mdxToHtml, PRINT_CSS, cleanMdx } from "@/lib/pdf/render-book-html";
 import type { EventRow } from "@/lib/timeline-utils";
 import { renderTimelineHtml } from "@/lib/events-html";
+import type { ThemeTokens } from "@/db/schema";
 
 interface BookSection {
   title: string;
@@ -15,9 +16,16 @@ export async function buildBookBundle(
   bookTitle: string,
   sections: BookSection[],
   animationCodes: Map<string, { code: string; height: number }>,
+  /**
+   * Palette exposed to animation code as `window.theme`. Bundle pages are a
+   * static light-styled document, so this is the light set — without it any
+   * animation reading `window.theme.foreground` throws on the exported copy.
+   */
+  themeTokens: ThemeTokens,
   events?: EventRow[]
 ): Promise<ArrayBuffer> {
   const zip = new JSZip();
+  const themeScript = `<script>window.theme = ${JSON.stringify(themeTokens)};</script>`;
 
   // Build each section HTML
   for (let i = 0; i < sections.length; i++) {
@@ -82,6 +90,7 @@ export async function buildBookBundle(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(ch.title)} &mdash; ${escapeHtml(bookTitle)}</title>
   <link rel="stylesheet" href="../styles.css">
+  ${themeScript}
 </head>
 <body>
   <nav class="chapter-nav">${navLinks}</nav>

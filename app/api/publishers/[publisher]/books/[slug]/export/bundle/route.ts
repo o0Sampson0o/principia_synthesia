@@ -1,6 +1,8 @@
 import { db } from "@/db";
 import { withDividerTitles } from "@/lib/curriculum";
-import { articles, books, curriculumEntries, events, objects, publishers, resourceVisibility } from "@/db/schema";
+import { articles, books, curriculumEntries, events, objects, publishers, resourceVisibility, userThemes } from "@/db/schema";
+import type { ThemeTokens } from "@/db/schema";
+import { defaultLight } from "@/lib/theme";
 import { eq, asc, and, inArray, isNull, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { buildBookBundle } from "@/lib/bundle/build-book-bundle";
@@ -9,6 +11,17 @@ import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { getLicenseFromRequest, featureEnabled } from "@/lib/license";
 import type { EventRow } from "@/lib/timeline-utils";
+
+/** The exporting user's light theme tokens, falling back to the defaults. */
+async function resolveLightTokens(userId: number | null): Promise<ThemeTokens> {
+  if (userId === null) return defaultLight;
+  const [row] = await db
+    .select({ lightTokens: userThemes.lightTokens })
+    .from(userThemes)
+    .where(eq(userThemes.userId, userId))
+    .limit(1);
+  return row?.lightTokens ? { ...defaultLight, ...row.lightTokens } : defaultLight;
+}
 
 export const maxDuration = 60;
 
@@ -133,11 +146,17 @@ export async function GET(
       );
   }
 
+  // Palette for `window.theme` inside exported animations. Bundle pages are a
+  // static light document, so the exporting user's light set (or the built-in
+  // default) is the right one — there is no scheme to switch between offline.
+  const themeTokens = await resolveLightTokens(session?.userId ?? null);
+
   const buffer = await buildBookBundle(
     bookSlug,
     bookRow.title,
     entries,
     animCodes,
+    themeTokens,
     publisherEvents.length > 0 ? publisherEvents : undefined
   );
 
