@@ -1,33 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { camel2kebab, defaultLight } from "@/lib/theme";
+import type { ThemeTokens } from "@/db/schema";
 
 /**
  * The theme tokens forwarded into the animation iframe as `window.theme.*`.
- * This is the authoritative list — the editor's colour reference is derived
- * from it so the two cannot drift apart.
+ *
+ * Derived from `defaultLight` rather than hand-listed, so a token added to
+ * `ThemeTokens` reaches animation code automatically. It used to be a separate
+ * list and silently drifted — `accent` and `accentForeground` existed in the
+ * theme but never reached `window.theme`.
  */
-export const ANIMATION_THEME_TOKENS = [
-  "background", "foreground", "muted", "mutedForeground", "border",
-  "accent", "accentForeground", "link", "linkHover", "codeBackground",
-  "surface", "surfaceHover", "primaryBtn", "primaryBtnText", "inputBorder",
-  "inputFocusBorder", "secondaryText",
-] as const;
+export const ANIMATION_THEME_TOKENS = Object.keys(defaultLight) as AnimationThemeToken[];
 
-export type AnimationThemeToken = (typeof ANIMATION_THEME_TOKENS)[number];
-
-const TOKEN_KEYS = ANIMATION_THEME_TOKENS;
-
-/** `mutedForeground` → `muted-foreground`, matching the CSS custom property name. */
-export function camelToKebab(s: string) {
-  return s.replace(/([A-Z])/g, (m) => `-${m.toLowerCase()}`);
-}
+export type AnimationThemeToken = keyof ThemeTokens;
 
 function readThemeTokens() {
   const style = getComputedStyle(document.documentElement);
   const result: Record<string, string> = {};
-  for (const key of TOKEN_KEYS) {
-    result[key] = style.getPropertyValue(`--${camelToKebab(key)}`).trim();
+  for (const key of ANIMATION_THEME_TOKENS) {
+    result[key] = style.getPropertyValue(`--${camel2kebab(key)}`).trim();
   }
   return result;
 }

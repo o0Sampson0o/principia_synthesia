@@ -7,7 +7,7 @@ import { resourceVisibility, accessGrants, users, organizations } from "@/db/sch
 import { and, eq } from "drizzle-orm";
 import Link from "next/link";
 import { setArticleVisibility, addArticleGrant, removeArticleGrant } from "./actions";
-import { findArticleBySlug } from "@/lib/article-lookup";
+import { requireArticleBySlug } from "@/lib/article-lookup";
 
 export default async function ArticleAccessPage({
   params,
@@ -31,9 +31,7 @@ export default async function ArticleAccessPage({
     redirect(`/${publisherSlug}/articles/${slug}`);
   }
 
-  const lookup = await findArticleBySlug({ ownerType, ownerId, slug, bookSlug: bookScope });
-  if (lookup.kind !== "found") notFound();
-  const article = lookup.article;
+  const article = await requireArticleBySlug({ ownerType, ownerId, slug, bookSlug: bookScope });
 
   const [visRow] = await db
     .select({ visibility: resourceVisibility.visibility })

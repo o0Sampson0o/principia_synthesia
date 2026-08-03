@@ -4,7 +4,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import { listSnapshots } from "@/lib/article-snapshots";
-import { findArticleBySlug } from "@/lib/article-lookup";
+import { requireArticleBySlug } from "@/lib/article-lookup";
 
 export default async function ArticleVersionsPage({
   params,
@@ -26,14 +26,7 @@ export default async function ArticleVersionsPage({
   const session = await getSession();
   if (!(await canEditContent(session, ownerType as "user" | "org", ownerId))) notFound();
 
-  const lookup = await findArticleBySlug({
-    ownerType: ownerType as "user" | "org",
-    ownerId,
-    slug,
-    bookSlug: bookScope,
-  });
-  if (lookup.kind !== "found") notFound();
-  const article = lookup.article;
+  const article = await requireArticleBySlug({ ownerType, ownerId, slug, bookSlug: bookScope });
 
   const snapshots = await listSnapshots(article.id);
 

@@ -12,7 +12,7 @@ import ArticleEditorPanel from "@/components/ArticleEditorPanel";
 import CategoryPicker from "@/components/CategoryPicker";
 import RevisionHistory from "@/components/RevisionHistory";
 import { parseFrontmatter } from "@/lib/frontmatter";
-import { findArticleBySlug } from "@/lib/article-lookup";
+import { requireArticleBySlug } from "@/lib/article-lookup";
 import Link from "next/link";
 
 export default async function EditArticlePage({
@@ -38,9 +38,7 @@ export default async function EditArticlePage({
     redirect(`/${publisherSlug}/articles/${slug}`);
   }
 
-  const lookup = await findArticleBySlug({ ownerType, ownerId, slug, bookSlug: bookScope });
-  if (lookup.kind !== "found") notFound();
-  const article = lookup.article;
+  const article = await requireArticleBySlug({ ownerType, ownerId, slug, bookSlug: bookScope });
 
   // When an unsaved draft exists, the editor opens on it; visitors still see
   // the published `content`.
@@ -62,12 +60,12 @@ export default async function EditArticlePage({
 
   async function saveDraftAction(content: string): Promise<{ ok: true; savedAt: string }> {
     "use server";
-    return saveArticleDraft(publisherSlug, slug, content);
+    return saveArticleDraft(publisherSlug, article.id, slug, content);
   }
 
   async function discardDraftAction(): Promise<void> {
     "use server";
-    await discardArticleDraft(publisherSlug, slug);
+    await discardArticleDraft(publisherSlug, article.id, slug);
   }
 
   const articleRevisions = await db

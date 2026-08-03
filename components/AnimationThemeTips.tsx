@@ -1,8 +1,5 @@
-import {
-  ANIMATION_THEME_TOKENS,
-  camelToKebab,
-  type AnimationThemeToken,
-} from "@/lib/useAnimationSrc";
+import { ANIMATION_THEME_TOKENS, type AnimationThemeToken } from "@/lib/useAnimationSrc";
+import { camel2kebab } from "@/lib/theme";
 
 /**
  * What each token is normally used for. Typed against the forwarded token list,
@@ -60,7 +57,7 @@ ctx.strokeStyle = window.theme.foreground;`}</code>
               <span
                 aria-hidden="true"
                 className="w-3.5 h-3.5 rounded-sm shrink-0 themed-border border"
-                style={{ background: `var(--${camelToKebab(token)})` }}
+                style={{ background: `var(--${camel2kebab(token)})` }}
               />
               <code className="text-xs font-mono themed-foreground shrink-0">{token}</code>
               <span className="text-xs themed-muted truncate">{TOKEN_USE[token]}</span>

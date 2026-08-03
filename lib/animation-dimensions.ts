@@ -44,6 +44,7 @@ export function normalizeAnimationHeight(value: unknown): number {
  * Objects saved before heights existed have no `height` key and get the default.
  */
 export function readAnimationHeight(content: unknown): number {
-  if (!content || typeof content !== "object") return DEFAULT_ANIMATION_HEIGHT;
-  return normalizeAnimationHeight((content as { height?: unknown }).height);
+  // No shape guard needed: anything without a usable `height` — a null column, a
+  // string, an object missing the key — normalizes to the default.
+  return normalizeAnimationHeight((content as { height?: unknown } | null)?.height);
 }

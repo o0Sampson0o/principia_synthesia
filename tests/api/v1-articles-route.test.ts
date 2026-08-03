@@ -73,21 +73,22 @@ const ARTICLE_ROW = {
   deletedAt: null,
 };
 
-function setupArticleSelect(rows: object[]) {
+function setupArticleSelect(rows: Array<Record<string, unknown>>) {
   const limitFn = vi.fn().mockResolvedValue(rows);
-  // Three call shapes reach this stub:
-  //   list route:   .where(...).orderBy(...)
-  //   book lookup:  .where(...).limit(1)
-  //   article find: .where(...)            ← awaited directly, since it must see
-  //                                          every row to detect an ambiguous slug
+  // Two consumers with different terminals and different row shapes:
+  //   list route:        .where(...).orderBy(...)  → flat article rows
+  //   findArticleBySlug: await .where(...)         → { article, parentBookSlug }
+  //                                                  (it joins books for the slug)
+  const joined = rows.map((r) => ({
+    article: r,
+    parentBookSlug: (r.parentBookSlug as string | null) ?? null,
+  }));
   const whereFn = vi.fn().mockReturnValue({
     limit: limitFn,
     orderBy: vi.fn().mockResolvedValue(rows),
     then: (resolve: (v: object[]) => unknown, reject: (e: unknown) => unknown) =>
-      Promise.resolve(rows).then(resolve, reject),
+      Promise.resolve(joined).then(resolve, reject),
   });
-  // The list route joins books to carry `parentBookSlug`, so `.from()` must
-  // offer `.leftJoin()` as well as `.where()`.
   const fromResult: Record<string, unknown> = { where: whereFn };
   fromResult.leftJoin = vi.fn().mockReturnValue(fromResult);
   const fromFn = vi.fn().mockReturnValue(fromResult);
@@ -376,17 +377,10 @@ describe("GET /articles/[slug] — book-internal slug resolution", () => {
 
   it("?book= resolves the ambiguity", async () => {
     authOk();
-    // The book lookup and the article query share this stub, so the book row
-    // must satisfy `.limit(1)` while the article query is awaited directly.
-    const limitFn = vi.fn().mockResolvedValue([{ id: 4 }]);
-    const rows = [IN_BOOK_3, IN_BOOK_4];
-    const whereFn = vi.fn().mockReturnValue({
-      limit: limitFn,
-      then: (resolve: (v: object[]) => unknown, reject: (e: unknown) => unknown) =>
-        Promise.resolve(rows).then(resolve, reject),
-    });
-    mockSelect.mockReturnValue({ from: vi.fn().mockReturnValue({ where: whereFn }) });
-
+    setupArticleSelect([
+      { ...IN_BOOK_3, parentBookSlug: "relativity" },
+      { ...IN_BOOK_4, parentBookSlug: "mechanics" },
+    ]);
     const { GET } = await import("@/app/api/v1/publishers/[publisher]/articles/[slug]/route");
     const res = await GET(
       new Request(`${BASE}/article-x?book=mechanics`, {
@@ -397,5 +391,6 @@ describe("GET /articles/[slug] — book-internal slug resolution", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.parentBookId).toBe(4);
+    expect(json.parentBookSlug).toBe("mechanics");
   });
 });

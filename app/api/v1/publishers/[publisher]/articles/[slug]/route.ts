@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { db } from "@/db";
-import { articles, books } from "@/db/schema";
-import { parentBookNotBinned } from "@/lib/curriculum";
-import { and, eq, isNull } from "drizzle-orm";
 import {
   authorizePublisherRequest,
   getIfMatchHash,
@@ -17,11 +13,15 @@ import {
   updateArticleCore,
 } from "@/lib/articles-write";
 import { apiUpdateArticleSchema } from "@/lib/validations";
+import { findArticleBySlug } from "@/lib/article-lookup";
 
 /**
- * Book-internal slugs are only unique within their book, so `?book=<slug>`
- * scopes the lookup. Without it a slug shared by two books is ambiguous and
- * this returns null rather than picking one — sync clients must qualify.
+ * The article a `?book=`-qualified request refers to.
+ *
+ * Delegates to the shared resolver so the sync API and the web pages cannot
+ * disagree about what a slug means. `undefined` covers both "no such article"
+ * and "ambiguous" — sync clients get a 404 and must qualify with `?book=`
+ * rather than have a slug resolved to an arbitrary section.
  */
 async function findArticle(
   ownerType: "user" | "org",
@@ -29,52 +29,14 @@ async function findArticle(
   slug: string,
   bookSlug?: string | null
 ) {
-  const rows = await db
-    .select()
-    .from(articles)
-    .where(
-      and(
-        eq(articles.slug, slug),
-        eq(articles.ownerType, ownerType),
-        eq(articles.ownerId, ownerId),
-        isNull(articles.deletedAt),
-        parentBookNotBinned()
-      )
-    );
-  if (rows.length === 0) return undefined;
-
-  if (bookSlug) {
-    const [book] = await db
-      .select({ id: books.id })
-      .from(books)
-      .where(
-        and(
-          eq(books.slug, bookSlug),
-          eq(books.ownerType, ownerType),
-          eq(books.ownerId, ownerId),
-          isNull(books.deletedAt)
-        )
-      )
-      .limit(1);
-    const scoped = book && rows.find((r) => r.parentBookId === book.id);
-    if (scoped) return scoped;
-  }
-
-  const standalone = rows.find((r) => r.parentBookId === null);
-  if (standalone) return standalone;
-  // Ambiguous without a book qualifier — refuse rather than guess.
-  return rows.length === 1 ? rows[0] : undefined;
-}
-
-/** Book slug for an internal article, so clients can lay files out per book. */
-async function bookSlugFor(parentBookId: number | null): Promise<string | null> {
-  if (parentBookId === null) return null;
-  const [row] = await db
-    .select({ slug: books.slug })
-    .from(books)
-    .where(eq(books.id, parentBookId))
-    .limit(1);
-  return row?.slug ?? null;
+  const lookup = await findArticleBySlug({
+    ownerType,
+    ownerId,
+    slug,
+    bookSlug,
+    excludeBinnedParent: true,
+  });
+  return lookup.kind === "found" ? lookup.article : undefined;
 }
 
 /** Reads the optional `?book=` scope off a request URL. */
@@ -121,7 +83,7 @@ export async function GET(
       content: article.content ?? "",
       isInternal: article.isInternal,
       parentBookId: article.parentBookId,
-      parentBookSlug: await bookSlugFor(article.parentBookId),
+      parentBookSlug: article.parentBookSlug,
       updatedAt: article.updatedAt,
       contentHash,
     },

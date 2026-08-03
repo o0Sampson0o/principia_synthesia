@@ -77,6 +77,7 @@ export async function pull(root: string, argv: string[]): Promise<number> {
     const remoteKeys = new Set(
       remoteList.map((r) => articleKey(pub, r.slug, r.parentBookSlug))
     );
+    const remoteIds = new Set(remoteList.map((r) => r.id));
 
     for (const remote of remoteList) {
       if (!selection.isSelected(remote.slug, remote.parentBookSlug)) continue;
@@ -154,6 +155,14 @@ export async function pull(root: string, argv: string[]): Promise<number> {
     // Articles deleted remotely
     for (const [key, st] of Object.entries(state.articles)) {
       if (st.publisher !== pub || remoteKeys.has(key)) continue;
+      // The key is book-qualified, so moving a section between books (or
+      // promoting it to standalone) retires the old key while the article lives
+      // on under a new one. The loop above already re-linked the file by ps-id;
+      // without this the entry would look deleted and the file would be removed.
+      if (remoteIds.has(st.articleId)) {
+        delete state.articles[key];
+        continue;
+      }
       if (!selection.isSelected(st.slug, st.book)) continue;
       const file = byId.get(st.articleId) ?? byPath.get(st.path) ?? null;
       const entry = analyzeEntry(key, st, file, null);

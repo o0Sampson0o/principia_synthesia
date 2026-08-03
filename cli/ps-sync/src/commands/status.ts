@@ -71,6 +71,7 @@ export async function status(root: string, argv: string[]): Promise<number> {
     }
 
     for (const f of findUntracked(files, pub)) {
+      const fileBook = bookFromPath(f.path);
       if (selection.active) {
         let fileSlug: string | null = null;
         try {
@@ -78,7 +79,6 @@ export async function status(root: string, argv: string[]): Promise<number> {
         } catch {
           // Undeterminable slug: an allowlist can't include it; --except keeps it.
         }
-        const fileBook = bookFromPath(f.path);
         if (fileSlug !== null ? !selection.isSelected(fileSlug, fileBook) : selection.inclusive) {
           continue;
         }
@@ -86,7 +86,7 @@ export async function status(root: string, argv: string[]): Promise<number> {
       interesting++;
       // Sections can't be created by sync — flag them as such rather than
       // promising `push --create` will publish them.
-      if (bookFromPath(f.path) !== null) {
+      if (fileBook !== null) {
         console.log(`  A  new section (web UI only)  ${f.path}`);
       } else {
         console.log(`  A  new local (push --create)  ${f.path}`);

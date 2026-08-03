@@ -208,6 +208,9 @@ export async function updateArticleCore(input: UpdateArticleCoreInput): Promise<
   // Renames must fail cleanly BEFORE the revision insert, or a rejected
   // rename would still pollute revision history.
   if (current && input.slug !== current.slug) {
+    // Mirror the partial unique indexes on `articles`: a section only has to be
+    // unique inside its own book, a standalone article publisher-wide. Checking
+    // publisher-wide for everything would reject renames the database allows.
     const [taken] = await db
       .select({ id: articles.id })
       .from(articles)
@@ -215,7 +218,10 @@ export async function updateArticleCore(input: UpdateArticleCoreInput): Promise<
         and(
           eq(articles.ownerType, input.ownerType),
           eq(articles.ownerId, input.ownerId),
-          eq(articles.slug, input.slug)
+          eq(articles.slug, input.slug),
+          current.parentBookId === null
+            ? isNull(articles.parentBookId)
+            : eq(articles.parentBookId, current.parentBookId)
         )
       )
       .limit(1);

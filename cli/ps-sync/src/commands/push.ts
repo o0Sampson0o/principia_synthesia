@@ -139,6 +139,8 @@ export async function push(root: string, argv: string[]): Promise<number> {
   // --- Untracked files: create with --create -------------------------------
   for (const pub of publishers) {
     for (const file of findUntracked(files, pub)) {
+      // A file inside a book folder implies a new *section*.
+      const targetBook = bookFromPath(file.path);
       if (selection.active) {
         let fileSlug: string | null = null;
         try {
@@ -146,16 +148,13 @@ export async function push(root: string, argv: string[]): Promise<number> {
         } catch {
           // Undeterminable slug: an allowlist can't include it; --except keeps it.
         }
-        const fileBook = bookFromPath(file.path);
-        if (fileSlug !== null ? !selection.isSelected(fileSlug, fileBook) : selection.inclusive) {
+        if (fileSlug !== null ? !selection.isSelected(fileSlug, targetBook) : selection.inclusive) {
           continue;
         }
       }
-      // A file inside a book folder implies a new *section*, which the sync
-      // API cannot create — POST only makes standalone articles, and a section
-      // also needs a curriculum position. Creating it standalone would put the
-      // article somewhere the author did not ask for, so refuse and say why.
-      const targetBook = bookFromPath(file.path);
+      // The sync API cannot create a section — POST only makes standalone
+      // articles, and a section also needs a curriculum position. Creating it
+      // standalone would put the article somewhere the author did not ask for.
       if (targetBook !== null) {
         skippedSections++;
         console.warn(

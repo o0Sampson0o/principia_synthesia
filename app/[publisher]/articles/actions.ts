@@ -295,18 +295,22 @@ export async function restoreRevision(formData: FormData) {
  */
 export async function saveArticleDraft(
   publisherSlug: string,
+  articleId: number,
   slug: string,
   content: string
 ): Promise<{ ok: true; savedAt: string }> {
   const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
   const savedAt = new Date();
+  // Targeted by id, not slug: section slugs are only unique within their book,
+  // so a slug predicate here would write the draft into every article sharing
+  // it. `slug` is kept for revalidation only.
   await db
     .update(articles)
     .set({ draftContent: content, draftSavedAt: savedAt })
     .where(
       and(
-        eq(articles.slug, slug),
+        eq(articles.id, articleId),
         eq(articles.ownerType, ownerType),
         eq(articles.ownerId, ownerId),
         isNull(articles.deletedAt)
@@ -325,16 +329,18 @@ export async function saveArticleDraft(
  */
 export async function discardArticleDraft(
   publisherSlug: string,
+  articleId: number,
   slug: string
 ): Promise<void> {
   const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
+  // By id for the same reason as saveArticleDraft.
   await db
     .update(articles)
     .set({ draftContent: null, draftSavedAt: null })
     .where(
       and(
-        eq(articles.slug, slug),
+        eq(articles.id, articleId),
         eq(articles.ownerType, ownerType),
         eq(articles.ownerId, ownerId),
         isNull(articles.deletedAt)

@@ -10,14 +10,34 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { setupSelectQueue } from "../helpers/drizzle-mocks";
 import { findArticleBySlug } from "@/lib/article-lookup";
 
 const OWNER = { ownerType: "user" as const, ownerId: 1 };
 
-/** Minimal article row shape — only the fields the resolver reads. */
-function article(id: number, slug: string, parentBookId: number | null) {
-  return { id, slug, parentBookId, title: `Article ${id}` };
+/** One joined row: the article plus its book's slug (null when standalone). */
+function row(id: number, slug: string, parentBookSlug: string | null) {
+  return {
+    article: {
+      id,
+      slug,
+      parentBookId: parentBookSlug === null ? null : id * 100,
+      title: `Article ${id}`,
+    },
+    parentBookSlug,
+  };
+}
+
+/**
+ * Stubs the single `select().from().leftJoin().where()` chain, awaited directly.
+ * Asserting the chain shape here is deliberate: the resolver must stay one
+ * query, since the article page runs it twice per request.
+ */
+function stubJoinQuery(rows: object[]) {
+  const whereFn = vi.fn().mockResolvedValue(rows);
+  const fromResult: Record<string, unknown> = { where: whereFn };
+  fromResult.leftJoin = vi.fn().mockReturnValue(fromResult);
+  mockSelect.mockReturnValue({ from: vi.fn().mockReturnValue(fromResult) });
+  return { whereFn };
 }
 
 describe("findArticleBySlug", () => {
@@ -26,66 +46,57 @@ describe("findArticleBySlug", () => {
   });
 
   it("returns not-found when nothing matches", async () => {
-    setupSelectQueue(mockSelect, [{ result: [], withLimit: false }]);
-    const r = await findArticleBySlug({ ...OWNER, slug: "nope" });
-    expect(r.kind).toBe("not-found");
+    stubJoinQuery([]);
+    expect((await findArticleBySlug({ ...OWNER, slug: "nope" })).kind).toBe("not-found");
   });
 
   it("resolves a standalone article by bare slug", async () => {
-    setupSelectQueue(mockSelect, [{ result: [article(7, "intro", null)], withLimit: false }]);
+    stubJoinQuery([row(7, "intro", null)]);
     const r = await findArticleBySlug({ ...OWNER, slug: "intro" });
-    expect(r).toMatchObject({ kind: "found", article: { id: 7 } });
+    expect(r).toMatchObject({ kind: "found", article: { id: 7, parentBookSlug: null } });
   });
 
-  it("resolves a lone internal article by bare slug, so old wikilinks keep working", async () => {
-    setupSelectQueue(mockSelect, [{ result: [article(9, "intro", 3)], withLimit: false }]);
+  it("resolves a lone internal article, so old bare wikilinks keep working", async () => {
+    stubJoinQuery([row(9, "intro", "relativity")]);
     const r = await findArticleBySlug({ ...OWNER, slug: "intro" });
     expect(r).toMatchObject({ kind: "found", article: { id: 9 } });
   });
 
   it("reports ambiguity when two books share a section slug", async () => {
-    setupSelectQueue(mockSelect, [
-      { result: [article(9, "intro", 3), article(10, "intro", 4)], withLimit: false },
-    ]);
+    stubJoinQuery([row(9, "intro", "relativity"), row(10, "intro", "mechanics")]);
     const r = await findArticleBySlug({ ...OWNER, slug: "intro" });
     expect(r.kind).toBe("ambiguous");
     if (r.kind === "ambiguous") expect(r.matches).toHaveLength(2);
   });
 
-  it("prefers the standalone article when a book section shares its slug", async () => {
-    setupSelectQueue(mockSelect, [
-      { result: [article(9, "intro", 3), article(11, "intro", null)], withLimit: false },
-    ]);
+  it("prefers the standalone article when a section shares its slug", async () => {
+    stubJoinQuery([row(9, "intro", "relativity"), row(11, "intro", null)]);
     const r = await findArticleBySlug({ ...OWNER, slug: "intro" });
     expect(r).toMatchObject({ kind: "found", article: { id: 11 } });
   });
 
-  it("scopes to the requested book, picking that book's section", async () => {
-    setupSelectQueue(mockSelect, [
-      { result: [{ id: 4 }], withLimit: true }, // book lookup
-      { result: [article(10, "intro", 4)], withLimit: true }, // scoped article
-    ]);
+  it("scopes to the requested book", async () => {
+    stubJoinQuery([row(9, "intro", "relativity"), row(10, "intro", "mechanics")]);
     const r = await findArticleBySlug({ ...OWNER, slug: "intro", bookSlug: "mechanics" });
     expect(r).toMatchObject({ kind: "found", article: { id: 10 } });
   });
 
-  it("falls back to the unscoped search when the book has no such section", async () => {
+  it("falls back to the standalone article when the book has no such section", async () => {
     // A stale `?book=` must not hide an article that is otherwise resolvable.
-    setupSelectQueue(mockSelect, [
-      { result: [{ id: 4 }], withLimit: true }, // book exists
-      { result: [], withLimit: true }, // but has no such section
-      { result: [article(11, "intro", null)], withLimit: false }, // standalone wins
-    ]);
-    const r = await findArticleBySlug({ ...OWNER, slug: "intro", bookSlug: "mechanics" });
+    stubJoinQuery([row(11, "intro", null)]);
+    const r = await findArticleBySlug({ ...OWNER, slug: "intro", bookSlug: "ghost" });
     expect(r).toMatchObject({ kind: "found", article: { id: 11 } });
   });
 
-  it("falls back when the named book does not exist", async () => {
-    setupSelectQueue(mockSelect, [
-      { result: [], withLimit: true }, // no such book
-      { result: [article(11, "intro", null)], withLimit: false },
-    ]);
-    const r = await findArticleBySlug({ ...OWNER, slug: "intro", bookSlug: "ghost" });
-    expect(r).toMatchObject({ kind: "found", article: { id: 11 } });
+  it("surfaces the book slug so callers need no second query", async () => {
+    stubJoinQuery([row(9, "intro", "relativity")]);
+    const r = await findArticleBySlug({ ...OWNER, slug: "intro" });
+    expect(r).toMatchObject({ kind: "found", article: { parentBookSlug: "relativity" } });
+  });
+
+  it("resolves in exactly one query", async () => {
+    stubJoinQuery([row(9, "intro", "relativity"), row(10, "intro", "mechanics")]);
+    await findArticleBySlug({ ...OWNER, slug: "intro", bookSlug: "mechanics" });
+    expect(mockSelect).toHaveBeenCalledTimes(1);
   });
 });

@@ -34,10 +34,31 @@ const PART_RE = /^##\s+(.+?)\s*$/;
 /** Sentinel headings that reset a grouping level back to "none". */
 const NO_PART_HEADING = "(no part)";
 const NO_CHAPTER_HEADING = "(no chapter)";
-// list line: optional number/bullet, then a link to ../articles/<slug>.<ext>
-// markdown form: [Label](../articles/slug.md) · wikilink form: [[slug|Label]]
-const MD_LINK_RE = /\[[^\]]*\]\(\.\.\/articles\/([a-z0-9-]+)\.[a-z]+\)/;
+// list line: optional number/bullet, then a link to the section file.
+// The note lives at <publisher>/books/<book>.<ext> and its sections sit in the
+// sibling <book>/ folder, so links are `<book>/<slug>.<ext>`. The older
+// `../articles/<slug>.<ext>` form is still parsed so notes written before the
+// per-book layout keep round-tripping.
+// markdown form: [Label](book/slug.md) · wikilink form: [[slug|Label]]
+const MD_LINK_RE = /\[[^\]]*\]\((?:\.\.\/articles\/|[a-z0-9-]+\/)([a-z0-9-]+)\.[a-z]+\)/;
 const WIKI_LINK_RE = /\[\[([a-z0-9-]+)(?:\|[^\]]*)?\]\]/;
+
+/**
+ * Path to a section file, relative to the book note at
+ * `<publisher>/books/<book>.<ext>`.
+ *
+ * Internal sections live in the sibling `<book>/` folder. Borrowed sections are
+ * standalone articles owned elsewhere, so they stay in `../articles/`.
+ */
+function sectionRelPath(
+  bookSlug: string,
+  section: { articleSlug: string; isInternal: boolean },
+  ext: string
+): string {
+  return section.isInternal
+    ? `${bookSlug}/${section.articleSlug}.${ext}`
+    : `../articles/${section.articleSlug}.${ext}`;
+}
 
 /** Parse an edited book index file back into an ordered section list. */
 export function parseBookNote(content: string): ParsedBookNote {
@@ -121,7 +142,7 @@ export function renderBookNote(
     const link =
       linkStyle === "wikilink"
         ? `[[${s.articleSlug}|${s.title}]]`
-        : `[${s.title}](../articles/${s.articleSlug}.${ext})`;
+        : `[${s.title}](${sectionRelPath(book.slug, s, ext)})`;
     lines.push(`${n}. ${link}`);
   }
   lines.push("");

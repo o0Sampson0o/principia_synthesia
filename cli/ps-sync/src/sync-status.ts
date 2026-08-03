@@ -2,6 +2,7 @@ import type { RemoteArticleSummary } from "./api";
 import { semanticHash, stripPsId } from "./content";
 import type { LocalFile } from "./scan";
 import type { ArticleState } from "./state";
+import { bookFromPath } from "./layout";
 
 export type EntryStatus =
   | "clean"
@@ -66,15 +67,13 @@ export function findUntracked(files: LocalFile[], publisher: string): LocalFile[
 }
 
 /**
- * True for paths where an article file belongs:
- *   <publisher>/articles/<slug>.<ext>       standalone
- *   <publisher>/books/<book>/<slug>.<ext>   section
- * The book *index* note lives at <publisher>/books/<book>.<ext> — one level
- * shallower — so it is deliberately excluded.
+ * True for paths where an article file belongs — a standalone slot, or a
+ * section slot inside a book folder. The path grammar itself lives in
+ * `layout.ts`; this only adds the publisher check.
  */
 function isArticleSlot(path: string, publisher: string): boolean {
   const parts = path.split("/");
   if (parts[0] !== publisher) return false;
-  if (parts.length === 3 && parts[1] === "articles") return true;
-  return parts.length === 4 && parts[1] === "books";
+  if (bookFromPath(path) !== null) return true;
+  return parts.length === 3 && parts[1] === "articles";
 }

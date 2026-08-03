@@ -56,12 +56,7 @@ export async function generateMetadata({
   const ownerType = pub.kind;
   const ownerId = (pub.kind === "user" ? pub.userId : pub.orgId)!;
 
-  const lookup = await findArticleBySlug({
-    ownerType: ownerType as "user" | "org",
-    ownerId,
-    slug,
-    bookSlug: bookScope,
-  });
+  const lookup = await findArticleBySlug({ ownerType, ownerId, slug, bookSlug: bookScope });
   if (lookup.kind !== "found") return {};
   const article = lookup.article;
   if (article.isInternal) return {};
@@ -105,12 +100,7 @@ export default async function ArticlePage({
 
   const [session, lookup] = await Promise.all([
     getSession(),
-    findArticleBySlug({
-      ownerType: ownerType as "user" | "org",
-      ownerId,
-      slug,
-      bookSlug: bookScope,
-    }),
+    findArticleBySlug({ ownerType, ownerId, slug, bookSlug: bookScope }),
   ]);
 
   // Sections of two different books can share a slug, so a bare slug with no
