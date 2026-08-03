@@ -133,3 +133,40 @@ describe("remarkWikilinks", () => {
     expect((children[0] as Text).type).toBe("text");
   });
 });
+
+describe("remarkWikilinks — book section form", () => {
+  it("links [[pub:books:book:section]] to the book section URL", () => {
+    const children = getFirstParagraphChildren("[[alice:books:relativity:intro]]");
+    expect(children).toHaveLength(1);
+    const link = children[0] as Link;
+    expect(link.url).toBe("/alice/books/relativity/intro");
+    expect((link.children[0] as Text).value).toBe("intro");
+  });
+
+  it("keeps two books' same-named sections pointing at different URLs", () => {
+    const a = getFirstParagraphChildren("[[p:books:relativity:intro]]")[0] as Link;
+    const b = getFirstParagraphChildren("[[p:books:mechanics:intro]]")[0] as Link;
+    expect(a.url).toBe("/p/books/relativity/intro");
+    expect(b.url).toBe("/p/books/mechanics/intro");
+  });
+
+  it("leaves a section on a non-book type as literal text", () => {
+    const children = getFirstParagraphChildren("see [[p:articles:a:b]] here");
+    // No link node at all — the whole paragraph stays text.
+    expect(children.every((c) => c.type === "text")).toBe(true);
+    const joined = children.map((c) => (c as Text).value).join("");
+    expect(joined).toBe("see [[p:articles:a:b]] here");
+  });
+
+  it("still transforms valid links in a paragraph containing an invalid one", () => {
+    const children = getFirstParagraphChildren(
+      "bad [[p:articles:a:b]] good [[p:books:bk:sec]]"
+    );
+    const links = children.filter((c) => c.type === "link") as Link[];
+    expect(links).toHaveLength(1);
+    expect(links[0].url).toBe("/p/books/bk/sec");
+    // The invalid one survives verbatim in the surrounding text.
+    const joined = children.map((c) => (c.type === "text" ? (c as Text).value : "")).join("");
+    expect(joined).toContain("[[p:articles:a:b]]");
+  });
+});
