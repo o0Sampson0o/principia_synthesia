@@ -90,3 +90,6 @@ COPILOT.md
 
 # Local Playwright auth state (session cookies — never commit)
 tests/e2e/.auth/
+
+# Output from the impeccable design skill (local working notes)
+.impeccable/
