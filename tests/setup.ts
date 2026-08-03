@@ -4,6 +4,29 @@ process.env.AUTH_SECRET = "test-secret-test-secret-please-replace";
 import "@testing-library/jest-dom";
 import { vi } from "vitest";
 
+// jsdom implements no media queries at all, so anything reading the colour
+// scheme (theme-aware editors, the animation frame) explodes without this.
+// Defaults to light and never fires; individual tests override it to simulate
+// dark mode or to drive a `change` event.
+// Guarded: this setup file also runs for `@vitest-environment node` specs,
+// which have no `window` at all.
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(() => false),
+    }),
+  });
+}
+
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({

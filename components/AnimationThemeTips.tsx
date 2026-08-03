@@ -44,8 +44,8 @@ export default function AnimationThemeTips() {
         <p className="text-xs themed-muted">
           Never hardcode hex values — read colours from{" "}
           <code className="themed-inline-code">window.theme</code> so the animation follows the
-          reader&rsquo;s theme. The values are captured when the frame loads; if the reader switches
-          light/dark the animation repaints on the next page load, not instantly.
+          reader&rsquo;s theme. Switching light/dark reloads the frame with the new palette, so your
+          animation restarts from the top — keep any setup cheap enough that this is not jarring.
         </p>
 
         <pre className="themed-pre text-xs overflow-x-auto">

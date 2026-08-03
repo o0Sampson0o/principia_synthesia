@@ -150,3 +150,63 @@ describe("useAnimationSrc", () => {
     expect(result.current).toContain("&v=7");
   });
 });
+
+describe("useAnimationSrc — colour scheme changes", () => {
+  /** A matchMedia stub whose `change` listeners can be fired on demand. */
+  function stubMatchMedia() {
+    const listeners: Array<() => void> = [];
+    vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) =>
+        ({
+          matches: false,
+          media: query,
+          addEventListener: (_: string, fn: () => void) => listeners.push(fn),
+          removeEventListener: (_: string, fn: () => void) => {
+            const i = listeners.indexOf(fn);
+            if (i >= 0) listeners.splice(i, 1);
+          },
+        }) as unknown as MediaQueryList
+    );
+    return {
+      fire: () => listeners.forEach((fn) => fn()),
+      get count() {
+        return listeners.length;
+      },
+    };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("rebuilds the URL with the new palette when the scheme flips", async () => {
+    // getComputedStyle only ever reports the *active* scheme, so the URL has to
+    // be rebuilt on change or the animation keeps the old colours.
+    const style = mockGetComputedStyle({ "--foreground": "#000000" });
+    const mq = stubMatchMedia();
+
+    const { result } = renderHook(() => useAnimationSrc(TEST_PUBLISHER, "anim-x"));
+    await act(async () => {});
+    const before = result.current!;
+    expect(decodeURIComponent(before)).toContain("#000000");
+
+    style.mockRestore();
+    mockGetComputedStyle({ "--foreground": "#ffffff" });
+    await act(async () => {
+      mq.fire();
+    });
+
+    expect(result.current).not.toBe(before);
+    expect(decodeURIComponent(result.current!)).toContain("#ffffff");
+  });
+
+  it("removes its listener on unmount", async () => {
+    mockGetComputedStyle();
+    const mq = stubMatchMedia();
+    const { unmount } = renderHook(() => useAnimationSrc(TEST_PUBLISHER, "anim-x"));
+    await act(async () => {});
+    expect(mq.count).toBe(1);
+    unmount();
+    expect(mq.count).toBe(0);
+  });
+});
