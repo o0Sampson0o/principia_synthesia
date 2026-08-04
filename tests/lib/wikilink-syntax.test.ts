@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { parseWikilink, wikilinkRe } from "@/lib/wikilink-syntax";
+import { parseWikilink, wikilinkRe, formatWikilink } from "@/lib/wikilink-syntax";
 
 describe("parseWikilink", () => {
   it("parses the three-segment form", () => {
@@ -92,5 +92,54 @@ describe("wikilinkRe (scanning form)", () => {
     const a = wikilinkRe();
     a.exec("x [[p:articles:article-a]]");
     expect(wikilinkRe().lastIndex).toBe(0);
+  });
+});
+
+describe("formatWikilink", () => {
+  it("renders the three-segment form", () => {
+    expect(formatWikilink({ publisher: "alice", type: "articles", slug: "intro" })).toBe(
+      "[[alice:articles:intro]]"
+    );
+  });
+
+  it("renders the book section form", () => {
+    expect(
+      formatWikilink({ publisher: "alice", type: "books", slug: "relativity", section: "intro" })
+    ).toBe("[[alice:books:relativity:intro]]");
+  });
+
+  it("omits the section segment when it is null or absent", () => {
+    expect(formatWikilink({ publisher: "a", type: "books", slug: "b", section: null })).toBe(
+      "[[a:books:b]]"
+    );
+    expect(formatWikilink({ publisher: "a", type: "objects", slug: "anim-x" })).toBe(
+      "[[a:objects:anim-x]]"
+    );
+  });
+
+  it("round-trips through parseWikilink", () => {
+    // The copy-to-clipboard buttons emit formatWikilink output, so anything it
+    // produces must be something the parser accepts and resolves identically.
+    const cases = [
+      { publisher: "alice", type: "articles" as const, slug: "intro", section: null },
+      { publisher: "alice", type: "objects" as const, slug: "anim-orbit", section: null },
+      { publisher: "alice", type: "books" as const, slug: "relativity", section: null },
+      { publisher: "alice", type: "books" as const, slug: "relativity", section: "intro" },
+    ];
+    for (const c of cases) {
+      const parsed = parseWikilink(formatWikilink(c));
+      expect(parsed).not.toBeNull();
+      expect(parsed).toMatchObject({
+        publisher: c.publisher,
+        type: c.type,
+        slug: c.slug,
+        section: c.section,
+      });
+    }
+  });
+
+  it("produces links the prose scanner also finds", () => {
+    const text = `see ${formatWikilink({ publisher: "p", type: "books", slug: "bk", section: "sec" })} here`;
+    expect([...text.matchAll(wikilinkRe())]).toHaveLength(1);
   });
 });

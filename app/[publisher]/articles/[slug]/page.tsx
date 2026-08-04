@@ -26,6 +26,8 @@ import MarkVerifiedForm from "@/components/MarkVerifiedForm";
 import SnapshotBanner from "@/components/SnapshotBanner";
 import { getSnapshotByShortHash } from "@/lib/article-snapshots";
 import CiteButton from "@/components/CiteButton";
+import CopySnippet from "@/components/CopySnippet";
+import { formatWikilink } from "@/lib/wikilink-syntax";
 import { classifyReferrer } from "@/lib/analytics-source";
 import { getOrCreateSessionId } from "@/lib/analytics-session";
 import ForkButton from "@/components/ForkButton";
@@ -352,6 +354,14 @@ export default async function ArticlePage({
               publishedAt={citationPublishedAt}
               url={canonicalUrl}
               versionHash={versionHash ?? null}
+            />
+          </span>
+          <span className="ps-meta-item">
+            {/* Standalone article: book-internal ones redirect to their book
+                section, where the book-qualified form is offered instead. */}
+            <CopySnippet
+              value={formatWikilink({ publisher: publisherSlug, type: "articles", slug })}
+              label="Copy wikilink"
             />
           </span>
           {!viewingSnapshot && (

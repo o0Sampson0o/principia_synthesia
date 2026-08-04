@@ -6,6 +6,8 @@ import { eq, and } from "drizzle-orm";
 import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
+import CopySnippet from "@/components/CopySnippet";
+import { formatWikilink } from "@/lib/wikilink-syntax";
 import DynamicAnimation from "@/components/DynamicAnimation";
 import DiagramRenderer from "@/components/DiagramRenderer";
 import { isDiagramContent, isDatasetContent, type KaoContent } from "@/lib/kao";
@@ -61,6 +63,24 @@ export default async function ObjectDetailPage({
           <Link href={`/${publisherSlug}/objects/${objSlug}/edit`} className="themed-btn-outline shrink-0" style={{ fontSize: "0.8125rem", padding: "0.375rem 0.875rem" }}>
             Edit
           </Link>
+        )}
+      </div>
+
+      {/* Reference snippets — what to paste into an article to cite or embed
+          this object. Animations get the embed tag too, since linking to one
+          and rendering one in place are different intentions. */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mb-10">
+        <CopySnippet
+          value={formatWikilink({ publisher: publisherSlug, type: "objects", slug: obj.slug })}
+          label="Copy wikilink"
+          title={`Link to this object: ${formatWikilink({ publisher: publisherSlug, type: "objects", slug: obj.slug })}`}
+        />
+        {obj.type === "animation" && (
+          <CopySnippet
+            value={`<DynamicAnimation publisher="${publisherSlug}" slug="${obj.slug}" />`}
+            label="Copy embed tag"
+            title={`Embed this animation: <DynamicAnimation publisher="${publisherSlug}" slug="${obj.slug}" />`}
+          />
         )}
       </div>
 

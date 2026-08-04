@@ -29,6 +29,8 @@ import {
 } from "@/lib/book-structure";
 import BookBreadcrumb, { type Crumb } from "@/components/book/BookBreadcrumb";
 import BookDividerToc from "@/components/book/BookDividerToc";
+import CopySnippet from "@/components/CopySnippet";
+import { formatWikilink } from "@/lib/wikilink-syntax";
 
 export default async function BookSectionPage({
   params,
@@ -155,6 +157,27 @@ export default async function BookSectionPage({
               >
                 {idx + 1} / {total}
               </span>
+              <CopySnippet
+                value={
+                  article.isInternal
+                    ? // Book-qualified: a section slug is only unique inside its
+                      // own book, so the bare form could mean another book's.
+                      formatWikilink({
+                        publisher: publisherSlug,
+                        type: "books",
+                        slug: bookSlug,
+                        section: article.slug,
+                      })
+                    : // Borrowed: a standalone article owned elsewhere, so its
+                      // canonical address is against its own publisher.
+                      formatWikilink({
+                        publisher: articlePublisherSlug,
+                        type: "articles",
+                        slug: article.slug,
+                      })
+                }
+                label="Copy wikilink"
+              />
               {isEditor && (
                 <Link
                   /* `?book=` disambiguates: two books may hold a section with

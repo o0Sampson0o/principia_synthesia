@@ -64,6 +64,22 @@ export function buildWikilink(
   };
 }
 
+/**
+ * Renders a wikilink as authors type it — the inverse of `parseWikilink`.
+ *
+ * Lives here so the copy-to-clipboard affordances emit exactly what the parser
+ * accepts; `tests/lib/wikilink-syntax.test.ts` asserts the round trip.
+ */
+export function formatWikilink(parts: {
+  publisher: string;
+  type: ParsedWikilink["type"];
+  slug: string;
+  section?: string | null;
+}): string {
+  const tail = parts.section ? `:${parts.section}` : "";
+  return `[[${parts.publisher}:${parts.type}:${parts.slug}${tail}]]`;
+}
+
 /** Parses a string that should be exactly one wikilink; null when it isn't. */
 export function parseWikilink(text: string): ParsedWikilink | null {
   const m = EXACT_RE.exec(text);
