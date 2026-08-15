@@ -82,6 +82,56 @@ $E = mc^2$`;
     expect(html).not.toContain("<Cite");
   });
 
+  it("highlights a ```cpp fence with both colour schemes baked in", async () => {
+    const html = await renderPreviewHtml("```cpp\nint main() { return 0; }\n```", PUB);
+    expect(html).toContain("shiki");
+    // Tokens carry a colour per scheme; app/globals.css picks which one applies.
+    expect(html).toMatch(/--shiki-light:#[0-9A-Fa-f]{6}/);
+    expect(html).toMatch(/--shiki-dark:#[0-9A-Fa-f]{6}/);
+    // `int` is a keyword, so it must not share the plain-text colour.
+    expect(html).toContain("int");
+  });
+
+  it("falls back to plain text for a language that does not exist", async () => {
+    const html = await renderPreviewHtml("```notalanguage\nhello\n```", PUB);
+    expect(html).toContain("hello");
+    expect(html).toContain("<pre");
+  });
+
+  it("leaves a mount point for a ```mermaid fence instead of a code listing", async () => {
+    const html = await renderPreviewHtml("```mermaid\ngraph TD;\n  A-->B;\n```", PUB);
+    expect(html).toContain('data-ps-embed="mermaid"');
+    expect(html).toContain('data-ps-source="graph TD;\n  A-->B;"');
+    expect(html).not.toContain("<pre");
+  });
+
+  it("leaves a mount point for a ```animation fence", async () => {
+    const html = await renderPreviewHtml("```animation height=520\nfunction Wave() {}\n```", PUB);
+    expect(html).toContain('data-ps-embed="inline-animation"');
+    expect(html).toContain('data-ps-height="520"');
+    expect(html).toContain("function Wave() {}");
+    expect(html).not.toContain("<pre");
+  });
+
+  it("passes an <Embed> target through untouched, with the article's publisher as the default", async () => {
+    const html = await renderPreviewHtml('<Embed slug="anim-orbit" />', PUB);
+    expect(html).toContain('data-ps-embed="embed"');
+    expect(html).toContain('data-ps-slug="anim-orbit"');
+    expect(html).toContain('data-ps-default-publisher="alice"');
+  });
+
+  it("does not parse a wikilink-addressed <Embed> target itself", async () => {
+    const html = await renderPreviewHtml('<Embed slug="bob:objects:anim-orbit" />', PUB);
+    expect(html).toContain('data-ps-slug="bob:objects:anim-orbit"');
+    expect(html).toContain('data-ps-default-publisher="alice"');
+  });
+
+  it("carries an explicit publisher prop alongside the default", async () => {
+    const html = await renderPreviewHtml('<Embed slug="anim-orbit" publisher="bob" />', PUB);
+    expect(html).toContain('data-ps-publisher="bob"');
+    expect(html).toContain('data-ps-default-publisher="alice"');
+  });
+
   it("strips the YAML frontmatter block from the rendered output", async () => {
     const source = `---
 status: draft

@@ -11,7 +11,7 @@
  *
  * This module keeps the plugin options, the component map, and the body
  * preparation in one place. The published pages (`page.tsx`, book section page)
- * import `articleComponents` + `buildArticleMdxOptions` for `<MDXRemote>`; the
+ * import `buildArticleComponents` + `buildArticleMdxOptions` for `<MDXRemote>`; the
  * editor Preview (`lib/preview-mdx-render.ts`) reuses `prepareArticleBody` +
  * `resolveCitations` and renders the same source to HTML with `remark-mdx`.
  */
@@ -24,6 +24,8 @@ import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import { remarkCallouts } from "@/lib/remark-callouts";
 import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
 import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-numbering";
+import { remarkFencedEmbeds } from "@/lib/remark-fenced-embeds";
+import { codeHighlightPlugins } from "@/lib/code-highlight";
 import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
 import { parseFrontmatter } from "@/lib/frontmatter";
 import { normalizeDetailsBlocks } from "@/lib/normalize-details";
@@ -38,6 +40,9 @@ import ArticleImage from "@/components/ArticleImage";
 import MdxParagraph from "@/components/MdxParagraph";
 import Cite from "@/components/Cite";
 import { MdH1, MdH2, MdH3 } from "@/components/MdHeadings";
+import MermaidBlock from "@/components/MermaidBlock";
+import InlineAnimation from "@/components/InlineAnimation";
+import Embed, { type EmbedProps } from "@/components/Embed";
 
 /** Frontmatter `canvas:` values allowed to auto-prepend a `<DynamicAnimation>`. */
 const CANVAS_SLUG_RE = /^anim-[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -59,31 +64,49 @@ export function buildArticleMdxOptions(cites: {
       remarkPlugins: [
         remarkMath,
         remarkGfm,
+        // Before the highlighter: this claims the fences that are embeds
+        // (```mermaid, ```animation) so only real listings reach it.
+        remarkFencedEmbeds,
         remarkCallouts,
         remarkQuoteAttribution,
         remarkWikilinks,
         [remarkCiteNumbering, { slugToNumber: cites.slugToNumber, resolved: cites.resolved }],
       ],
-      rehypePlugins: [rehypeSlug, rehypeKatex],
+      rehypePlugins: [rehypeSlug, rehypeKatex, ...codeHighlightPlugins],
     },
   };
 }
 
-/** Component map for the published RSC pages (may contain client components). */
-export const articleComponents = {
-  DynamicAnimation,
-  img: ArticleImage,
-  p: MdxParagraph,
-  Cite,
-  h1: MdH1,
-  h2: MdH2,
-  h3: MdH3,
-};
+/**
+ * Component map for the published RSC pages (may contain client components).
+ *
+ * Parameterized by publisher because `<Embed slug="…" />` resolves a bare slug
+ * against the article's own publisher — the common case, and the only form an
+ * author can write without knowing where the article will be republished.
+ */
+export function buildArticleComponents(publisherSlug: string) {
+  return {
+    DynamicAnimation,
+    MermaidBlock,
+    InlineAnimation,
+    Embed: (props: Omit<EmbedProps, "defaultPublisher">) => (
+      <Embed {...props} defaultPublisher={publisherSlug} />
+    ),
+    img: ArticleImage,
+    p: MdxParagraph,
+    Cite,
+    h1: MdH1,
+    h2: MdH2,
+    h3: MdH3,
+  };
+}
 
-// The editor Preview does NOT reuse these React components — it renders the
-// same source to HTML via `unified` + `remark-mdx` (no `react-dom/server`, which
-// Next bans in the RSC layer). See `lib/preview-mdx-render.ts`, which mirrors
-// `<Cite>` and `<DynamicAnimation>` as hast so the visual output matches.
+// The editor Preview does NOT reuse these React components directly — it
+// renders the same source to HTML via `unified` + `remark-mdx` (no
+// `react-dom/server`, which Next bans in the RSC layer). See
+// `lib/preview-mdx-render.ts`, which mirrors `<Cite>` as hast and leaves
+// mount points for the components that must run in the browser
+// (`components/PreviewEmbeds.tsx` fills them with the real components).
 
 // ---------------------------------------------------------------------------
 // Body preparation

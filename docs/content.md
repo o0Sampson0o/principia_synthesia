@@ -8,9 +8,67 @@ Article content is stored as raw MDX and rendered server-side with `next-mdx-rem
 - `remark-gfm` — GitHub-flavored Markdown
 - `remarkWikilinks` (`lib/remark-wikilinks.ts`) — `[[publisher:type:slug]]` → `/:publisher/:type/:slug`. Supported types: `articles`, `books`, `objects`. Optional label: `[[publisher:type:slug|Display text]]`. Unrecognised patterns are left as literal text.
 
+- `remarkFencedEmbeds` (`lib/remark-fenced-embeds.ts`) — rewrites the two *rendering* fence languages into components before the highlighter sees them (see Fenced embeds below).
+- `@shikijs/rehype` (`lib/code-highlight.ts`) — syntax highlighting for every other fence.
+
+The plugin list, the component map (`buildArticleComponents`) and the body preparation all live in `lib/article-mdx.tsx`, shared by the published pages and the editor Preview.
+
 MDX components available in articles:
-- `<DynamicAnimation slug="..." />` — embeds a KAO animation iframe.
+- `<Embed slug="..." />` — renders any object or article by slug (see Embeds below).
+- `<DynamicAnimation slug="..." />` — embeds a KAO animation iframe. `<Embed>` does the same thing for an animation object and is the form to reach for; this one stays for existing articles.
 - `<Cite slug="publisher/article-slug" />` — inline citation reference; see the Internal Citation Linking section below.
+
+### Fenced embeds
+
+Two fence languages render instead of listing:
+
+````
+```mermaid
+graph TD;
+  A --> B;
+```
+````
+
+Renders through the same `<DiagramRenderer>` a diagram object uses, in the site's own colours (`components/MermaidDiagram.tsx` feeds the page's CSS tokens to Mermaid's `base` theme).
+
+````
+```animation height=400
+function Wave() {
+  const canvas = document.getElementById("canvas");
+  ...
+}
+```
+````
+
+Renders exactly like `<DynamicAnimation>` — same sandboxed iframe, same `window.theme`, same "first `function` declaration is the entry point" rule — for an animation that belongs to one article and does not need to exist as a reusable object. The document is built by `lib/animation-document.ts`, shared with the animation API route. `height=` is optional and defaults to `DEFAULT_ANIMATION_HEIGHT`.
+
+Every other fence is syntax-highlighted (`cpp`, `ts`, `python`, …). Languages outside the eager set in `lib/code-highlight.ts` load on demand; an unknown one falls back to plain text rather than throwing. Two themes are emitted at once as CSS variables, and `app/globals.css` picks one per colour scheme.
+
+### Embeds
+
+`<Embed slug="…" />` renders another piece of this site's content in place. One tag for every type — the target's own type decides how it draws:
+
+- an **animation** object → its canvas
+- a **dataset** object → its table
+- a **diagram** object → its diagram
+- an **article** or a **book** → a card linking to it (not inlined prose: splicing a body in would double its headings in the TOC and make citation numbering ambiguous)
+
+**Addressing.** The wikilink address is the form to reach for — it is what the "Copy embed tag" button emits, and the only one that names both the publisher and the kind:
+
+```mdx
+<Embed slug="publisher:objects:object-slug" />
+<Embed slug="publisher:articles:article-slug" />
+<Embed slug="publisher:books:book-slug" />
+<Embed slug="publisher:books:book-slug:section-slug" />
+```
+
+The `[[…]]` brackets are optional, so a pasted "Copy wikilink" value works too. Two shorthands remain: a bare `slug="thing"` resolves against the embedding article's own publisher, and `slug="publisher/thing"` reaches across without naming a kind. A `publisher="…"` prop overrides whatever the address says.
+
+Naming the kind is not just documentation — `publisher:articles:x` skips the object lookup entirely, so an article and an object sharing a slug are no longer ambiguous. Without a kind, objects win, since objects exist to be embedded and articles merely can be.
+
+Anything the reader may not see renders the same "nothing to embed" notice as a slug that does not exist, so an embed never discloses that private content is there.
+
+Resolution lives in `lib/embed-resolve.ts` and rendering in `components/EmbedBody.tsx`, both shared with the editor Preview (which resolves over `GET /api/publishers/[publisher]/embeds/[slug]` since it has no server React).
 
 **remark-math@6 display math:** Requires multi-line delimiters:
 ```
@@ -93,7 +151,12 @@ switching never reflows the page.
   > columns implementation is deferred.
 - **Preview**: the real thing — the document compiled through the `previewMdx`
   server pipeline and rendered read-only in `.markdown-content`, refreshed on
-  every entry into the mode.
+  every entry into the mode. Anything that can only run in a browser — a
+  canvas, a Mermaid diagram, an `<Embed>` that has to be looked up — comes back
+  from the server as an empty `[data-ps-embed]` element, and
+  `components/PreviewEmbeds.tsx` mounts a React root rendering the *same*
+  component the published page uses. Nothing is re-implemented as HTML here, so
+  Preview and published output cannot drift.
 
 Editor chrome theming lives in `lib/live-preview/theme.ts` (CSS custom
 properties, so user themes and dark mode apply without JS); the live-preview

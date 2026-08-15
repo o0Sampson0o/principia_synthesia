@@ -10,15 +10,23 @@
  * bare `[[pub:articles:intro]]` cannot say *which* book's intro — this form can.
  */
 
+/**
+ * The address itself — `publisher:type:slug[:section][|Label]` — without the
+ * `[[…]]` around it. Split out because the same address is written bare in
+ * places that are not prose, notably `<Embed slug="pub:objects:thing" />`.
+ */
+export const WIKILINK_TARGET_SOURCE =
+  "([a-z0-9-]+):(articles|books|objects):([a-z0-9-]+)(?::([a-z0-9-]+))?(?:\\|([^\\]]+))?";
+
 /** Global-flags instance for scanning prose. Create locals via `wikilinkRe()`. */
-export const WIKILINK_SOURCE =
-  "\\[\\[([a-z0-9-]+):(articles|books|objects):([a-z0-9-]+)(?::([a-z0-9-]+))?(?:\\|([^\\]]+))?\\]\\]";
+export const WIKILINK_SOURCE = `\\[\\[${WIKILINK_TARGET_SOURCE}\\]\\]`;
 
 export function wikilinkRe(): RegExp {
   return new RegExp(WIKILINK_SOURCE, "g");
 }
 
 const EXACT_RE = new RegExp(`^${WIKILINK_SOURCE}$`);
+const EXACT_TARGET_RE = new RegExp(`^${WIKILINK_TARGET_SOURCE}$`);
 
 export interface ParsedWikilink {
   publisher: string;
@@ -75,14 +83,47 @@ export function formatWikilink(parts: {
   type: ParsedWikilink["type"];
   slug: string;
   section?: string | null;
+  /** Display text. Without it a reader sees the raw slug. */
+  label?: string | null;
 }): string {
   const tail = parts.section ? `:${parts.section}` : "";
-  return `[[${parts.publisher}:${parts.type}:${parts.slug}${tail}]]`;
+  const label = parts.label ? sanitizeLabel(parts.label) : "";
+  return `[[${parts.publisher}:${parts.type}:${parts.slug}${tail}${label ? `|${label}` : ""}]]`;
+}
+
+/**
+ * Makes arbitrary text safe to sit between `|` and `]]`.
+ *
+ * `]` would terminate the link early, and a newline would split it across two
+ * text nodes so the scanner never sees it — both silently produce a broken
+ * link rather than an error, so they are removed rather than escaped.
+ */
+function sanitizeLabel(label: string): string {
+  return label.replace(/]/g, "").replace(/\s+/g, " ").trim();
 }
 
 /** Parses a string that should be exactly one wikilink; null when it isn't. */
 export function parseWikilink(text: string): ParsedWikilink | null {
   const m = EXACT_RE.exec(text);
+  if (!m) return null;
+  const [, publisher, type, slug, section, label] = m;
+  return buildWikilink(publisher, type, slug, section, label);
+}
+
+/**
+ * Parses a bare wikilink *address* — `publisher:type:slug` — with or without
+ * the `[[…]]` around it. Null when the text is not one.
+ *
+ * The brackets are optional because both forms turn up in practice: authors
+ * type the address into an attribute, and they also paste what the "Copy
+ * wikilink" button gave them. Accepting one and not the other would be a
+ * distinction without a reason.
+ */
+export function parseWikilinkTarget(text: string): ParsedWikilink | null {
+  const trimmed = text.trim();
+  const inner =
+    trimmed.startsWith("[[") && trimmed.endsWith("]]") ? trimmed.slice(2, -2) : trimmed;
+  const m = EXACT_TARGET_RE.exec(inner);
   if (!m) return null;
   const [, publisher, type, slug, section, label] = m;
   return buildWikilink(publisher, type, slug, section, label);

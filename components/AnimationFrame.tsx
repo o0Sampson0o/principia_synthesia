@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useAnimationSrc } from "@/lib/useAnimationSrc";
-import {
-  ANIMATION_HEIGHT_MESSAGE,
-  DEFAULT_ANIMATION_HEIGHT,
-  normalizeAnimationHeight,
-} from "@/lib/animation-dimensions";
+import { useAnimationFrameHeight } from "@/lib/useAnimationFrameHeight";
 
 interface Props {
   publisher: string;
@@ -21,12 +17,16 @@ interface Props {
 }
 
 /**
- * The single embed point for an animation iframe.
+ * The embed point for a *stored* animation object's iframe.
  *
  * Height comes from the animation object, not from the embedder: the iframe
  * route posts the stored height up on load and this component applies it. Until
  * that message arrives (or if the frame's script never runs) the default height
  * is used, so the frame is never zero-height.
+ *
+ * An animation written inline in an article (a ```animation fence) has no
+ * object to load from and is rendered by `<InlineAnimationFrame>` instead —
+ * same document, same sizing, delivered as `srcdoc`.
  */
 export default function AnimationFrame({
   publisher,
@@ -38,32 +38,7 @@ export default function AnimationFrame({
 }: Props) {
   const src = useAnimationSrc(publisher, slug, version);
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(DEFAULT_ANIMATION_HEIGHT);
-
-  useEffect(() => {
-    function onMessage(event: MessageEvent) {
-      // The frame is sandboxed without allow-same-origin, so its origin is the
-      // opaque "null" and can't be compared. Identify it by window instead —
-      // this rejects messages from any other frame or extension on the page.
-      if (!frameRef.current || event.source !== frameRef.current.contentWindow) return;
-      const data = event.data;
-      if (!data || data.type !== ANIMATION_HEIGHT_MESSAGE) return;
-      setHeight(normalizeAnimationHeight(data.height));
-    }
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, []);
-
-  // A new animation reports its own height; drop back to the default meanwhile
-  // so the previous animation's height doesn't linger on the new frame. Adjusted
-  // during render rather than in an effect — no extra commit, no flash of the
-  // stale height. https://react.dev/learn/you-might-not-need-an-effect
-  const frameId = `${publisher}/${slug}/${version ?? ""}`;
-  const [renderedFrameId, setRenderedFrameId] = useState(frameId);
-  if (renderedFrameId !== frameId) {
-    setRenderedFrameId(frameId);
-    setHeight(DEFAULT_ANIMATION_HEIGHT);
-  }
+  const height = useAnimationFrameHeight(frameRef, `${publisher}/${slug}/${version ?? ""}`);
 
   if (!src) return null;
 

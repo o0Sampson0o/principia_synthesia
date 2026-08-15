@@ -15,7 +15,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { canEditContent } from "@/lib/roles";
 import ArticleMetadataDisplay from "@/components/ArticleMetadata";
 import {
-  articleComponents,
+  buildArticleComponents,
   buildArticleMdxOptions,
   prepareArticleBody,
   resolveCitations,
@@ -360,7 +360,12 @@ export default async function ArticlePage({
             {/* Standalone article: book-internal ones redirect to their book
                 section, where the book-qualified form is offered instead. */}
             <CopySnippet
-              value={formatWikilink({ publisher: publisherSlug, type: "articles", slug })}
+              value={formatWikilink({
+                publisher: publisherSlug,
+                type: "articles",
+                slug,
+                label: title,
+              })}
               label="Copy wikilink"
             />
           </span>
@@ -419,7 +424,7 @@ export default async function ArticlePage({
         <MDXRemote
           source={renderedBody}
           options={buildArticleMdxOptions({ slugToNumber, resolved: resolvedCitations })}
-          components={articleComponents}
+          components={buildArticleComponents(publisherSlug)}
         />
       </div>
       </MdxErrorBoundary>

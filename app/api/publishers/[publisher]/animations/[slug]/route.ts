@@ -6,7 +6,8 @@ import { defaultLight, defaultDark } from "@/lib/theme";
 import type { ThemeTokens } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
-import { ANIMATION_HEIGHT_MESSAGE, readAnimationHeight } from "@/lib/animation-dimensions";
+import { readAnimationHeight } from "@/lib/animation-dimensions";
+import { buildAnimationDocument } from "@/lib/animation-document";
 
 /**
  * GET /api/publishers/[publisher]/animations/[slug]
@@ -72,9 +73,6 @@ export async function GET(
 
   const height = readAnimationHeight(row.content);
 
-  const fnMatch = code.match(/function\s+(\w+)/);
-  const fnCall = fnMatch ? `${fnMatch[1]}();` : "";
-
   const url = new URL(req.url);
   const raw = url.searchParams.get("theme");
   let light: ThemeTokens = defaultLight;
@@ -91,38 +89,7 @@ export async function GET(
 
   const nonce = req.headers.get("x-csp-nonce") ?? "";
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { width: 100%; height: 100vh; overflow: hidden; background: transparent; display: flex; align-items: center; justify-content: center; }
-    canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
-  </style>
-</head>
-<body>
-  <canvas id="canvas"></canvas>
-  <script nonce="${nonce}">
-    const _light = ${JSON.stringify(light)};
-    const _dark  = ${JSON.stringify(dark)};
-    const _dark_mq = window.matchMedia('(prefers-color-scheme: dark)');
-    window.theme = _dark_mq.matches ? _dark : _light;
-    _dark_mq.addEventListener('change', e => { window.theme = e.matches ? _dark : _light; });
-
-    // Tell the embedder how tall this animation wants to be. The height lives on
-    // the object, so no embedder needs its own query to size the frame.
-    try {
-      parent.postMessage({ type: ${JSON.stringify(ANIMATION_HEIGHT_MESSAGE)}, height: ${height} }, '*');
-    } catch (e) {}
-
-    window.addEventListener('DOMContentLoaded', function() {
-      ${code}
-      ${fnCall}
-    });
-  </script>
-</body>
-</html>`;
+  const html = buildAnimationDocument({ code, light, dark, height, nonce });
 
   return new NextResponse(html, {
     headers: { "Content-Type": "text/html" },

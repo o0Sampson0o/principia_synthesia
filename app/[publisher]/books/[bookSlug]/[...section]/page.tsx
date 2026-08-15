@@ -9,7 +9,7 @@ import { canView } from "@/lib/access";
 import { canEditContent } from "@/lib/roles";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import {
-  articleComponents,
+  buildArticleComponents,
   buildArticleMdxOptions,
   prepareArticleBody,
   resolveCitations,
@@ -167,6 +167,7 @@ export default async function BookSectionPage({
                         type: "books",
                         slug: bookSlug,
                         section: article.slug,
+                        label: article.title,
                       })
                     : // Borrowed: a standalone article owned elsewhere, so its
                       // canonical address is against its own publisher.
@@ -174,6 +175,7 @@ export default async function BookSectionPage({
                         publisher: articlePublisherSlug,
                         type: "articles",
                         slug: article.slug,
+                        label: article.title,
                       })
                 }
                 label="Copy wikilink"
@@ -222,7 +224,7 @@ export default async function BookSectionPage({
           <MDXRemote
             source={renderedBody}
             options={buildArticleMdxOptions({ slugToNumber, resolved: resolvedCitations })}
-            components={articleComponents}
+            components={buildArticleComponents(publisherSlug)}
           />
         </div>
       </div>

@@ -26,6 +26,36 @@ function readThemeTokens() {
 }
 
 /**
+ * The theme tokens an animation frame should be given, read from the live page.
+ *
+ * `null` until mount (there is no `getComputedStyle` on the server), and
+ * rebuilt whenever the viewer switches colour scheme — the same contract as
+ * `useAnimationSrc`, which is the URL-shaped version of this. Inline animations
+ * (`<InlineAnimation>`) have no URL to encode tokens into, so they read them
+ * here and pass them straight to `buildAnimationDocument`.
+ *
+ * Both sets carry the same values for the same reason as `buildAnimationSrc`:
+ * `getComputedStyle` can only report the scheme that is currently active.
+ */
+export function useAnimationThemeTokens(): { light: ThemeTokens; dark: ThemeTokens } | null {
+  const [tokens, setTokens] = useState<{ light: ThemeTokens; dark: ThemeTokens } | null>(null);
+
+  useEffect(() => {
+    const rebuild = () => {
+      const read = readThemeTokens() as unknown as ThemeTokens;
+      setTokens({ light: read, dark: read });
+    };
+    rebuild();
+
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", rebuild);
+    return () => mq.removeEventListener("change", rebuild);
+  }, []);
+
+  return tokens;
+}
+
+/**
  * Builds the `src` URL for the animation iframe.
  * Reads the current page's CSS custom properties via `getComputedStyle` and
  * encodes them as a `?theme=` query parameter so the sandboxed iframe receives

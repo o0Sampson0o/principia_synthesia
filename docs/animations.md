@@ -151,7 +151,55 @@ function CircleDemo() {
 
 ## Embedding an animation in an article
 
-Use the `<DynamicAnimation />` MDX component:
+Three ways, for three different intentions.
+
+### A stored animation — `<Embed />`
+
+```mdx
+<Embed slug="your-publisher:objects:anim-your-animation" />
+```
+
+The general form: one tag for any object, addressed the same way a wikilink is
+— so an animation belonging to another publisher embeds just as easily. A bare
+`slug="anim-your-animation"` is shorthand for "this article's publisher". Copy
+the exact tag from the object page's "Copy embed tag" button. See
+`docs/content.md` → Embeds.
+
+### An animation written inside the article — the ```animation fence
+
+````mdx
+```animation height=400
+function Wave() {
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  // ...
+}
+```
+````
+
+For an animation that belongs to one article and does not need to exist as a
+reusable object. Everything on this page applies unchanged — same sandboxed
+iframe, same `window.theme`, same "first `function` declaration is the entry
+point" rule — because both go through `buildAnimationDocument`
+(`lib/animation-document.ts`).
+
+Two differences from a stored animation:
+
+- **Frame height** comes from the fence meta (`height=400`), since there is no
+  object to store it on. Same 120–1600 range, same 400 default.
+- **No "View animation →" link**, since there is no object page to link to.
+
+The document is handed to the iframe as `srcdoc` rather than fetched by URL. A
+`srcdoc` frame inherits the page's CSP, so its inline `<script>` carries the
+page nonce, read from the DOM by `lib/csp-nonce.ts` — without it the animation
+is silently blocked.
+
+Book exports (EPUB, PDF) replace the fence with an "Animation — view online."
+line rather than printing its source; see `remarkFencedEmbedsStatic`.
+
+### The original form — `<DynamicAnimation />`
+
+Still supported, and what `canvas:` frontmatter generates:
 
 ```mdx
 <DynamicAnimation publisher="your-publisher-slug" slug="anim-your-animation" />

@@ -39,6 +39,9 @@ const COMMANDS: BlockCommand[] = [
   { label: "Table", detail: "grid", keywords: "columns", type: "table", insert: "| $ |  |\n| --- | --- |\n|  |  |" },
   { label: "Math block", detail: "$$ $$", keywords: "latex equation", type: "math", insert: "$$\n$\n$$" },
   { label: "Wikilink", detail: "[[…]]", keywords: "link reference", type: "wikilink", insert: "[[$]]" },
+  { label: "Diagram", detail: "```mermaid", keywords: "mermaid flowchart graph sequence chart", type: "code", insert: "```mermaid\ngraph TD;\n  $\n```" },
+  { label: "Animation", detail: "```animation", keywords: "canvas simulation js", type: "code", insert: "```animation height=400\nfunction Animate() {\n  const canvas = document.getElementById(\"canvas\");\n  const ctx = canvas.getContext(\"2d\");\n  $\n}\n```" },
+  { label: "Embed", detail: "<Embed />", keywords: "object animation dataset table diagram article", type: "wikilink", insert: '<Embed slug="$" />' },
 ];
 
 function applyBlock(insert: string) {

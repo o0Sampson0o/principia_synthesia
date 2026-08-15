@@ -22,12 +22,23 @@ export default function DiagramRenderer({ format, source }: Props) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  // `ps-diagram` keeps the rendered SVG inside its column (app/globals.css).
+  // It lives here rather than on each caller so a diagram *object* and a
+  // ```mermaid fence are sized the same way.
   if (format === "mermaid") {
-    return <MermaidDiagram source={source} isDark={isDark} />;
+    return (
+      <div className="ps-diagram">
+        <MermaidDiagram source={source} isDark={isDark} />
+      </div>
+    );
   }
 
   if (format === "graphviz") {
-    return <GraphvizDiagram source={source} />;
+    return (
+      <div className="ps-diagram">
+        <GraphvizDiagram source={source} />
+      </div>
+    );
   }
 
   // Unknown format — show raw source as fallback

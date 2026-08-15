@@ -3,6 +3,7 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
+import { remarkFencedEmbedsStatic } from "@/lib/remark-fenced-embeds";
 import remarkRehype from "remark-rehype";
 import rehypeSanitize from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
@@ -184,6 +185,7 @@ async function mdxToHtml(mdx: string): Promise<string> {
     .use(remarkParse)
     .use(remarkMath)
     .use(remarkGfm)
+    .use(remarkFencedEmbedsStatic)
     .use(remarkRehype)
     .use(rehypeSanitize, mdxSanitizeSchemaEpub)
     .use(rehypeNormaliseHeadings)

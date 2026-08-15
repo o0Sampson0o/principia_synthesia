@@ -520,6 +520,12 @@ body {
 .markdown-content p {
   margin-top: 0;
   margin-bottom: 1.4em;
+}
+/* Excluded inside diagrams: `text-wrap` sets the same underlying
+   `text-wrap-mode` as `white-space`, so it quietly overrides the `nowrap`
+   Mermaid puts on its own node labels and text wraps where it was meant not to.
+   (`white-space` is inherited, so one <p> takes the whole label with it.) */
+.markdown-content p:not(.ps-diagram *) {
   text-wrap: pretty;
 }
 .markdown-content p:first-child { margin-top: 0; }
@@ -608,12 +614,75 @@ body {
   margin: 1.75em 0;
   line-height: 1.65;
 }
+/* Syntax highlighting (Shiki, lib/code-highlight.ts).
+   Two themes are baked into every token as CSS variables; the page picks one.
+   The block keeps the site's own paper and border — only the ink is Shiki's,
+   so a code block still reads as part of the page rather than a pasted-in
+   screenshot. */
+.markdown-content pre.shiki,
+.markdown-content pre.shiki span {
+  color: var(--shiki-light);
+}
+@media (prefers-color-scheme: dark) {
+  .markdown-content pre.shiki,
+  .markdown-content pre.shiki span {
+    color: var(--shiki-dark);
+  }
+}
+
 .markdown-content pre code {
   background: none;
   border: none;
   padding: 0;
   font-size: 0.875rem;
   line-height: 1.65;
+}
+
+/* Inline diagrams (```mermaid fences and diagram embeds) */
+.ps-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* A diagram's labels are not prose.
+   Mermaid draws HTML labels inside <foreignObject>, so every .markdown-content
+   rule below would otherwise apply to them: a <pre> in a node would pick up the
+   article's code-block padding, border and `overflow-x: auto`, inflating the
+   label past the box Mermaid sized for it and clipping the content. Stripped
+   back to plain boxes here so a diagram looks the same in an article as it does
+   on its own object page. */
+.markdown-content .ps-diagram foreignObject :is(p, pre, code, ul, ol, li, table, th, td, blockquote) {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  overflow: visible;
+}
+.markdown-content .ps-diagram foreignObject :is(ul, ol) {
+  list-style: none;
+}
+.markdown-content .ps-diagram foreignObject li::before {
+  content: none;
+}
+.markdown-content .ps-diagram foreignObject code {
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Embedded objects — the caption under an <Embed> */
+.ps-embed-caption {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+/* Embedded article — a card, not inlined prose */
+.ps-embed-card {
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.ps-embed-card:hover {
+  text-decoration: none;
 }
 
 /* Horizontal rule — editorial three-dot divider */

@@ -16,6 +16,7 @@ import CheckMdxButton from "./CheckMdxButton";
 import { findMissingAlt } from "@/lib/alt-text-lint";
 import type { AltTextFinding } from "@/lib/alt-text-lint";
 import { previewMdx } from "@/app/[publisher]/articles/actions";
+import { usePreviewEmbeds } from "@/components/PreviewEmbeds";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -58,6 +59,11 @@ export default forwardRef<ContentEditorRef, {
   const [mode, setMode] = useState<EditorMode>("live");
   const modeRef = useRef<EditorMode>("live");
   const [previewState, setPreviewState] = useState<PreviewState>({ status: "loading" });
+  // Preview HTML leaves holes where a component has to run in the browser;
+  // this fills them with the real components. See components/PreviewEmbeds.tsx.
+  const previewHtml =
+    mode === "preview" && previewState.status === "ok" ? previewState.html : null;
+  const previewProps = usePreviewEmbeds(previewHtml);
 
   // Grammar checking and the editing mode are reconfigured in place (rather
   // than re-rendering the editor) so toggling never disturbs the document,
@@ -359,10 +365,7 @@ export default forwardRef<ContentEditorRef, {
                 </pre>
               )}
               {previewState.status === "ok" && (
-                <div
-                  className="markdown-content"
-                  dangerouslySetInnerHTML={{ __html: previewState.html }}
-                />
+                <div className="markdown-content" {...previewProps} />
               )}
             </div>
           </div>

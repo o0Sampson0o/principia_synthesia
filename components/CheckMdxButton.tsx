@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { previewMdx } from "@/app/[publisher]/articles/actions";
+import { usePreviewEmbeds } from "@/components/PreviewEmbeds";
 
 type CheckState =
   | { status: "idle" }
@@ -30,6 +31,9 @@ export default function CheckMdxButton({
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<CheckState>({ status: "idle" });
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // The rendered check is the real preview, so its browser-only components
+  // (canvases, diagrams, embeds) get mounted the same way. See PreviewEmbeds.
+  const bodyProps = usePreviewEmbeds(state.status === "ok" ? state.html : null);
 
   function handleCheck() {
     setState({ status: "checking" });
@@ -148,10 +152,7 @@ export default function CheckMdxButton({
               </pre>
             )}
             {state.status === "ok" && (
-              <div
-                className="markdown-content"
-                dangerouslySetInnerHTML={{ __html: state.html }}
-              />
+              <div className="markdown-content" {...bodyProps} />
             )}
           </div>
         </div>

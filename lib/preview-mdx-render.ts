@@ -8,11 +8,14 @@
  * is JSX, not CommonMark HTML blocks, which is what previously caused markdown
  * under an HTML block to be "swallowed").
  *
- * The two custom components (`<Cite>`, `<DynamicAnimation>`) are mirrored as
- * hast here so their visual output matches; every other JSX element with a
- * lowercase name is passed through as the equivalent HTML element. Because this
- * emits an HTML string with no `react-dom/server`, it is safe to call from a
- * Server Action.
+ * `<Cite>` is mirrored as hast here, since it is pure markup. The components
+ * that genuinely need a browser — canvases, Mermaid, embed lookups — get a
+ * marked-up mount point instead, which `components/PreviewEmbeds.tsx` fills
+ * with the real component once the HTML is in the DOM; imitating them here in
+ * hast is how preview and published output drift apart. Every other JSX element
+ * with a lowercase name is passed through as the equivalent HTML element.
+ * Because this emits an HTML string with no `react-dom/server`, it is safe to
+ * call from a Server Action.
  */
 import { unified } from "unified";
 import remarkParse from "remark-parse";
@@ -32,6 +35,8 @@ import { remarkCallouts } from "@/lib/remark-callouts";
 import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import { remarkCiteNumbering } from "@/lib/remark-cite-numbering";
+import { remarkFencedEmbeds } from "@/lib/remark-fenced-embeds";
+import { codeHighlightPlugins } from "@/lib/code-highlight";
 import { prepareArticleBody, resolveCitations } from "@/lib/article-mdx";
 
 type JsxNode = MdxJsxFlowElement | MdxJsxTextElement;
@@ -91,43 +96,72 @@ function citeToHast(node: JsxNode) {
   ]);
 }
 
-/** `<DynamicAnimation>` → the "View animation" placeholder (canvas is client-only). */
-function animationToHast(node: JsxNode) {
-  const publisher = attr(node, "publisher") ?? "";
-  const slug = attr(node, "slug") ?? "";
-  return h("div", { className: "my-6" }, [
-    h("div", { className: "mt-2 text-right" }, [
-      h(
-        "a",
-        {
-          href: `/${publisher}/objects/${slug}`,
-          className: "text-xs themed-muted themed-hover-foreground transition-colors",
-        },
-        "View animation →"
-      ),
-    ]),
-  ]);
+/**
+ * A mount point for a component that can only run in the browser.
+ *
+ * Canvases, Mermaid and embed lookups all need the client, so the preview HTML
+ * carries a marked-up hole and `components/PreviewEmbeds.tsx` mounts the real
+ * component into it — the same component the published page renders, rather
+ * than a hand-written imitation of it that would drift.
+ */
+function mountPoint(kind: string, data: Record<string, string | undefined>, className = "") {
+  const props: Record<string, string> = { "data-ps-embed": kind };
+  if (className) props.className = className;
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) props[`data-ps-${key}`] = value;
+  }
+  return h("div", props);
 }
 
-/** remark-rehype handler: turn an MDX JSX element into hast. */
-function jsxHandler(state: State, node: JsxNode) {
-  const name = node.name;
-  // Fragment `<>…</>` — just its children.
-  if (!name) return state.all(node);
-  if (name === "Cite") return citeToHast(node);
-  if (name === "DynamicAnimation") return animationToHast(node);
-  // Any other custom (uppercase) component we don't model → render its children.
-  if (/^[A-Z]/.test(name)) return state.all(node);
+/**
+ * remark-rehype handler: turn an MDX JSX element into hast.
+ *
+ * Bound to the article's publisher, because `<Embed slug="…">` resolves a bare
+ * slug against it — the mount point has to carry the answer, since the browser
+ * has no idea which publisher the draft belongs to.
+ */
+function makeJsxHandler(publisherSlug: string) {
+  return function jsxHandler(state: State, node: JsxNode) {
+    const name = node.name;
+    // Fragment `<>…</>` — just its children.
+    if (!name) return state.all(node);
+    if (name === "Cite") return citeToHast(node);
+    if (name === "DynamicAnimation")
+      return mountPoint(
+        "stored-animation",
+        { publisher: attr(node, "publisher"), slug: attr(node, "slug") },
+        "my-6"
+      );
+    if (name === "InlineAnimation")
+      return mountPoint(
+        "inline-animation",
+        { code: attr(node, "code"), height: attr(node, "height") },
+        "my-6"
+      );
+    if (name === "MermaidBlock")
+      return mountPoint("mermaid", { source: attr(node, "source") }, "my-8");
+    if (name === "Embed")
+      // Passed through exactly as authored. Working out what a target means is
+      // `resolveEmbed`'s job, and it is reached over the embeds API — parsing
+      // it a second time here is how the two would come to disagree.
+      return mountPoint("embed", {
+        slug: attr(node, "slug"),
+        publisher: attr(node, "publisher"),
+        "default-publisher": publisherSlug,
+      });
+    // Any other custom (uppercase) component we don't model → render its children.
+    if (/^[A-Z]/.test(name)) return state.all(node);
 
-  // Lowercase name → the equivalent intrinsic HTML element.
-  const props: Record<string, string | boolean> = {};
-  for (const a of node.attributes) {
-    if (a.type !== "mdxJsxAttribute") continue; // skip {...spread}
-    if (typeof a.value === "string") props[a.name] = a.value;
-    else if (a.value === null || a.value === undefined) props[a.name] = true; // boolean attr, e.g. <details open>
-    // expression-valued attributes are dropped (rare in prose)
-  }
-  return h(name, props, state.all(node));
+    // Lowercase name → the equivalent intrinsic HTML element.
+    const props: Record<string, string | boolean> = {};
+    for (const a of node.attributes) {
+      if (a.type !== "mdxJsxAttribute") continue; // skip {...spread}
+      if (typeof a.value === "string") props[a.name] = a.value;
+      else if (a.value === null || a.value === undefined) props[a.name] = true; // boolean attr, e.g. <details open>
+      // expression-valued attributes are dropped (rare in prose)
+    }
+    return h(name, props, state.all(node));
+  };
 }
 
 /**
@@ -140,12 +174,14 @@ export async function renderPreviewHtml(
 ): Promise<string> {
   const { body, renderedBody } = prepareArticleBody(content, opts);
   const { slugToNumber, resolved } = await resolveCitations(body);
+  const jsxHandler = makeJsxHandler(opts.publisherSlug);
 
   const file = await unified()
     .use(remarkParse)
     .use(remarkMdx)
     .use(remarkMath)
     .use(remarkGfm)
+    .use(remarkFencedEmbeds)
     .use(remarkCallouts)
     .use(remarkQuoteAttribution)
     .use(remarkWikilinks)
@@ -156,6 +192,7 @@ export async function renderPreviewHtml(
     })
     .use(rehypeSlug)
     .use(rehypeKatex)
+    .use(codeHighlightPlugins)
     .use(rehypeStringify)
     .process(renderedBody);
 

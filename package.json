@@ -32,6 +32,7 @@
     "@lezer/highlight": "^1.2.3",
     "@lezer/markdown": "^1.6.3",
     "@sentry/nextjs": "^10.52.0",
+    "@shikijs/rehype": "^4.4.3",
     "@sparticuz/chromium": "^148.0.0",
     "@tailwindcss/typography": "^0.5.19",
     "@types/nodemailer": "^8.0.0",
@@ -81,6 +82,7 @@
     "retext-repeated-words": "^5.0.0",
     "retext-spell": "^6.1.0",
     "rrule": "^2.8.1",
+    "shiki": "^4.4.3",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0"
   },

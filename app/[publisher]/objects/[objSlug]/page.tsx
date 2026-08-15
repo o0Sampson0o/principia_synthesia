@@ -8,9 +8,8 @@ import { getSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
 import CopySnippet from "@/components/CopySnippet";
 import { formatWikilink } from "@/lib/wikilink-syntax";
-import DynamicAnimation from "@/components/DynamicAnimation";
-import DiagramRenderer from "@/components/DiagramRenderer";
-import { isDiagramContent, isDatasetContent, type KaoContent } from "@/lib/kao";
+import ObjectRender from "@/components/ObjectRender";
+import { type KaoContent } from "@/lib/kao";
 
 export default async function ObjectDetailPage({
   params,
@@ -38,6 +37,17 @@ export default async function ObjectDetailPage({
   const session = await getSession();
   const isEditor = await canEditContent(session, ownerType, ownerId);
   const content = obj.content as KaoContent;
+  // Labelled so a pasted link reads as the object's name, not its slug.
+  const objectWikilink = formatWikilink({
+    publisher: publisherSlug,
+    type: "objects",
+    slug: obj.slug,
+    label: obj.name,
+  });
+  // The full address, so the tag keeps working when pasted into an article
+  // belonging to someone else — a bare slug would resolve against *their*
+  // publisher and find nothing.
+  const embedTag = `<Embed slug="${publisherSlug}:objects:${obj.slug}" />`;
 
   return (
     <main className="w-full max-w-5xl mx-auto px-5 py-12 sm:py-16">
@@ -67,61 +77,29 @@ export default async function ObjectDetailPage({
       </div>
 
       {/* Reference snippets — what to paste into an article to cite or embed
-          this object. Animations get the embed tag too, since linking to one
-          and rendering one in place are different intentions. */}
+          this object. Every type gets the embed tag: linking to an object and
+          rendering one in place are different intentions. */}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mb-10">
         <CopySnippet
-          value={formatWikilink({ publisher: publisherSlug, type: "objects", slug: obj.slug })}
+          value={objectWikilink}
           label="Copy wikilink"
-          title={`Link to this object: ${formatWikilink({ publisher: publisherSlug, type: "objects", slug: obj.slug })}`}
+          title={`Link to this object: ${objectWikilink}`}
         />
-        {obj.type === "animation" && (
-          <CopySnippet
-            value={`<DynamicAnimation publisher="${publisherSlug}" slug="${obj.slug}" />`}
-            label="Copy embed tag"
-            title={`Embed this animation: <DynamicAnimation publisher="${publisherSlug}" slug="${obj.slug}" />`}
-          />
-        )}
+        <CopySnippet
+          value={embedTag}
+          label="Copy embed tag"
+          title={`Embed this ${obj.type}: ${embedTag}`}
+        />
       </div>
 
-      {obj.type === "animation" && (
-        <div className="mt-6">
-          <DynamicAnimation publisher={publisherSlug} slug={obj.slug} />
-        </div>
-      )}
-
-      {obj.type === "dataset" && isDatasetContent(content) && (
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full text-sm border-collapse themed-surface rounded">
-            <thead>
-              <tr>
-                {content.headers.map((h, i) => (
-                  <th key={i} className="border themed-border px-3 py-2 text-left font-semibold themed-muted-bg">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {content.rows.map((row, ri) => (
-                <tr key={ri} className="even:[background:var(--muted)]">
-                  {row.map((cell, ci) => (
-                    <td key={ci} className="border themed-border px-3 py-2">
-                      {String(cell)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {obj.type === "diagram" && isDiagramContent(content) && (
-        <div className="mt-6">
-          <DiagramRenderer format={content.format} source={content.source} />
-        </div>
-      )}
+      <div className="mt-6">
+        <ObjectRender
+          publisher={publisherSlug}
+          slug={obj.slug}
+          type={obj.type}
+          content={content}
+        />
+      </div>
     </main>
   );
 }
