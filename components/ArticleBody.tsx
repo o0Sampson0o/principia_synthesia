@@ -23,12 +23,19 @@ import MdxErrorNotice from "./MdxErrorNotice";
  */
 export default async function ArticleBody({
   source,
+  rawSource,
   publisherSlug,
   cites,
   showDetails = false,
 }: {
-  /** The frontmatter-stripped body from `prepareArticleBody`. */
+  /** The frontmatter-stripped body from `prepareArticleBody` — what gets compiled. */
   source: string;
+  /**
+   * The stored article content, frontmatter included. Only used to report a
+   * failure in the line numbers the author sees in the editor; the compiler
+   * never sees this. Defaults to `source` when the two are the same.
+   */
+  rawSource?: string;
   /** Publisher the body's bare `<Embed slug="…" />` tags resolve against. */
   publisherSlug: string;
   cites: {
@@ -54,7 +61,11 @@ export default async function ArticleBody({
       tags: { area: "mdx-compile" },
       extra: { publisherSlug },
     });
-    const detail = await describeMdxError(error, source, options.mdxOptions);
+    const detail = await describeMdxError(
+      error,
+      { source: rawSource ?? source, renderedBody: source },
+      options.mdxOptions
+    );
     return <MdxErrorNotice detail={detail} showDetails={showDetails} />;
   }
 

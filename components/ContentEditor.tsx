@@ -16,6 +16,8 @@ import CheckMdxButton from "./CheckMdxButton";
 import { findMissingAlt } from "@/lib/alt-text-lint";
 import type { AltTextFinding } from "@/lib/alt-text-lint";
 import { previewMdx } from "@/app/[publisher]/articles/actions";
+import MdxCompileError from "@/components/MdxCompileError";
+import type { MdxErrorDetail } from "@/lib/mdx-error";
 import { usePreviewEmbeds } from "@/components/PreviewEmbeds";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
@@ -27,7 +29,7 @@ type EditorMode = (typeof MODES)[number];
 type PreviewState =
   | { status: "loading" }
   | { status: "ok"; html: string }
-  | { status: "error"; message: string };
+  | { status: "error"; detail: MdxErrorDetail };
 
 export interface ContentEditorRef {
   compile: () => void;
@@ -102,7 +104,7 @@ export default forwardRef<ContentEditorRef, {
         const result = await previewMdx(publisherSlug, getPreviewSource?.() ?? contentValue.current);
         if (cancelled) return;
         if ("error" in result) {
-          setPreviewState({ status: "error", message: result.error });
+          setPreviewState({ status: "error", detail: result.error });
           onError?.(true);
         } else {
           setPreviewState({ status: "ok", html: result.html });
@@ -112,7 +114,12 @@ export default forwardRef<ContentEditorRef, {
         if (!cancelled) {
           setPreviewState({
             status: "error",
-            message: err instanceof Error ? err.message : String(err),
+            detail: {
+              reason: err instanceof Error ? err.message : String(err),
+              line: null,
+              column: null,
+              frame: null,
+            },
           });
         }
       }
@@ -353,16 +360,7 @@ export default forwardRef<ContentEditorRef, {
                 </p>
               )}
               {previewState.status === "error" && (
-                <pre
-                  className="whitespace-pre-wrap"
-                  style={{
-                    fontFamily: "var(--font-geist-mono), monospace",
-                    fontSize: "0.8125rem",
-                    color: "var(--color-error)",
-                  }}
-                >
-                  {previewState.message}
-                </pre>
+                <MdxCompileError detail={previewState.detail} />
               )}
               {previewState.status === "ok" && (
                 <div className="markdown-content" {...previewProps} />

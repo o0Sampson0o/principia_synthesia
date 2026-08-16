@@ -21,6 +21,8 @@ import { createSnapshotIfPublished } from "@/lib/article-snapshots";
 import { createArticleCore, updateArticleCore, deleteArticleCore, ArticleSlugTakenError } from "@/lib/articles-write";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { renderPreviewHtml } from "@/lib/preview-mdx-render";
+import { prepareArticleBody } from "@/lib/article-mdx";
+import { describeMdxError, type MdxErrorDetail } from "@/lib/mdx-error";
 
 // ---------------------------------------------------------------------------
 // Preview compilation — renders the editor buffer through the SAME MDX parsing
@@ -31,12 +33,16 @@ import { renderPreviewHtml } from "@/lib/preview-mdx-render";
 export async function previewMdx(
   publisherSlug: string,
   source: string
-): Promise<{ html: string } | { error: string }> {
+): Promise<{ html: string } | { error: MdxErrorDetail }> {
   await requireSession();
   try {
     return { html: await renderPreviewHtml(source, { publisherSlug }) };
   } catch (err: unknown) {
-    return { error: err instanceof Error ? err.message : String(err) };
+    // The preview pipeline throws a VFileMessage, so the position is already on
+    // the error — it just has to be mapped back into the author's line numbers
+    // (prepareArticleBody strips frontmatter before the compiler sees anything).
+    const { renderedBody } = prepareArticleBody(source, { publisherSlug });
+    return { error: await describeMdxError(err, { source, renderedBody }) };
   }
 }
 

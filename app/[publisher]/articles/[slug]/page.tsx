@@ -415,6 +415,7 @@ export default async function ArticlePage({
 
       <ArticleBody
         source={renderedBody}
+        rawSource={content ?? ""}
         publisherSlug={publisherSlug}
         cites={{ slugToNumber, resolved: resolvedCitations }}
         showDetails={isEditor}

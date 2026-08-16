@@ -217,6 +217,7 @@ export default async function BookSectionPage({
         <ArticleToc entries={toc} />
         <ArticleBody
           source={renderedBody}
+          rawSource={article.content ?? ""}
           publisherSlug={publisherSlug}
           cites={{ slugToNumber, resolved: resolvedCitations }}
           showDetails={isEditor}

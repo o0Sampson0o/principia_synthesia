@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { previewMdx } from "@/app/[publisher]/articles/actions";
 import { usePreviewEmbeds } from "@/components/PreviewEmbeds";
+import MdxCompileError from "@/components/MdxCompileError";
+import type { MdxErrorDetail } from "@/lib/mdx-error";
 
 type CheckState =
   | { status: "idle" }
   | { status: "checking" }
   | { status: "ok"; html: string }
-  | { status: "error"; message: string };
+  | { status: "error"; detail: MdxErrorDetail };
 
 /**
  * Compile-check for the live-preview editor: runs the full server-side MDX
@@ -41,7 +43,7 @@ export default function CheckMdxButton({
       try {
         const result = await previewMdx(publisherSlug, getSource());
         if ("error" in result) {
-          setState({ status: "error", message: result.error });
+          setState({ status: "error", detail: result.error });
           onError?.(true);
         } else {
           setState({ status: "ok", html: result.html });
@@ -50,7 +52,12 @@ export default function CheckMdxButton({
       } catch (err) {
         setState({
           status: "error",
-          message: err instanceof Error ? err.message : String(err),
+          detail: {
+            reason: err instanceof Error ? err.message : String(err),
+            line: null,
+            column: null,
+            frame: null,
+          },
         });
         onError?.(true);
       }
@@ -139,18 +146,7 @@ export default function CheckMdxButton({
             </button>
           </div>
           <div className="overflow-y-auto min-h-0">
-            {state.status === "error" && (
-              <pre
-                className="whitespace-pre-wrap"
-                style={{
-                  fontFamily: "var(--font-geist-mono), monospace",
-                  fontSize: "0.8125rem",
-                  color: "var(--color-error)",
-                }}
-              >
-                {state.message}
-              </pre>
-            )}
+            {state.status === "error" && <MdxCompileError detail={state.detail} />}
             {state.status === "ok" && (
               <div className="markdown-content" {...bodyProps} />
             )}
