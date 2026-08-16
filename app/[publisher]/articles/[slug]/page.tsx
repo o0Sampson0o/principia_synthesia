@@ -6,7 +6,6 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { headers } from "next/headers";
-import { MDXRemote } from "next-mdx-remote/rsc";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
@@ -14,12 +13,7 @@ import { config } from "@/lib/config";
 import { resolvePublisher } from "@/lib/publisher";
 import { canEditContent } from "@/lib/roles";
 import ArticleMetadataDisplay from "@/components/ArticleMetadata";
-import {
-  buildArticleComponents,
-  buildArticleMdxOptions,
-  prepareArticleBody,
-  resolveCitations,
-} from "@/lib/article-mdx";
+import { prepareArticleBody, resolveCitations } from "@/lib/article-mdx";
 import RelatedEvents from "@/components/RelatedEvents";
 import LastVerifiedBadge, { StaleWarningBanner } from "@/components/LastVerifiedBadge";
 import MarkVerifiedForm from "@/components/MarkVerifiedForm";
@@ -35,7 +29,7 @@ import ForkLineageHeader from "@/components/ForkLineageHeader";
 import ForksList from "@/components/ForksList";
 import BibliographySection from "@/components/BibliographySection";
 import CommentThread from "@/components/CommentThread";
-import MdxErrorBoundary from "@/components/MdxErrorBoundary";
+import ArticleBody from "@/components/ArticleBody";
 import ArticleToc from "@/components/ArticleToc";
 import ContinueReading from "@/components/ContinueReading";
 import { extractToc } from "@/lib/article-toc";
@@ -419,15 +413,12 @@ export default async function ArticlePage({
 
       <ArticleToc entries={toc} />
 
-      <MdxErrorBoundary showDetails={isEditor}>
-      <div className="markdown-content">
-        <MDXRemote
-          source={renderedBody}
-          options={buildArticleMdxOptions({ slugToNumber, resolved: resolvedCitations })}
-          components={buildArticleComponents(publisherSlug)}
-        />
-      </div>
-      </MdxErrorBoundary>
+      <ArticleBody
+        source={renderedBody}
+        publisherSlug={publisherSlug}
+        cites={{ slugToNumber, resolved: resolvedCitations }}
+        showDetails={isEditor}
+      />
 
       <BibliographySection orderedSlugs={orderedSlugs} resolved={resolvedCitations} />
 

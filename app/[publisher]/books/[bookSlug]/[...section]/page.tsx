@@ -7,13 +7,8 @@ import { resolvePublisher } from "@/lib/publisher";
 import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { canEditContent } from "@/lib/roles";
-import { MDXRemote } from "next-mdx-remote/rsc";
-import {
-  buildArticleComponents,
-  buildArticleMdxOptions,
-  prepareArticleBody,
-  resolveCitations,
-} from "@/lib/article-mdx";
+import { prepareArticleBody, resolveCitations } from "@/lib/article-mdx";
+import ArticleBody from "@/components/ArticleBody";
 import { headers } from "next/headers";
 import { classifyReferrer } from "@/lib/analytics-source";
 import { getOrCreateSessionId } from "@/lib/analytics-session";
@@ -220,13 +215,12 @@ export default async function BookSectionPage({
       {/* ── Prose ────────────────────────────────────────────────── */}
       <div className="max-w-3xl mx-auto px-5 py-10 sm:py-14">
         <ArticleToc entries={toc} />
-        <div className="markdown-content">
-          <MDXRemote
-            source={renderedBody}
-            options={buildArticleMdxOptions({ slugToNumber, resolved: resolvedCitations })}
-            components={buildArticleComponents(publisherSlug)}
-          />
-        </div>
+        <ArticleBody
+          source={renderedBody}
+          publisherSlug={publisherSlug}
+          cites={{ slugToNumber, resolved: resolvedCitations }}
+          showDetails={isEditor}
+        />
       </div>
 
       {/* ── Page-turn navigation ─────────────────────────────────── */}

@@ -1,7 +1,19 @@
 "use client";
 
 import { Component, ReactNode } from "react";
+import MdxErrorNotice from "./MdxErrorNotice";
 
+/**
+ * Catches errors thrown while *rendering* already-compiled article content —
+ * a client component in the body blowing up (Mermaid, InlineAnimation), or a
+ * server component nested in the compiled tree failing after the compile
+ * succeeded.
+ *
+ * Compile failures are handled earlier and separately, in `<ArticleBody>`:
+ * they happen inside an `await` in a server component, where a try/catch gives
+ * a deterministic result instead of depending on error-boundary semantics
+ * across the RSC boundary.
+ */
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
@@ -32,25 +44,10 @@ export default class MdxErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback || (
-          <div className="themed-surface border themed-border rounded-lg px-4 py-3 text-sm">
-            <p className="mb-1 ps-mono-micro" style={{ color: "var(--color-error)" }}>
-              Display error
-            </p>
-            <p className="themed-secondary">
-              This article&rsquo;s content couldn&rsquo;t be displayed — its source contains a
-              formatting error. The rest of the page still works.
-            </p>
-            {this.props.showDetails && (
-              <details className="mt-2">
-                <summary className="text-xs themed-muted cursor-pointer themed-hover-foreground">
-                  Technical details (visible to editors only)
-                </summary>
-                <pre className="mt-2 text-xs themed-muted whitespace-pre-wrap font-mono">
-                  {this.state.error?.message}
-                </pre>
-              </details>
-            )}
-          </div>
+          <MdxErrorNotice
+            showDetails={this.props.showDetails}
+            detail={this.state.error ? { reason: this.state.error.message } : null}
+          />
         )
       );
     }
