@@ -25,6 +25,7 @@ import { remarkCallouts } from "@/lib/remark-callouts";
 import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
 import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-numbering";
 import { remarkFencedEmbeds } from "@/lib/remark-fenced-embeds";
+import { rehypeJsxStyleObjects } from "@/lib/rehype-jsx-style-objects";
 import { codeHighlightPlugins } from "@/lib/code-highlight";
 import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
 import { parseFrontmatter } from "@/lib/frontmatter";
@@ -72,7 +73,11 @@ export function buildArticleMdxOptions(cites: {
         remarkWikilinks,
         [remarkCiteNumbering, { slugToNumber: cites.slugToNumber, resolved: cites.resolved }],
       ],
-      rehypePlugins: [rehypeSlug, rehypeKatex, ...codeHighlightPlugins],
+      // `rehypeJsxStyleObjects` must stay in the rehype phase: next-mdx-remote
+      // appends a remark plugin that strips JSX attribute expressions, which
+      // would delete the style object if we built it during remark. See the
+      // module comment for why that is the right side of the fence.
+      rehypePlugins: [rehypeJsxStyleObjects, rehypeSlug, rehypeKatex, ...codeHighlightPlugins],
     },
   };
 }

@@ -45,6 +45,7 @@ export default class MdxErrorBoundary extends Component<Props, State> {
       return (
         this.props.fallback || (
           <MdxErrorNotice
+            kind="render"
             showDetails={this.props.showDetails}
             detail={this.state.error ? { reason: this.state.error.message } : null}
           />

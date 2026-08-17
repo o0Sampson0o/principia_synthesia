@@ -13,10 +13,18 @@ import type { MdxErrorDetail } from "@/lib/mdx-error";
 export default function MdxErrorNotice({
   detail,
   showDetails = false,
+  kind = "compile",
 }: {
   detail?: Partial<MdxErrorDetail> | null;
   /** Show the technical cause — editors only. */
   showDetails?: boolean;
+  /**
+   * Which stage failed. A `"render"` failure happened after the document
+   * compiled, so it carries no source position and the editor's Preview cannot
+   * reproduce it — that pipeline emits HTML, not React. Worth saying out loud,
+   * because otherwise "Check MDX says OK" reads as a contradiction.
+   */
+  kind?: "compile" | "render";
 }) {
   const hasDetail = showDetails && detail?.reason;
 
@@ -50,6 +58,15 @@ export default function MdxErrorNotice({
             <pre className="mt-2 text-xs themed-muted whitespace-pre font-mono overflow-x-auto">
               {detail!.frame}
             </pre>
+          )}
+          {kind === "render" && (
+            <p className="mt-2 text-xs themed-muted">
+              This failed while rendering, after the document compiled — so there
+              is no source position, and the editor&rsquo;s Preview and
+              &ldquo;Check MDX&rdquo; will both report success. Those render the
+              document to HTML; this page renders it to React, which is stricter
+              about component props.
+            </p>
           )}
         </details>
       )}
