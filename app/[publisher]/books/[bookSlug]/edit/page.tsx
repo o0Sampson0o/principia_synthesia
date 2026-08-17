@@ -302,6 +302,33 @@ export default async function EditBookPage({
           </label>
           <CategoryPicker initialSelected={bookCats.map(c => c.slug)} />
         </div>
+        <details className="border rounded themed-surface">
+          <summary className="cursor-pointer px-4 py-2 text-sm font-medium themed-secondary select-none">
+            Math macros
+          </summary>
+          <div className="px-4 py-3 border-t themed-border space-y-2">
+            <p className="themed-muted" style={{ fontSize: "0.8125rem" }}>
+              KaTeX definitions available to every section written inside this book.
+              Standalone articles this book links to keep their own macros — they can be
+              read outside the book, where these would not exist.
+            </p>
+            <textarea
+              id="macros"
+              name="macros"
+              rows={6}
+              maxLength={8000}
+              spellCheck={false}
+              defaultValue={bookRow.metadata.macros ?? ""}
+              placeholder={"\\newcommand{\\dd}{\\frac{d}{dt}}\n\\gdef\\RR{\\mathbb{R}}"}
+              className="themed-input font-mono"
+              style={{ fontSize: "0.8125rem" }}
+            />
+            <p className="themed-muted" style={{ fontSize: "0.75rem" }}>
+              An article can add its own with a <code>```katex</code> block, which also
+              overrides a macro of the same name defined here.
+            </p>
+          </div>
+        </details>
         <button type="submit" className="themed-btn-accent rounded-lg">
           Save changes
         </button>

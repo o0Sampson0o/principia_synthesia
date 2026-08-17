@@ -23,9 +23,12 @@ export default function CheckMdxButton({
   getSource,
   onError,
   triggerRef,
+  articleId,
 }: {
   publisherSlug: string;
   getSource: () => string;
+  /** Lets the check inherit the parent book's KaTeX macros, as the book route does. */
+  articleId?: number;
   onError?: (hasError: boolean) => void;
   /** Lets the parent invoke the check imperatively (ContentEditorRef.compile). */
   triggerRef?: React.MutableRefObject<(() => void) | null>;
@@ -41,7 +44,7 @@ export default function CheckMdxButton({
     setState({ status: "checking" });
     startTransition(async () => {
       try {
-        const result = await previewMdx(publisherSlug, getSource());
+        const result = await previewMdx(publisherSlug, getSource(), articleId);
         if ("error" in result) {
           setState({ status: "error", detail: result.error });
           onError?.(true);

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { articles, revisions, articleCategories, categories } from "@/db/schema";
+import { articles, revisions, articleCategories, categories, books } from "@/db/schema";
 import { setContentTags } from "@/lib/content-tags";
 import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -32,11 +32,19 @@ import { describeMdxError, type MdxErrorDetail } from "@/lib/mdx-error";
 
 export async function previewMdx(
   publisherSlug: string,
-  source: string
+  source: string,
+  /**
+   * The article being edited, when it already exists. Used only to inherit the
+   * parent book's KaTeX macros, and only for a genuinely internal section —
+   * resolved here rather than passed in so the Preview applies exactly the rule
+   * the published book route does.
+   */
+  articleId?: number
 ): Promise<{ html: string } | { error: MdxErrorDetail }> {
   await requireSession();
+  const bookMacroSource = articleId ? await bookMacrosForArticle(articleId) : null;
   try {
-    return { html: await renderPreviewHtml(source, { publisherSlug }) };
+    return { html: await renderPreviewHtml(source, { publisherSlug, bookMacroSource }) };
   } catch (err: unknown) {
     // The preview pipeline throws a VFileMessage, so the position is already on
     // the error — it just has to be mapped back into the author's line numbers
@@ -49,6 +57,23 @@ export async function previewMdx(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * The parent book's macro definitions, for an internal section only.
+ *
+ * Mirrors the published book route: a standalone article that a book merely
+ * links to also renders at its own URL, where book macros do not exist, so it
+ * must not inherit them in the editor either.
+ */
+async function bookMacrosForArticle(articleId: number): Promise<string | null> {
+  const [row] = await db
+    .select({ macros: books.metadata })
+    .from(articles)
+    .innerJoin(books, eq(books.id, articles.parentBookId))
+    .where(and(eq(articles.id, articleId), eq(articles.isInternal, true), isNull(books.deletedAt)))
+    .limit(1);
+  return row?.macros.macros ?? null;
+}
 
 async function resolvePublisherOrThrow(publisherSlug: string) {
   const pub = await resolvePublisher(publisherSlug);

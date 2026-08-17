@@ -129,6 +129,12 @@ export const updateBookSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title too long"),
   summary: z.string().max(500, "Summary too long").optional(),
   categories: z.string().optional(),
+  /**
+   * KaTeX macro definitions shared by the book's internal sections. Bounded
+   * because it is expanded by the math renderer on every page of the book;
+   * `lib/katex-macros.ts` caps what it feeds KaTeX as a second line.
+   */
+  macros: z.string().max(8000, "Macro definitions too long").optional(),
 });
 
 /**

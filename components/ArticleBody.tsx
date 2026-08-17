@@ -3,6 +3,7 @@ import { compileMDX } from "next-mdx-remote/rsc";
 import * as Sentry from "@sentry/nextjs";
 import { buildArticleComponents, buildArticleMdxOptions } from "@/lib/article-mdx";
 import { describeMdxError } from "@/lib/mdx-error";
+import type { KatexMacros } from "@/lib/katex-macros";
 import type { ResolvedCitation } from "@/lib/remark-cite-numbering";
 import MdxErrorBoundary from "./MdxErrorBoundary";
 import MdxErrorNotice from "./MdxErrorNotice";
@@ -26,6 +27,7 @@ export default async function ArticleBody({
   rawSource,
   publisherSlug,
   cites,
+  macros = {},
   showDetails = false,
 }: {
   /** The frontmatter-stripped body from `prepareArticleBody` — what gets compiled. */
@@ -42,10 +44,12 @@ export default async function ArticleBody({
     slugToNumber: Map<string, number>;
     resolved: Map<string, ResolvedCitation>;
   };
+  /** Author-defined KaTeX macros for this document (`lib/katex-macros.ts`). */
+  macros?: KatexMacros;
   /** Surface the compiler's reason inline — editors only. */
   showDetails?: boolean;
 }) {
-  const options = buildArticleMdxOptions(cites);
+  const options = buildArticleMdxOptions(cites, macros);
   let content: ReactElement;
 
   try {

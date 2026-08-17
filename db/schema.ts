@@ -109,6 +109,13 @@ export type BookMetadataShape = {
   status: "draft" | "review" | "published" | "archived";
   tags: string[];
   description: string;
+  /**
+   * KaTeX macro definitions shared by every *internal* section of this book
+   * (`lib/katex-macros.ts`). Standalone articles a book merely links to keep
+   * their own macros only — they can be read outside the book, where these
+   * definitions would not exist.
+   */
+  macros?: string;
 };
 
 /**

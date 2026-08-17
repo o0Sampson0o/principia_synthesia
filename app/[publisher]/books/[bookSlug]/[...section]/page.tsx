@@ -8,6 +8,7 @@ import { getSession } from "@/lib/auth";
 import { canView } from "@/lib/access";
 import { canEditContent } from "@/lib/roles";
 import { prepareArticleBody, resolveCitations } from "@/lib/article-mdx";
+import { buildKatexMacros, extractMacroSource } from "@/lib/katex-macros";
 import ArticleBody from "@/components/ArticleBody";
 import { headers } from "next/headers";
 import { classifyReferrer } from "@/lib/analytics-source";
@@ -116,6 +117,13 @@ export default async function BookSectionPage({
   const nextSlug = idx < total - 1 ? structure.orderedSections[idx + 1].slug : null;
 
   const { body, renderedBody } = prepareArticleBody(article.content ?? "", { publisherSlug });
+  // Book macros reach internal sections only. A standalone article a book links
+  // to also has a page outside the book, where these definitions do not exist —
+  // inheriting them here would make it render differently in the two places.
+  const katexMacros = buildKatexMacros(
+    article.isInternal ? bookRow.metadata.macros : null,
+    extractMacroSource(body)
+  );
   const toc = extractToc(body);
   const { slugToNumber, resolved: resolvedCitations } = await resolveCitations(body);
 
@@ -220,6 +228,7 @@ export default async function BookSectionPage({
           rawSource={article.content ?? ""}
           publisherSlug={publisherSlug}
           cites={{ slugToNumber, resolved: resolvedCitations }}
+          macros={katexMacros}
           showDetails={isEditor}
         />
       </div>

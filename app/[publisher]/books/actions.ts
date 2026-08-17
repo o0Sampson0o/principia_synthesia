@@ -114,15 +114,23 @@ export async function updateBook(publisherSlug: string, formData: FormData) {
     title: formData.get("title"),
     summary: formData.get("summary"),
     categories: formData.get("categories"),
+    macros: formData.get("macros") ?? undefined,
   });
 
   const categorySlugs = validated.categories?.split(",").filter(Boolean) ?? [];
 
   const [current] = await db
-    .select({ slug: books.slug })
+    .select({ slug: books.slug, metadata: books.metadata })
     .from(books)
     .where(eq(books.id, validated.id))
     .limit(1);
+
+  // `metadata` is a whole JSONB document; merge so editing the book form never
+  // drops status/tags/description that this form does not show.
+  const macros = validated.macros?.trim() ?? "";
+  const metadata = current
+    ? { ...current.metadata, ...(macros ? { macros } : { macros: undefined }) }
+    : undefined;
 
   try {
     await db
@@ -131,6 +139,7 @@ export async function updateBook(publisherSlug: string, formData: FormData) {
         slug: validated.slug,
         title: validated.title,
         summary: validated.summary,
+        ...(metadata ? { metadata } : {}),
         updatedAt: new Date()
       })
       .where(and(eq(books.id, validated.id), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)));

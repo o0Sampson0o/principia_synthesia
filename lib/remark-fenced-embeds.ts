@@ -1,6 +1,7 @@
-import { visit } from "unist-util-visit";
+import { visit, SKIP } from "unist-util-visit";
 import type { Root, Code } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
+import { MACRO_FENCE_LANG } from "@/lib/katex-macros";
 
 /**
  * Remark plugin that turns two fenced code languages into live embeds instead
@@ -8,6 +9,7 @@ import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
  *
  * - ```mermaid  → `<MermaidBlock source="…" />`
  * - ```animation → `<InlineAnimation code="…" height="…" />`
+ * - ```katex     → nothing (a KaTeX macro block; see `lib/katex-macros.ts`)
  *
  * Both are *rendering* languages, not languages you read as source: an author
  * writing them wants the diagram or the canvas, the way every other Markdown
@@ -28,6 +30,14 @@ export function remarkFencedEmbeds() {
     visit(tree, "code", (node: Code, index, parent) => {
       if (!parent || index === undefined || index === null) return;
       const lang = node.lang?.toLowerCase();
+
+      // Macro definitions are configuration, not content: their effect is
+      // already collected into the `macros` option before parsing, so the
+      // block itself must leave no trace.
+      if (lang === MACRO_FENCE_LANG) {
+        parent.children.splice(index, 1);
+        return [SKIP, index];
+      }
 
       if (lang === "mermaid") {
         parent.children[index] = jsxElement("MermaidBlock", { source: node.value });
@@ -61,6 +71,13 @@ export function remarkFencedEmbedsStatic() {
   return (tree: Root) => {
     visit(tree, "code", (node: Code, index, parent) => {
       if (!parent || index === undefined || index === null) return;
+      // Same as the live pipeline: a macro block is configuration and must not
+      // print. Exports do not expand the macros (they render math with their
+      // own engines), but showing the raw definitions would be worse.
+      if (node.lang?.toLowerCase() === MACRO_FENCE_LANG) {
+        parent.children.splice(index, 1);
+        return [SKIP, index];
+      }
       if (node.lang?.toLowerCase() !== "animation") return;
       parent.children[index] = {
         type: "paragraph",

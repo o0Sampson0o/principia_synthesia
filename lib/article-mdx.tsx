@@ -26,6 +26,7 @@ import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
 import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-numbering";
 import { remarkFencedEmbeds } from "@/lib/remark-fenced-embeds";
 import { rehypeJsxStyleObjects } from "@/lib/rehype-jsx-style-objects";
+import type { KatexMacros } from "@/lib/katex-macros";
 import { codeHighlightPlugins } from "@/lib/code-highlight";
 import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
 import { parseFrontmatter } from "@/lib/frontmatter";
@@ -56,10 +57,19 @@ const CANVAS_SLUG_RE = /^anim-[a-z0-9]+(?:-[a-z0-9]+)*$/;
  * The `options` object passed to `<MDXRemote>` / `compileMDX`. Parameterized by
  * the citation maps so `remarkCiteNumbering` can resolve `<Cite>` nodes.
  */
-export function buildArticleMdxOptions(cites: {
-  slugToNumber: Map<string, number>;
-  resolved: Map<string, ResolvedCitation>;
-}): { mdxOptions: { remarkPlugins: PluggableList; rehypePlugins: PluggableList } } {
+export function buildArticleMdxOptions(
+  cites: {
+    slugToNumber: Map<string, number>;
+    resolved: Map<string, ResolvedCitation>;
+  },
+  /**
+   * Author-defined KaTeX macros for this document, from `buildKatexMacros`.
+   * The object is per-render: `rehype-katex` writes any `\gdef` the prose
+   * itself contains back into it, so sharing one between requests would leak
+   * macros between articles.
+   */
+  macros: KatexMacros = {}
+): { mdxOptions: { remarkPlugins: PluggableList; rehypePlugins: PluggableList } } {
   return {
     mdxOptions: {
       remarkPlugins: [
@@ -77,7 +87,12 @@ export function buildArticleMdxOptions(cites: {
       // appends a remark plugin that strips JSX attribute expressions, which
       // would delete the style object if we built it during remark. See the
       // module comment for why that is the right side of the fence.
-      rehypePlugins: [rehypeJsxStyleObjects, rehypeSlug, rehypeKatex, ...codeHighlightPlugins],
+      rehypePlugins: [
+        rehypeJsxStyleObjects,
+        rehypeSlug,
+        [rehypeKatex, { macros }],
+        ...codeHighlightPlugins,
+      ],
     },
   };
 }

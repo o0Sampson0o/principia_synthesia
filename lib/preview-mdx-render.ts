@@ -38,6 +38,7 @@ import { remarkCiteNumbering } from "@/lib/remark-cite-numbering";
 import { remarkFencedEmbeds } from "@/lib/remark-fenced-embeds";
 import { codeHighlightPlugins } from "@/lib/code-highlight";
 import { prepareArticleBody, resolveCitations } from "@/lib/article-mdx";
+import { buildKatexMacros, extractMacroSource } from "@/lib/katex-macros";
 
 type JsxNode = MdxJsxFlowElement | MdxJsxTextElement;
 
@@ -170,9 +171,18 @@ function makeJsxHandler(publisherSlug: string) {
  */
 export async function renderPreviewHtml(
   content: string,
-  opts: { publisherSlug: string }
+  opts: {
+    publisherSlug: string;
+    /**
+     * Macros inherited from the article's book, when it is an internal
+     * section. The article's own ```katex block is collected here; a
+     * standalone article gets nothing, even if a book links to it.
+     */
+    bookMacroSource?: string | null;
+  }
 ): Promise<string> {
   const { body, renderedBody } = prepareArticleBody(content, opts);
+  const macros = buildKatexMacros(opts.bookMacroSource, extractMacroSource(body));
   const { slugToNumber, resolved } = await resolveCitations(body);
   const jsxHandler = makeJsxHandler(opts.publisherSlug);
 
@@ -191,7 +201,7 @@ export async function renderPreviewHtml(
       handlers: { mdxJsxFlowElement: jsxHandler, mdxJsxTextElement: jsxHandler },
     })
     .use(rehypeSlug)
-    .use(rehypeKatex)
+    .use(rehypeKatex, { macros })
     .use(codeHighlightPlugins)
     .use(rehypeStringify)
     .process(renderedBody);

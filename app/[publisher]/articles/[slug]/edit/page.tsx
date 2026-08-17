@@ -156,6 +156,7 @@ export default async function EditArticlePage({
         {/* ── Editor ── */}
         <ArticleEditorPanel
           publisherSlug={publisherSlug}
+          articleId={article.id}
           draftKey={`${publisherSlug}:article-${article.id}`}
           initial={initialBody}
           initialMetadata={initialMetadata}

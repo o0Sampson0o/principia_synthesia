@@ -14,6 +14,7 @@ import { resolvePublisher } from "@/lib/publisher";
 import { canEditContent } from "@/lib/roles";
 import ArticleMetadataDisplay from "@/components/ArticleMetadata";
 import { prepareArticleBody, resolveCitations } from "@/lib/article-mdx";
+import { buildKatexMacros, extractMacroSource } from "@/lib/katex-macros";
 import RelatedEvents from "@/components/RelatedEvents";
 import LastVerifiedBadge, { StaleWarningBanner } from "@/components/LastVerifiedBadge";
 import MarkVerifiedForm from "@/components/MarkVerifiedForm";
@@ -174,6 +175,9 @@ export default async function ArticlePage({
     updatedAt: article.updatedAt,
   };
   const { metadata, body, renderedBody } = prepareArticleBody(content ?? "", { publisherSlug });
+  // Standalone article: its own ```katex block only. Internal sections are
+  // redirected to the book route above, which is where book macros apply.
+  const katexMacros = buildKatexMacros(extractMacroSource(body));
   const toc = extractToc(body);
 
   // Citation input computation
@@ -418,6 +422,7 @@ export default async function ArticlePage({
         rawSource={content ?? ""}
         publisherSlug={publisherSlug}
         cites={{ slugToNumber, resolved: resolvedCitations }}
+        macros={katexMacros}
         showDetails={isEditor}
       />
 

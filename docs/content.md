@@ -20,7 +20,7 @@ MDX components available in articles:
 
 ### Fenced embeds
 
-Two fence languages render instead of listing:
+Three fence languages do something other than list code:
 
 ````
 ```mermaid
@@ -41,6 +41,15 @@ function Wave() {
 ````
 
 Renders exactly like `<DynamicAnimation>` — same sandboxed iframe, same `window.theme`, same "first `function` declaration is the entry point" rule — for an animation that belongs to one article and does not need to exist as a reusable object. The document is built by `lib/animation-document.ts`, shared with the animation API route. `height=` is optional and defaults to `DEFAULT_ANIMATION_HEIGHT`.
+
+````
+```katex
+\newcommand{\deriv}[1]{\frac{d#1}{dt}}
+\gdef\RR{\mathbb{R}}
+```
+````
+
+Defines KaTeX macros for this article. See [Math macros](#math-macros) below. The block renders to nothing, in the EPUB and PDF pipelines too.
 
 Every other fence is syntax-highlighted (`cpp`, `ts`, `python`, …). Languages outside the eager set in `lib/code-highlight.ts` load on demand; an unknown one falls back to plain text rather than throwing. Two themes are emitted at once as CSS variables, and `app/globals.css` picks one per colour scheme.
 
@@ -79,6 +88,35 @@ $$
 Single-line `$$...$$` is parsed as **inline** math. This applies to all MDX content and seed data.
 
 **KaTeX CSS:** Imported globally via `@import "katex/dist/katex.min.css"` at the top of `app/globals.css`. Additional rules for `.markdown-content .katex-display` ensure display math is centred.
+
+## Math macros
+
+An author can define KaTeX commands once and use them in every expression in the
+document. `lib/katex-macros.ts` collects the definitions and hands
+`rehype-katex` a populated `macros` object.
+
+**Article level** — a ` ```katex ` fence anywhere in the body. Placement is free:
+the block is read from the source before anything is parsed, so a macro works
+above its own definition.
+
+**Book level** — *Edit book → Math macros*, stored on `books.metadata.macros`.
+These reach the book's **internal** sections only. A standalone article that a
+book merely links to keeps its own macros, because it also renders at its own
+URL where the book's definitions do not exist — inheriting them would make the
+same article render differently in two places. The rule lives in the book route
+and is mirrored by `previewMdx` so the editor agrees with the published page.
+
+An article macro shadows a book macro of the same name.
+
+`\gdef`, `\newcommand` and `\def` all work, including parameterised forms
+(`[1]` / `#1`). That takes KaTeX's `globalGroup` flag, which is set only while
+reading a definitions block — inside ordinary prose math, `\def` keeps its
+normal scope local to that expression. An unknown macro renders unexpanded
+rather than failing the page, which is also what a typo looks like.
+
+Macros apply to the published page and the editor Preview/Check MDX. The EPUB
+export renders math with MathJax rather than KaTeX and does not expand them; the
+PDF export could, and does not yet.
 
 ## Frontmatter & article metadata
 

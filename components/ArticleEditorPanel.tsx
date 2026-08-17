@@ -20,8 +20,11 @@ export default function ArticleEditorPanel({
   initialMetadata,
   saveDraftAction,
   initialDraftSavedAt = null,
+  articleId,
 }: {
   publisherSlug: string;
+  /** Lets Preview and "Check MDX" inherit the parent book's KaTeX macros. */
+  articleId?: number;
   /** Stable per-article key for the localStorage draft (e.g. `slug:article-12`). */
   draftKey: string;
   /** The article BODY (frontmatter is managed by the Frontmatter panel). */
@@ -192,6 +195,7 @@ export default function ArticleEditorPanel({
         }}
       />
       <ContentEditor
+        articleId={articleId}
         ref={editorRef}
         initial={initial}
         publisherSlug={publisherSlug}

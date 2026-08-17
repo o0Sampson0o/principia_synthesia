@@ -51,7 +51,9 @@ export default forwardRef<ContentEditorRef, {
    * the body alone when not provided.
    */
   getPreviewSource?: () => string;
-}>(function ContentEditor({ initial, publisherSlug, onChange, onError, toolbar, getPreviewSource }, ref) {
+  /** Lets Preview inherit the parent book's KaTeX macros, as the book route does. */
+  articleId?: number;
+}>(function ContentEditor({ initial, publisherSlug, onChange, onError, toolbar, getPreviewSource, articleId }, ref) {
   const contentValue = useRef<string>(initial);
   const [altFindings, setAltFindings] = useState<AltTextFinding[]>([]);
   const [showAltList, setShowAltList] = useState(false);
@@ -101,7 +103,7 @@ export default forwardRef<ContentEditorRef, {
     setPreviewState({ status: "loading" });
     (async () => {
       try {
-        const result = await previewMdx(publisherSlug, getPreviewSource?.() ?? contentValue.current);
+        const result = await previewMdx(publisherSlug, getPreviewSource?.() ?? contentValue.current, articleId);
         if (cancelled) return;
         if ("error" in result) {
           setPreviewState({ status: "error", detail: result.error });
@@ -127,7 +129,7 @@ export default forwardRef<ContentEditorRef, {
     return () => {
       cancelled = true;
     };
-  }, [mode, onError, publisherSlug, getPreviewSource]);
+  }, [mode, onError, publisherSlug, getPreviewSource, articleId]);
 
   // The in-editor keymap can't fire while CodeMirror is hidden — handle
   // Ctrl/Cmd+E at the window level when previewing so the cycle continues.
@@ -325,7 +327,7 @@ export default forwardRef<ContentEditorRef, {
             >
               Grammar {grammarOn ? "on" : "off"}
             </button>
-            <CheckMdxButton publisherSlug={publisherSlug} getSource={handleGetSource} onError={onError} triggerRef={checkTriggerRef} />
+            <CheckMdxButton publisherSlug={publisherSlug} getSource={handleGetSource} onError={onError} triggerRef={checkTriggerRef} articleId={articleId} />
           </div>
           {toolbar && <div className="flex items-center gap-2">{toolbar}</div>}
         </div>
