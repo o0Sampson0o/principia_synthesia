@@ -176,10 +176,31 @@ switching never reflows the page.
 - **Turn-into** (`lib/live-preview/turn-into.ts`): `Mod-Alt-0/1/2/3/7/8/9/q`
   rewrites the current line(s) prefix to paragraph / headings / bullet /
   numbered / to-do / quote, preserving content and indentation.
-- **Callouts** (`lib/remark-callouts.ts`): `> [!note] Title` GitHub/Obsidian
-  alert syntax → a colored callout box (12+ types, optional title, `+`/`-`
-  foldable). Registered in the article-page and `previewMdx` pipelines; the
-  live editor tints callout lines by type. Degrades to a plain blockquote.
+- **Callouts** (`lib/remark-callouts.ts`): a colored callout box (12+ types,
+  optional title, `+`/`-` foldable). Two spellings, same result:
+
+  ````
+  :::warning Overflow            > [!warning] Overflow
+  | bits | max |                 > | bits | max |
+  | ---- | --- |                 > | ---- | --- |
+  | 8    | 255 |                 > | 8    | 255 |
+  :::
+  ````
+
+  The container form is the one to reach for. A callout *is* a blockquote, and
+  CommonMark only continues a blockquote lazily for paragraph text — a table,
+  a `$$` block or a fence needs `>` on every line or it silently falls out of
+  the box. `lib/normalize-callouts.ts` rewrites `:::` containers into the
+  prefixed form on the raw source before parsing, so nothing downstream changes
+  and the two spellings cannot drift. Nesting works (`:::` inside `:::` becomes
+  a nested quote), a `:::` inside a fenced code block is left as text, and the
+  closing `:::` becomes a blank line so line numbers still match the author's
+  source for compile errors.
+
+  The `> [!note]` form stays supported and is what to use when the source has
+  to read well in Obsidian or on GitHub, where it degrades to a plain
+  blockquote. Registered in the article-page and `previewMdx` pipelines; the
+  live editor tints callout lines by type.
 - **Toggles**: `<details><summary>` render natively through MDX
   (`allowDangerousHtml`), styled in `.markdown-content`.
 

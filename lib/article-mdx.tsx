@@ -31,6 +31,7 @@ import { codeHighlightPlugins } from "@/lib/code-highlight";
 import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
 import { parseFrontmatter } from "@/lib/frontmatter";
 import { normalizeDetailsBlocks } from "@/lib/normalize-details";
+import { normalizeCalloutContainers } from "@/lib/normalize-callouts";
 import { db } from "@/db";
 import { articles, publishers } from "@/db/schema";
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
@@ -144,7 +145,9 @@ export function prepareArticleBody(
 ): { metadata: ArticleMetadata; body: string; renderedBody: string } {
   const { metadata, body } = parseFrontmatter(content ?? "");
   const canvas = metadata.canvas && CANVAS_SLUG_RE.test(metadata.canvas) ? metadata.canvas : null;
-  const normalized = normalizeDetailsBlocks(body);
+  // Details first, then callouts: the details normalizer matches its tags at
+  // the start of a line, which the callout prefixes would hide.
+  const normalized = normalizeCalloutContainers(normalizeDetailsBlocks(body));
   const renderedBody = canvas
     ? `<DynamicAnimation publisher="${opts.publisherSlug}" slug="${canvas}" />\n\n${normalized}`
     : normalized;
