@@ -34,13 +34,24 @@
 /**
  * `:::type`, optionally `+`/`-` then a title.
  *
+ * Deliberately forgiving in two ways, because both are what people actually
+ * type and neither is ambiguous:
+ *
+ *  - **Space after the colons.** `::: important Title` works as well as
+ *    `:::important Title`. Requiring them flush is a rule with nothing behind
+ *    it, and getting it wrong fails silently — the line renders as literal
+ *    text, joined into the surrounding paragraph.
+ *  - **More than three colons.** `::::note` is a convention elsewhere for
+ *    nesting; here nesting is tracked by depth, so any run of three or more is
+ *    simply a marker.
+ *
  * The type is letters only — every callout type is a plain word — so a
  * trailing `-` can only be the foldable marker. Allowing `-` inside the name
  * makes `:::warning-` parse as a type called "warning-" and lose the fold.
  */
-const OPEN_RE = /^:::([a-zA-Z]+)([+-]?)[ \t]*(.*)$/;
-/** A bare `:::` closes the innermost container. */
-const CLOSE_RE = /^:::[ \t]*$/;
+const OPEN_RE = /^:{3,}[ \t]*([a-zA-Z]+)([+-]?)[ \t]*(.*)$/;
+/** A run of colons alone on the line closes the innermost container. */
+const CLOSE_RE = /^:{3,}[ \t]*$/;
 const FENCE_RE = /^[ \t]*(`{3,}|~{3,})/;
 
 export function normalizeCalloutContainers(src: string): string {

@@ -93,6 +93,26 @@ describe("normalizeCalloutContainers", () => {
     expect(normalizeCalloutContainers(lines("a", ":::", "b"))).toBe(lines("a", ":::", "b"));
   });
 
+  it("accepts a space between the colons and the type", () => {
+    // What an author actually types. Requiring them flush fails silently: the
+    // line renders as literal text, joined into the surrounding paragraph.
+    expect(normalizeCalloutContainers(lines("::: important Dark Humor Ahead", "Hi, test", ":::"))).toBe(
+      lines("> [!important] Dark Humor Ahead", "> Hi, test", "")
+    );
+  });
+
+  it("accepts a space with the foldable marker", () => {
+    expect(normalizeCalloutContainers(lines("::: question- Try it", "x", ":::"))).toBe(
+      lines("> [!question]- Try it", "> x", "")
+    );
+  });
+
+  it("accepts runs of more than three colons", () => {
+    expect(normalizeCalloutContainers(lines("::::note Title", "x", "::::"))).toBe(
+      lines("> [!note] Title", "> x", "")
+    );
+  });
+
   it("is a no-op on source with no ':::'", () => {
     const src = lines("# T", "> [!note] Old style", "> body");
     expect(normalizeCalloutContainers(src)).toBe(src);
@@ -145,6 +165,15 @@ describe("callout containers end to end", () => {
     expect(html).toContain("<details");
     expect(html).toContain("<summary");
     expect(html).toContain("Try it");
+  });
+
+  it("renders the spaced form end to end", async () => {
+    const html = await renderHtml(lines("::: important Dark Humor Ahead", "Hi, test", ":::"));
+    const box = /<(blockquote|div|details)[^>]*callout[^>]*>([\s\S]*?)<\/\1>/.exec(html);
+    expect(box).not.toBeNull();
+    expect(box![2]).toContain("Dark Humor Ahead");
+    expect(box![2]).toContain("Hi, test");
+    expect(html).not.toContain(":::");
   });
 
   it("leaves a ::: example inside a code fence as literal text", async () => {

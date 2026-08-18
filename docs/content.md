@@ -187,6 +187,9 @@ switching never reflows the page.
   :::
   ````
 
+  `::: warning Overflow` (with a space) and `::::warning` (more colons) work
+  too — both are natural to type and neither is ambiguous.
+
   The container form is the one to reach for. A callout *is* a blockquote, and
   CommonMark only continues a blockquote lazily for paragraph text — a table,
   a `$$` block or a fence needs `>` on every line or it silently falls out of
