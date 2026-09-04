@@ -16,6 +16,7 @@ import { getOrCreateSessionId } from "@/lib/analytics-session";
 import { config } from "@/lib/config";
 import CommentThread from "@/components/CommentThread";
 import ArticleToc from "@/components/ArticleToc";
+import ArticleSectionRail from "@/components/ArticleSectionRail";
 import { extractToc } from "@/lib/article-toc";
 import {
   loadBookStructure,
@@ -136,7 +137,9 @@ export default async function BookSectionPage({
   crumbs.push({ label: article.title });
 
   return (
-    <main className="flex-1">
+    // main + rail are siblings inside .ps-book-reading, which is the flex row.
+    <>
+    <main className="ps-doc w-full">
 
       {/* ── Framed section header ────────────────────────────────── */}
       <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
@@ -307,5 +310,7 @@ export default async function BookSectionPage({
       </div>
 
     </main>
+    <ArticleSectionRail entries={toc} />
+    </>
   );
 }

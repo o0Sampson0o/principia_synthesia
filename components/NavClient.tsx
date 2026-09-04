@@ -19,7 +19,7 @@ export default function NavClient({ session }: { session: SessionPayload | null 
 
   return (
     <nav className="nav-glass sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-5 h-12 flex items-center gap-6">
+      <div className="nav-inner max-w-6xl mx-auto px-5 h-12 flex items-center gap-6">
 
         <Link
           href="/"

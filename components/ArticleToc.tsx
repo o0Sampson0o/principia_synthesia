@@ -4,9 +4,13 @@ import type { TocEntry } from "@/lib/article-toc";
 const TOC_THRESHOLD = 2;
 
 /**
- * Collapsible table of contents for long articles — a hairline-framed
- * <details> block ("Contents"), closed by default so the prose stays the
- * first thing a reader meets. Links target the rehype-slug ids on headings.
+ * Collapsible list of an article's own headings — a hairline-framed <details>
+ * block, closed by default so the prose stays the first thing a reader meets.
+ * Links target the rehype-slug ids on headings.
+ *
+ * Labelled "Sections", never "Contents": inside a book this sits below the
+ * spine, whose heading is "Book contents". Two lists a screen apart both
+ * called "Contents" read as the same list rendered twice.
  */
 export default function ArticleToc({ entries }: { entries: TocEntry[] }) {
   if (entries.length < TOC_THRESHOLD) return null;
@@ -15,10 +19,10 @@ export default function ArticleToc({ entries }: { entries: TocEntry[] }) {
     <details className="md-toc">
       <summary>
         <span className="ps-eyebrow" style={{ fontSize: "0.6875rem" }}>
-          Contents
+          Sections
         </span>
         <span className="themed-muted ps-mono-meta">
-          {entries.length} sections
+          {entries.length}
         </span>
       </summary>
       <ol>

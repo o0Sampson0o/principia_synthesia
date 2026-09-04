@@ -1779,6 +1779,350 @@ body::-webkit-scrollbar-corner,
   outline-offset: 2px;
 }
 
+
+/* ─── Book spine — a book's own contents, standing beside its prose ─────
+   Scoped to the reading routes ([...section]); the book landing page is
+   itself a contents listing and must not show the tree twice.
+   Vocabulary: this is "Book contents". An article's own headings are
+   "Sections" (.md-toc, and the margin rail) — never the same word twice
+   on one screen. */
+
+/* Block until the spine actually exists. BookSpine renders the aside, the
+   narrow-screen trigger and the drawer as siblings, so a flex row here would
+   give the trigger a flex track of its own below 1100px — pushing the reading
+   column sideways and off the viewport even though the spine is hidden. */
+.ps-book-shell {
+  display: block;
+  width: 100%;
+}
+
+.ps-book-reading {
+  flex: 1;
+  /* Without this a long code block or wide table stretches the flex item
+     and pushes the spine off-screen instead of scrolling itself. */
+  min-width: 0;
+  /* Same query container as .ps-reading-area on the article route, so the
+     rail resolves by available room rather than by route. */
+  container: reading / inline-size;
+}
+
+.ps-spine {
+  display: none;
+  position: sticky;
+  top: 3rem; /* nav is h-12, sticky top-0 */
+  flex: 0 0 18rem;
+  width: 18rem;
+  height: calc(100vh - 3rem);
+  height: calc(100svh - 3rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.75rem 1.1rem 3rem 1.75rem;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.ps-spine-head {
+  padding-bottom: 0.875rem;
+  border-bottom: 1px solid var(--border);
+}
+.ps-spine-title {
+  display: block;
+  margin-top: 0.5rem;
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+  text-decoration: none;
+  text-wrap: balance;
+}
+.ps-spine-title:hover { color: var(--accent); }
+.ps-spine-count {
+  margin-top: 0.25rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+.ps-spine-tree { list-style: none; margin: 0; padding: 0; }
+.ps-spine-part { margin-top: 1.35rem; }
+.ps-spine-part-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.5625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+.ps-spine-part-label:hover { color: var(--foreground); }
+
+.ps-spine-chapter-label {
+  display: block;
+  padding: 0.28rem 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--foreground);
+  text-decoration: none;
+}
+.ps-spine-chapter-label:hover { color: var(--accent); }
+
+.ps-spine-sections {
+  list-style: none;
+  margin: 0.1rem 0 0.7rem;
+  padding: 0;
+  border-left: 1px solid var(--border);
+}
+.ps-spine-loose { margin: 0.1rem 0; }
+
+.ps-spine-section {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.26rem 0 0.26rem 0.8rem;
+  margin-left: -1px;
+  /* Same 2px accent rule the callouts use — the sanctioned "this one" mark. */
+  border-left: 2px solid transparent;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--secondary-text);
+  text-decoration: none;
+  transition: color 0.15s, border-color 0.15s;
+}
+.ps-spine-loose > .ps-spine-section { padding-left: 0; margin-left: 0; border-left: 0; }
+.ps-spine-section:hover { color: var(--foreground); }
+.ps-spine-section[aria-current="page"] {
+  border-left-color: var(--accent);
+  color: var(--foreground);
+  font-weight: 500;
+}
+.ps-spine-section:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* A section owned by another publisher: assembled, not written — and not the
+   book owner's to edit. */
+.ps-spine-borrowed {
+  flex: none;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* ── Narrow screens: trigger + drawer ─────────────────────────────── */
+
+.ps-spine-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.25rem 0 0 1.25rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--secondary-text);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.ps-spine-trigger:hover { color: var(--foreground); border-color: var(--muted-foreground); }
+
+/* Drawer: overrides the centred-and-scaled base dialog with a left slide. */
+.ps-spine-dialog {
+  margin: 0 auto 0 0;
+  padding: 0;
+  width: min(20rem, 86vw);
+  max-width: none;
+  height: 100vh;
+  height: 100svh;
+  max-height: none;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  transform: none;
+  translate: 0 0;
+  transition:
+    opacity 0.18s ease,
+    translate 0.18s ease,
+    display 0.18s ease allow-discrete,
+    overlay 0.18s ease allow-discrete;
+}
+@starting-style {
+  .ps-spine-dialog[open] { opacity: 0; translate: -100% 0; }
+}
+.ps-spine-dialog:not([open]) {
+  opacity: 0;
+  translate: -100% 0;
+  transform: none;
+}
+
+.ps-spine-panel {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.5rem 1.25rem 3rem;
+}
+.ps-spine-panel-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.ps-spine-panel-bar .ps-spine-head { flex: 1; border-bottom: 0; padding-bottom: 0; }
+.ps-spine-panel .ps-spine-tree { margin-top: 1rem; }
+.ps-spine-close {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin: -0.25rem -0.25rem 0 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0.375rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.ps-spine-close:hover { color: var(--foreground); background: var(--muted); }
+
+/* On a book reading page the spine is flush to the viewport edge, so a nav
+   centred in max-w-6xl leaves a visible seam — the sidebar reads full-bleed,
+   the nav as a floating container, and they share no edge. Widen the nav there
+   and align its left padding to the spine's (1.75rem) so the wordmark sits
+   directly above "Book contents". Scoped by :has() rather than a prop, so the
+   shared Nav keeps no knowledge of books. Only applies where a spine exists. */
+@media (min-width: 1100px) {
+  body:has(.ps-book-shell) .nav-inner {
+    max-width: none;
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  .ps-book-shell {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  /* The reading column sits a fixed short distance from the spine instead of
+     centring in the leftover space — the Docusaurus/Infima arrangement. The
+     centred version put the gutter at 156px minimum and made it grow with the
+     window; this pins it at ~32px at every width and sends the slack to the
+     right, where the section rail belongs. */
+  .ps-book-reading .ps-doc {
+    padding-left: 0.75rem;
+  }
+  .ps-book-reading .max-w-3xl {
+    margin-left: 0;
+    margin-right: auto;
+    max-width: 60rem;
+  }
+  .ps-spine { display: block; }
+  .ps-spine-trigger { display: none; }
+  .ps-spine-dialog { display: none; }
+}
+
+
+/* ─── Section rail — the page's own headings, pinned right ──────────────
+   Unlabelled on purpose: a visible heading here competes with the spine's
+   "Book contents" and reads as a second table of contents. The hairline rule
+   and indentation carry the meaning; aria-label carries the accessible name.
+
+   Threshold: 0.75rem host padding + 48rem column + 2rem gutter + 15rem rail
+   = 65.75rem, so 66rem is the first width where nothing is squeezed. Below
+   it the collapsible .md-toc in the column takes over. */
+
+.ps-reading-area {
+  container: reading / inline-size;
+  width: 100%;
+}
+
+.ps-reading-area,
+.ps-book-reading {
+  display: flex;
+  align-items: flex-start;
+  /* Cap doc + rail as a group so the rail stays next to the prose instead of
+     pinning to the viewport edge (which opens a void between them). The cap
+     has to match the widths below or it strands space:
+       0.75rem padding + 60rem column + 2rem gutter + 16rem rail = 78.75rem. */
+  max-width: 79rem;
+}
+
+/* A standalone article has no spine to hug, so its group centres. */
+.ps-reading-area {
+  margin-inline: auto;
+}
+
+.ps-doc {
+  flex: 1;
+  /* Without this a wide table or code block stretches the flex item and
+     shoves the rail off the viewport instead of scrolling itself. */
+  min-width: 0;
+}
+
+.ps-section-rail {
+  display: none;
+  flex: 0 0 16rem;
+  width: 16rem;
+  position: sticky;
+  top: 3rem; /* nav is h-12, sticky top-0 */
+  max-height: calc(100vh - 5rem);
+  max-height: calc(100svh - 5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-top: 3.25rem;
+  padding: 0.25rem 0 1rem 1.25rem;
+  border-left: 1px solid var(--border);
+}
+.ps-section-rail ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ps-section-rail a {
+  display: block;
+  padding: 0.3rem 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--secondary-text);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.ps-section-rail a:hover { color: var(--foreground); }
+.ps-section-rail a[aria-current="location"] {
+  color: var(--accent);
+  font-weight: 500;
+}
+.ps-section-rail a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ps-section-rail [data-depth="2"] a { padding-left: 0.75rem; }
+.ps-section-rail [data-depth="3"] a { padding-left: 1.5rem; }
+
+@container reading (min-width: 66rem) {
+  .ps-section-rail { display: block; }
+  /* One list at a time: the collapsible block is the rail's narrow fallback,
+     not a second copy of it. */
+  .ps-doc .md-toc { display: none; }
+}
+
 /* Collapse all animation for users who ask for less motion. Component
    rules above handle their own cases; this is the safety net. */
 @media (prefers-reduced-motion: reduce) {

@@ -32,6 +32,7 @@ import BibliographySection from "@/components/BibliographySection";
 import CommentThread from "@/components/CommentThread";
 import ArticleBody from "@/components/ArticleBody";
 import ArticleToc from "@/components/ArticleToc";
+import ArticleSectionRail from "@/components/ArticleSectionRail";
 import ContinueReading from "@/components/ContinueReading";
 import { extractToc } from "@/lib/article-toc";
 import { sectionHref } from "@/lib/book-structure";
@@ -280,7 +281,11 @@ export default async function ArticlePage({
     await resolveCitations(body);
 
   return (
-    <main className="w-full max-w-3xl mx-auto px-5 py-12 sm:py-16">
+    // main is the flex row and the query container; .ps-doc is the reading
+    // column; the rail is its sibling and shows only when there is room.
+    <main className="ps-reading-area">
+     <div className="ps-doc">
+      <div className="w-full max-w-3xl mx-auto px-5 py-12 sm:py-16">
       {viewingSnapshot && (
         <SnapshotBanner
           publisherSlug={publisherSlug}
@@ -462,6 +467,9 @@ export default async function ArticlePage({
         />
       </Suspense>
 
+      </div>
+     </div>
+     <ArticleSectionRail entries={toc} />
     </main>
   );
 }
