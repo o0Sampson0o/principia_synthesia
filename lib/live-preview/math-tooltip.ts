@@ -2,6 +2,7 @@ import { StateField, type EditorState, type Extension } from "@codemirror/state"
 import { showTooltip, type Tooltip } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import { renderKatex } from "./widgets/math";
+import { katexMacrosFacet } from "./macros";
 
 /**
  * Obsidian-style math editing aid (the Latex Suite behavior): while the
@@ -44,7 +45,10 @@ type KeyedTooltip = Tooltip & { key: string };
 function buildTooltip(state: EditorState, prev: KeyedTooltip | null): KeyedTooltip | null {
   const math = mathAtCursor(state);
   if (!math) return null;
-  const key = `${math.from}:${math.displayMode ? "D" : "I"}:${math.formula}`;
+  const live = state.facet(katexMacrosFacet);
+  // Version in the key: the tooltip is reused while the key is stable, so a
+  // macro edit has to invalidate it or the preview keeps the old rendering.
+  const key = `${math.from}:${math.displayMode ? "D" : "I"}:${live.version}:${math.formula}`;
   // Same region + formula → keep the same tooltip object so CM reuses its DOM
   // (cursor motion within the formula doesn't flicker the preview).
   if (prev && prev.key === key) return prev;
@@ -56,7 +60,7 @@ function buildTooltip(state: EditorState, prev: KeyedTooltip | null): KeyedToolt
     create: () => {
       const dom = document.createElement("div");
       dom.className = "cm-lp-math-tooltip";
-      dom.innerHTML = renderKatex(math.formula, math.displayMode);
+      dom.innerHTML = renderKatex(math.formula, math.displayMode, live);
       return { dom };
     },
   };
@@ -65,7 +69,11 @@ function buildTooltip(state: EditorState, prev: KeyedTooltip | null): KeyedToolt
 const mathTooltipField = StateField.define<KeyedTooltip | null>({
   create: (state) => buildTooltip(state, null),
   update(value, tr) {
-    if (!tr.docChanged && !tr.selection) return value;
+    // A macros reconfigure changes neither doc nor selection, so without this
+    // the hover preview keeps rendering without the author's definitions.
+    const macrosChanged =
+      tr.state.facet(katexMacrosFacet) !== tr.startState.facet(katexMacrosFacet);
+    if (!tr.docChanged && !tr.selection && !macrosChanged) return value;
     return buildTooltip(tr.state, value);
   },
   provide: (field) => showTooltip.from(field),

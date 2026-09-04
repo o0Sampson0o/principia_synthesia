@@ -3,6 +3,7 @@ import { Decoration, EditorView, type DecorationSet } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import { selectionIntersects, frontmatterExtent } from "./reveal";
 import { CalloutWidget, canonicalType } from "./widgets/callout";
+import { katexMacrosFacet } from "./macros";
 
 /**
  * WYSIWYG callout ($> [!type]$) rendering. Like block math and tables, a
@@ -63,7 +64,7 @@ function buildDeco(state: EditorState, callouts: Callout[]): DecorationSet {
     .filter((c) => !selectionIntersects(state.selection, c.from, c.to))
     .map((c) =>
       Decoration.replace({
-        widget: new CalloutWidget(c.type, c.raw),
+        widget: new CalloutWidget(c.type, c.raw, state.facet(katexMacrosFacet)),
         block: true,
       }).range(c.from, c.to)
     );
@@ -79,7 +80,11 @@ export const calloutField = StateField.define<CalloutState>({
     // Same tree-identity guard as block-math: Lezer may extend the tree after
     // the doc-changing transaction, so re-walk when the tree instance changes.
     const treeChanged = syntaxTree(tr.state) !== syntaxTree(tr.startState);
-    if (!tr.docChanged && !tr.selection && !treeChanged) return value;
+    // Callout bodies contain rendered KaTeX, so a macros reconfigure has to
+    // rebuild them even though it touches no text, selection or tree.
+    const macrosChanged =
+      tr.state.facet(katexMacrosFacet) !== tr.startState.facet(katexMacrosFacet);
+    if (!tr.docChanged && !tr.selection && !treeChanged && !macrosChanged) return value;
     const callouts =
       tr.docChanged || treeChanged ? findCallouts(tr.state) : value.callouts;
     return { callouts, deco: buildDeco(tr.state, callouts) };
