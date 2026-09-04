@@ -99,32 +99,59 @@ export function extractMacroSource(body: string): string {
   return collected.join("\n");
 }
 
+/** Start of a TeX definition — where a definitions block can be cut apart. */
+const DEFINITION_START = /(?=\\(?:newcommand|renewcommand|providecommand|gdef|edef|xdef|def)\b)/;
+
+/**
+ * Split a definitions block into one chunk per definition.
+ *
+ * Only used as a fallback, because the split is naive: a `\def` nested inside
+ * another macro's body would be cut in the wrong place. The whole block is
+ * always tried intact first, so a well-formed source never reaches this.
+ */
+function splitDefinitions(source: string): string[] {
+  return source.split(DEFINITION_START).filter((chunk) => chunk.trim().length > 0);
+}
+
 /**
  * Build the `macros` object for `rehype-katex` from definition sources.
  *
  * Sources are applied in order, so later ones win: pass the book's definitions
  * first and the article's second, and an article can shadow a book macro.
- * Never throws — a bad definition should cost the author that macro, not the
- * page.
+ * Never throws — a bad definition costs the author that macro, not the page.
+ *
+ * The block is rendered intact first. If that fails, the definitions are
+ * applied one at a time: KaTeX stops at the first parse error, so a single
+ * malformed definition used to silently discard every definition *after* it.
+ * A book whose first macro KaTeX cannot read would lose all of them at once,
+ * with nothing to distinguish it from macros that were never set.
  */
 export function buildKatexMacros(...sources: Array<string | null | undefined>): KatexMacros {
   const macros: KatexMacros = {};
 
+  const apply = (src: string): boolean => {
+    try {
+      katex.renderToString(src, {
+        macros,
+        globalGroup: true,
+        // Throwing is what makes a failure detectable here; the caller still
+        // never sees one, because every call site is wrapped.
+        throwOnError: true,
+        displayMode: true,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   for (const source of sources) {
     const trimmed = source?.trim();
     if (!trimmed) continue;
-    try {
-      katex.renderToString(trimmed.slice(0, MAX_MACRO_SOURCE), {
-        macros,
-        globalGroup: true,
-        throwOnError: false,
-        displayMode: true,
-      });
-    } catch {
-      // A definitions block that cannot even be read defines nothing. The
-      // author sees their macro come out unexpanded, which is the same signal
-      // KaTeX gives for any unknown command.
-    }
+    const capped = trimmed.slice(0, MAX_MACRO_SOURCE);
+    if (apply(capped)) continue;
+    // Salvage the definitions that are individually fine.
+    for (const chunk of splitDefinitions(capped)) apply(chunk);
   }
 
   return macros;
