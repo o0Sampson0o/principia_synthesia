@@ -21,35 +21,16 @@ import GithubSlugger from "github-slugger";
 import { db } from "@/db";
 import { articles, curriculumEntries, publishers } from "@/db/schema";
 import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
+import type {
+  SectionNode,
+  ChapterNode,
+  PartNode,
+  BookChild,
+} from "@/lib/book-nav";
 
-export interface SectionNode {
-  kind: "section";
-  articleId: number;
-  slug: string;
-  title: string;
-  position: number;
-  /** Owning publisher slug (differs from the book's publisher for borrowed sections). */
-  publisherSlug: string | null;
-}
-
-export interface ChapterNode {
-  kind: "chapter";
-  slug: string;
-  title: string;
-  position: number;
-  parentPartSlug: string | null;
-  children: SectionNode[];
-}
-
-export interface PartNode {
-  kind: "part";
-  slug: string;
-  title: string;
-  position: number;
-  children: Array<ChapterNode | SectionNode>;
-}
-
-export type BookChild = PartNode | ChapterNode | SectionNode;
+// Re-exported so this module stays the single import site for book structure.
+export { sectionHref, dividerHref } from "@/lib/book-nav";
+export type { SectionNode, ChapterNode, PartNode, BookChild } from "@/lib/book-nav";
 
 /** One curriculum row as loaded from the DB (article fields left-joined). */
 export interface CurriculumRow {
@@ -191,23 +172,6 @@ export function resolvePath(structure: BookStructure, path: string[]): Resolved 
     return { type: "divider", node, part: parent && parent.kind === "part" ? parent : null };
   }
   return null;
-}
-
-/** Canonical 2-segment section URL (backward compatible). */
-export function sectionHref(publisher: string, bookSlug: string, slug: string): string {
-  return `/${publisher}/books/${bookSlug}/${slug}`;
-}
-
-/** Readable nested URL for a Part or Chapter (chapter includes its parent part). */
-export function dividerHref(
-  publisher: string,
-  bookSlug: string,
-  node: PartNode | ChapterNode
-): string {
-  if (node.kind === "part") return `/${publisher}/books/${bookSlug}/${node.slug}`;
-  return node.parentPartSlug
-    ? `/${publisher}/books/${bookSlug}/${node.parentPartSlug}/${node.slug}`
-    : `/${publisher}/books/${bookSlug}/${node.slug}`;
 }
 
 /** Load a book's curriculum and build its structure. */
