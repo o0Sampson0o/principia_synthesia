@@ -9,6 +9,8 @@ import { MarkdownWikilink } from "@/lib/codemirror-wikilink";
 import { grammarChecker } from "@/lib/codemirror-grammar";
 import { htmlTagLinter } from "@/lib/codemirror-tag-lint";
 import { livePreview } from "@/lib/live-preview";
+import { katexMacrosFacet, EMPTY_MACROS } from "@/lib/live-preview/macros";
+import { buildKatexMacros, extractMacroSource } from "@/lib/katex-macros";
 import { editorTheme } from "@/lib/live-preview/theme";
 import { slashMenu } from "@/lib/live-preview/slash-menu";
 import { turnIntoKeymap } from "@/lib/live-preview/turn-into";
@@ -43,6 +45,8 @@ export default forwardRef<ContentEditorRef, {
   initial: string;
   publisherSlug: string;
   onChange?: (value: string) => void;
+  /** The book's macro definitions, when editing this article as its section. */
+  bookMacroSource?: string | null;
   onError?: (hasError: boolean) => void;
   toolbar?: React.ReactNode;
   /**
@@ -53,7 +57,7 @@ export default forwardRef<ContentEditorRef, {
   getPreviewSource?: () => string;
   /** Lets Preview inherit the parent book's KaTeX macros, as the book route does. */
   articleId?: number;
-}>(function ContentEditor({ initial, publisherSlug, onChange, onError, toolbar, getPreviewSource, articleId }, ref) {
+}>(function ContentEditor({ initial, publisherSlug, onChange, onError, toolbar, getPreviewSource, articleId, bookMacroSource = null }, ref) {
   const contentValue = useRef<string>(initial);
   const [altFindings, setAltFindings] = useState<AltTextFinding[]>([]);
   const [showAltList, setShowAltList] = useState(false);
@@ -75,6 +79,38 @@ export default forwardRef<ContentEditorRef, {
   // view stays mounted (just hidden) for the same reason.
   const grammarCompartment = useMemo(() => new Compartment(), []);
   const modeCompartment = useMemo(() => new Compartment(), []);
+  const macrosCompartment = useMemo(() => new Compartment(), []);
+
+  /* Author macros for the LIVE tab. The published page and Preview build these
+     server-side; LIVE renders in the browser, so they are built here from the
+     same two sources — the parent book, and the article's own ```katex block.
+     Rebuilt only when the macro SOURCE changes (not on every keystroke), and
+     the version bump is what invalidates the widgets' render cache. */
+  const macroSourceRef = useRef<string | null>(null);
+  const macroVersionRef = useRef(0);
+
+  const rebuildMacros = useCallback((body: string) => {
+    const view = editorViewRef.current;
+    // No view yet (CodeMirror is a dynamic ssr:false import, so it mounts after
+    // this component's effects). Return WITHOUT recording the source, or the
+    // equality check below would suppress the retry from onCreateEditor.
+    if (!view) return;
+
+    const articleSource = extractMacroSource(body);
+    const combined = `${bookMacroSource ?? ""}\n${articleSource}`;
+    if (combined === macroSourceRef.current) return;
+    macroSourceRef.current = combined;
+
+    macroVersionRef.current += 1;
+    view.dispatch({
+      effects: macrosCompartment.reconfigure(
+        katexMacrosFacet.of({
+          version: macroVersionRef.current,
+          macros: buildKatexMacros(bookMacroSource, articleSource),
+        })
+      ),
+    });
+  }, [bookMacroSource, macrosCompartment]);
 
   const applyMode = useCallback((next: EditorMode, view?: EditorView | null) => {
     modeRef.current = next;
@@ -157,6 +193,7 @@ export default forwardRef<ContentEditorRef, {
     htmlTagLinter(),
     grammarCompartment.of([]),
     modeCompartment.of(livePreview()),
+    macrosCompartment.of(katexMacrosFacet.of(EMPTY_MACROS)),
     keymap.of([
       {
         key: "Mod-e",
@@ -166,7 +203,7 @@ export default forwardRef<ContentEditorRef, {
         },
       },
     ]),
-  ], [grammarCompartment, modeCompartment, toggleMode]);
+  ], [grammarCompartment, modeCompartment, macrosCompartment, toggleMode]);
 
   const toggleGrammar = useCallback(() => {
     setGrammarOn((on) => {
@@ -180,6 +217,7 @@ export default forwardRef<ContentEditorRef, {
 
   useEffect(() => {
     setAltFindings(findMissingAlt(initial));
+    rebuildMacros(initial);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -192,8 +230,9 @@ export default forwardRef<ContentEditorRef, {
     }
     altLintTimer.current = setTimeout(() => {
       setAltFindings(findMissingAlt(val));
+      rebuildMacros(val);
     }, 800);
-  }, [onChange]);
+  }, [onChange, rebuildMacros]);
 
   const handleInsertText = useCallback((text: string) => {
     const view = editorViewRef.current;
@@ -350,6 +389,9 @@ export default forwardRef<ContentEditorRef, {
               // ignore
             }
             if (saved !== modeRef.current) applyMode(saved, view);
+            // The view exists now, so the macros the mount effect could not
+            // apply can be built.
+            rebuildMacros(contentValue.current);
           }}
           className={mode === "preview" ? "hidden" : "overflow-hidden flex-1"}
         />

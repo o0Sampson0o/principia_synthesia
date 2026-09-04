@@ -4,6 +4,7 @@ import { syntaxTree } from "@codemirror/language";
 import { selectionIntersects, selectionTouchesLine, frontmatterExtent } from "./reveal";
 import { BulletWidget, HrWidget } from "./widgets/misc";
 import { InlineMathWidget } from "./widgets/math";
+import { katexMacrosFacet } from "./macros";
 import { WikilinkChipWidget } from "./widgets/wikilink";
 import { ImageWidget } from "./widgets/image";
 import { CiteChipWidget } from "./widgets/cite";
@@ -291,7 +292,9 @@ export function buildInlineDecorations(
             seenNodes.add(nodeKey);
             // Strip the $ delimiters; the widget renders the formula.
             const formula = state.doc.sliceString(node.from + 1, node.to - 1);
-            const deco = Decoration.replace({ widget: new InlineMathWidget(formula) });
+            const deco = Decoration.replace({
+              widget: new InlineMathWidget(formula, state.facet(katexMacrosFacet)),
+            });
             decos.push(deco.range(node.from, node.to));
             atomics.push(deco.range(node.from, node.to));
             return false; // don't descend into the STEX subtree

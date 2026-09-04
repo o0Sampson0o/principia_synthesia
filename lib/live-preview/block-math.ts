@@ -3,6 +3,7 @@ import { Decoration, EditorView, type DecorationSet } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import { selectionIntersects, frontmatterExtent } from "./reveal";
 import { BlockMathWidget } from "./widgets/math";
+import { katexMacrosFacet } from "./macros";
 
 /**
  * Block math ($$…$$) rendering. CM6 requires multi-line replacing/block
@@ -60,7 +61,7 @@ function buildDeco(state: EditorState, blocks: MathBlock[]): DecorationSet {
     .filter((b) => !selectionIntersects(state.selection, b.from, b.to))
     .map((b) =>
       Decoration.replace({
-        widget: new BlockMathWidget(b.formula),
+        widget: new BlockMathWidget(b.formula, state.facet(katexMacrosFacet)),
         block: true,
       }).range(b.from, b.to)
     );
@@ -78,7 +79,12 @@ export const blockMathField = StateField.define<BlockMathState>({
     // Without the tree-identity check, math blocks beyond the initially
     // parsed region would never render.
     const treeChanged = syntaxTree(tr.state) !== syntaxTree(tr.startState);
-    if (!tr.docChanged && !tr.selection && !treeChanged) return value;
+    // A macros reconfigure changes no text, no selection and no tree, so the
+    // early return below would keep block math rendered without the author's
+    // definitions until the next edit.
+    const macrosChanged =
+      tr.state.facet(katexMacrosFacet) !== tr.startState.facet(katexMacrosFacet);
+    if (!tr.docChanged && !tr.selection && !treeChanged && !macrosChanged) return value;
     const blocks =
       tr.docChanged || treeChanged ? findBlocks(tr.state) : value.blocks;
     return { blocks, deco: buildDeco(tr.state, blocks) };

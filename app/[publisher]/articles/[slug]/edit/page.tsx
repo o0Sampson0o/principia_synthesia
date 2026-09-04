@@ -9,6 +9,7 @@ import { eq, desc } from "drizzle-orm";
 import { updateArticle, saveArticleDraft, discardArticleDraft } from "../../actions";
 import DeleteArticleButton from "@/components/DeleteArticleButton";
 import ArticleEditorPanel from "@/components/ArticleEditorPanel";
+import { bookMacrosForArticle } from "@/lib/book-macros";
 import CategoryPicker from "@/components/CategoryPicker";
 import RevisionHistory from "@/components/RevisionHistory";
 import { parseFrontmatter } from "@/lib/frontmatter";
@@ -157,6 +158,7 @@ export default async function EditArticlePage({
         <ArticleEditorPanel
           publisherSlug={publisherSlug}
           articleId={article.id}
+          bookMacroSource={await bookMacrosForArticle(article.id)}
           draftKey={`${publisherSlug}:article-${article.id}`}
           initial={initialBody}
           initialMetadata={initialMetadata}

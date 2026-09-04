@@ -9,6 +9,7 @@ import type { EditorSelection, Extension } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { buildInlineDecorations } from "./decorate";
 import { selectionIntersects } from "./reveal";
+import { katexMacrosFacet } from "./macros";
 
 /**
  * The live-preview engine: viewport-scoped decorations rebuilt only when they
@@ -18,6 +19,7 @@ import { selectionIntersects } from "./reveal";
  *
  * Rebuild policy:
  *  - doc changed / viewport changed / parse progressed → rebuild
+ *  - author macros redefined → rebuild (math must re-render with them)
  *  - selection-only updates → rebuild only if the old or new selection
  *    touches a selection-sensitive node range (cheap array probe)
  *  - during mouse-drag selection → defer rebuilds until mouseup, so
@@ -56,7 +58,11 @@ class LivePreviewPlugin {
     const structural =
       update.docChanged ||
       update.viewportChanged ||
-      syntaxTree(update.state) !== syntaxTree(update.startState);
+      syntaxTree(update.state) !== syntaxTree(update.startState) ||
+      // A macros reconfigure changes no text, no selection and no tree, so
+      // without this the math keeps the rendering it got before the author's
+      // definitions were known — which is every formula on first load.
+      update.state.facet(katexMacrosFacet) !== update.startState.facet(katexMacrosFacet);
 
     if (!structural && !update.selectionSet && !this.pending) return;
 

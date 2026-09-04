@@ -21,10 +21,17 @@ export default function ArticleEditorPanel({
   saveDraftAction,
   initialDraftSavedAt = null,
   articleId,
+  bookMacroSource = null,
 }: {
   publisherSlug: string;
   /** Lets Preview and "Check MDX" inherit the parent book's KaTeX macros. */
   articleId?: number;
+  /**
+   * The parent book's macro definitions, for an internal section. Preview and
+   * Check MDX resolve these on the server from `articleId`; the LIVE tab
+   * renders in the browser and so needs them handed over.
+   */
+  bookMacroSource?: string | null;
   /** Stable per-article key for the localStorage draft (e.g. `slug:article-12`). */
   draftKey: string;
   /** The article BODY (frontmatter is managed by the Frontmatter panel). */
@@ -196,6 +203,7 @@ export default function ArticleEditorPanel({
       />
       <ContentEditor
         articleId={articleId}
+        bookMacroSource={bookMacroSource}
         ref={editorRef}
         initial={initial}
         publisherSlug={publisherSlug}
