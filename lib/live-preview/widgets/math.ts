@@ -39,6 +39,14 @@ export function renderKatex(
       // later formula. buildKatexMacros has already applied the author's
       // definitions block with globalGroup, so the copy starts complete.
       macros: { ...live.macros },
+      // Equation numbering injects \htmlId on tags and \href on references,
+      // both trust-gated in KaTeX. Allowed for our own #eq- anchors only, so
+      // an author cannot smuggle a URL through a formula.
+      trust: (ctx: { command: string; url?: string; id?: string }) =>
+        (ctx.command === "\\href" && (ctx.url ?? "").startsWith("#eq-")) ||
+        (ctx.command === "\\htmlId" && (ctx.id ?? "").startsWith("eq-")),
+      // Otherwise KaTeX warns once per numbered equation, on every keystroke.
+      strict: (code: string) => (code === "htmlExtension" ? "ignore" : "warn"),
     });
   } catch (err) {
     const div = document.createElement("span");

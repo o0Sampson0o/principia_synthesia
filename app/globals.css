@@ -944,6 +944,13 @@ body {
   color: var(--muted-foreground);
   font-size: 0.875em;
 }
+/* Prose \eqref resolved to its equation number. Accent-toned so it reads as a
+   reference rather than body text, matching the link it becomes when published. */
+.cm-lp-eqref {
+  color: var(--accent);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.875em;
+}
 .cm-lp-hr {
   display: inline-block;
   width: 100%;

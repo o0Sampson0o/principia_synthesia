@@ -27,6 +27,40 @@ import { remarkCiteNumbering, type ResolvedCitation } from "@/lib/remark-cite-nu
 import { remarkFencedEmbeds } from "@/lib/remark-fenced-embeds";
 import { rehypeJsxStyleObjects } from "@/lib/rehype-jsx-style-objects";
 import type { KatexMacros } from "@/lib/katex-macros";
+import { resolveEquationRefs } from "@/lib/equation-refs";
+
+/**
+ * KaTeX trust policy for equation numbering.
+ *
+ * `\htmlId` (the anchor on a tag) and `\href` (a resolved `\eqref`) are both
+ * trust-gated. Equation numbering injects them, so they are permitted for our
+ * own `#eq-` anchors only — an author cannot smuggle a URL through a formula.
+ *
+ * Exported because the editor Preview builds its own processor: without the
+ * same policy there, numbering renders on the published page and errors in
+ * Preview, which is exactly the split this project keeps trying to avoid.
+ */
+export function katexEquationTrust(ctx: {
+  command: string;
+  url?: string;
+  id?: string;
+}): boolean {
+  if (ctx.command === "\\href") return (ctx.url ?? "").startsWith("#eq-");
+  if (ctx.command === "\\htmlId") return (ctx.id ?? "").startsWith("eq-");
+  return false;
+}
+
+/**
+ * Strict-mode policy that goes with the trust policy above.
+ *
+ * KaTeX warns `htmlExtension` for every `\htmlId` even when trust permits it,
+ * which would log once per numbered equation on every render. Silenced for
+ * that code only; every other strictness warning still surfaces, since those
+ * point at real problems in an author's TeX.
+ */
+export function katexEquationStrict(errorCode: string): "ignore" | "warn" {
+  return errorCode === "htmlExtension" ? "ignore" : "warn";
+}
 import { codeHighlightPlugins } from "@/lib/code-highlight";
 import { buildCitationIndex } from "@/lib/mdx-cite-numbering";
 import { parseFrontmatter } from "@/lib/frontmatter";
@@ -91,7 +125,7 @@ export function buildArticleMdxOptions(
       rehypePlugins: [
         rehypeJsxStyleObjects,
         rehypeSlug,
-        [rehypeKatex, { macros }],
+        [rehypeKatex, { macros, trust: katexEquationTrust, strict: katexEquationStrict }],
         ...codeHighlightPlugins,
       ],
     },
@@ -147,7 +181,12 @@ export function prepareArticleBody(
   const canvas = metadata.canvas && CANVAS_SLUG_RE.test(metadata.canvas) ? metadata.canvas : null;
   // Details first, then callouts: the details normalizer matches its tags at
   // the start of a line, which the callout prefixes would hide.
-  const normalized = normalizeCalloutContainers(normalizeDetailsBlocks(body));
+  // Equation references before anything else touches the math: this assigns
+  // the numbers, strips \label (which KaTeX renders as an error) and turns
+  // \eqref into a link. Applied to `body` so the TOC and citation passes,
+  // which read `body`, are unaffected by the injected tags.
+  const withEquationRefs = resolveEquationRefs(body).source;
+  const normalized = normalizeCalloutContainers(normalizeDetailsBlocks(withEquationRefs));
   const renderedBody = canvas
     ? `<DynamicAnimation publisher="${opts.publisherSlug}" slug="${canvas}" />\n\n${normalized}`
     : normalized;

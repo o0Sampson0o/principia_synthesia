@@ -37,7 +37,12 @@ import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import { remarkCiteNumbering } from "@/lib/remark-cite-numbering";
 import { remarkFencedEmbeds } from "@/lib/remark-fenced-embeds";
 import { codeHighlightPlugins } from "@/lib/code-highlight";
-import { prepareArticleBody, resolveCitations } from "@/lib/article-mdx";
+import {
+  prepareArticleBody,
+  resolveCitations,
+  katexEquationTrust,
+  katexEquationStrict,
+} from "@/lib/article-mdx";
 import { buildKatexMacros, extractMacroSource } from "@/lib/katex-macros";
 
 type JsxNode = MdxJsxFlowElement | MdxJsxTextElement;
@@ -201,7 +206,7 @@ export async function renderPreviewHtml(
       handlers: { mdxJsxFlowElement: jsxHandler, mdxJsxTextElement: jsxHandler },
     })
     .use(rehypeSlug)
-    .use(rehypeKatex, { macros })
+    .use(rehypeKatex, { macros, trust: katexEquationTrust, strict: katexEquationStrict })
     .use(codeHighlightPlugins)
     .use(rehypeStringify)
     .process(renderedBody);

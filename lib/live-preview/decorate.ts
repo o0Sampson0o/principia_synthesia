@@ -2,9 +2,10 @@ import type { EditorState, Range } from "@codemirror/state";
 import { Decoration, type DecorationSet, type WidgetType } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import { selectionIntersects, selectionTouchesLine, frontmatterExtent } from "./reveal";
-import { BulletWidget, HrWidget } from "./widgets/misc";
+import { BulletWidget, HrWidget, EqRefWidget } from "./widgets/misc";
 import { InlineMathWidget } from "./widgets/math";
 import { katexMacrosFacet } from "./macros";
+import { equationTex, equationField } from "./equations";
 import { WikilinkChipWidget } from "./widgets/wikilink";
 import { ImageWidget } from "./widgets/image";
 import { CiteChipWidget } from "./widgets/cite";
@@ -291,7 +292,10 @@ export function buildInlineDecorations(
             if (seenNodes.has(nodeKey)) return false;
             seenNodes.add(nodeKey);
             // Strip the $ delimiters; the widget renders the formula.
-            const formula = state.doc.sliceString(node.from + 1, node.to - 1);
+            const raw = state.doc.sliceString(node.from + 1, node.to - 1);
+            // Resolves \eqref against the whole document, which a single
+            // formula cannot do on its own.
+            const formula = equationTex(state, node.from + 1, raw);
             const deco = Decoration.replace({
               widget: new InlineMathWidget(formula, state.facet(katexMacrosFacet)),
             });
@@ -345,6 +349,43 @@ export function buildInlineDecorations(
         }
       },
     });
+  }
+
+  // ── Prose \eqref, which the syntax tree knows nothing about ─────────────
+  // The tree walk above only sees markdown nodes; a bare \eqref{k} in a
+  // paragraph is plain text. Scanned separately, and only outside code and
+  // math — inside those it is either sample text or already handled.
+  const SKIP_INSIDE = /Code|Math|FencedCode|InlineCode|CodeText/;
+  const eqNumbers = state.field(equationField, false)?.numbers;
+  if (eqNumbers && eqNumbers.size > 0) {
+    for (const { from, to } of ranges) {
+      const text = state.doc.sliceString(from, to);
+      const re = /\\(?:eqref|ref)\s*\{([^}]*)\}/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(text)) !== null) {
+        const start = from + m.index;
+        const end = start + m[0].length;
+        const key = m[1].trim();
+        const number = eqNumbers.get(key);
+        if (number === undefined) continue; // unknown label stays as source
+        if (selectionIntersects(sel, start, end)) continue; // editing it
+        const nodeKey = `eqref:${start}`;
+        if (seenNodes.has(nodeKey)) continue;
+
+        let inSkipped = false;
+        for (let n = tree.resolveInner(start, 1); n; n = n.parent!) {
+          if (SKIP_INSIDE.test(n.name)) { inSkipped = true; break; }
+          if (!n.parent) break;
+        }
+        if (inSkipped) continue;
+
+        seenNodes.add(nodeKey);
+        nodeRanges.push({ from: start, to: end });
+        const deco = Decoration.replace({ widget: new EqRefWidget(key, number) });
+        decos.push(deco.range(start, end));
+        atomics.push(deco.range(start, end));
+      }
+    }
   }
 
   return {

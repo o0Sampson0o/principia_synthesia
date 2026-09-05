@@ -4,6 +4,7 @@ import { syntaxTree } from "@codemirror/language";
 import { selectionIntersects, frontmatterExtent } from "./reveal";
 import { BlockMathWidget } from "./widgets/math";
 import { katexMacrosFacet } from "./macros";
+import { equationTex } from "./equations";
 
 /**
  * Block math ($$…$$) rendering. CM6 requires multi-line replacing/block
@@ -43,8 +44,11 @@ function findBlocks(state: EditorState): MathBlock[] {
       const text = state.doc.sliceString(node.from, node.to);
       const closed = text.length > 4 && text.endsWith("$$");
       if (!closed) return false; // unterminated → leave as source
-      const formula = text.slice(2, -2).trim();
-      if (!formula) return false;
+      const raw = text.slice(2, -2).trim();
+      if (!raw) return false;
+      // node.from + 2 is past the opening `$$` — the offset equation-refs
+      // keyed this formula by.
+      const formula = equationTex(state, node.from + 2, raw);
       blocks.push({
         from: state.doc.lineAt(node.from).from,
         to: state.doc.lineAt(node.to).to,
