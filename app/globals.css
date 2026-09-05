@@ -1152,6 +1152,10 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   padding: 0.5em 0.9em;
   max-width: min(44rem, 80vw);
+  /* Numbered equations need room for their tag. KaTeX pins `\tag` to the right
+     edge of the display block, so a tooltip shrink-wrapped to the formula puts
+     the number on top of the equation. */
+  min-width: min(26rem, 70vw);
   overflow-x: auto;
   font-size: 1.0625rem;
   color: var(--foreground);

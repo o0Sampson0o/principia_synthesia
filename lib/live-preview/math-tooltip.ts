@@ -3,6 +3,7 @@ import { showTooltip, type Tooltip } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import { renderKatex } from "./widgets/math";
 import { katexMacrosFacet } from "./macros";
+import { equationTex } from "./equations";
 
 /**
  * Obsidian-style math editing aid (the Latex Suite behavior): while the
@@ -46,9 +47,18 @@ function buildTooltip(state: EditorState, prev: KeyedTooltip | null): KeyedToolt
   const math = mathAtCursor(state);
   if (!math) return null;
   const live = state.facet(katexMacrosFacet);
-  // Version in the key: the tooltip is reused while the key is stable, so a
-  // macro edit has to invalidate it or the preview keeps the old rendering.
-  const key = `${math.from}:${math.displayMode ? "D" : "I"}:${live.version}:${math.formula}`;
+  // Same numbering the widgets get: this tooltip is a third render surface,
+  // so without it \label shows raw and red here while rendering correctly a
+  // few pixels away. Offset past the delimiters is what equation-refs keyed on.
+  const tex = equationTex(
+    state,
+    math.from + (math.displayMode ? 2 : 1),
+    math.formula
+  );
+  // Key off the resolved TeX, not the raw source: an edit elsewhere can
+  // renumber this equation without changing a character inside it, and a
+  // stale key would keep showing the previous number.
+  const key = `${math.from}:${math.displayMode ? "D" : "I"}:${live.version}:${tex}`;
   // Same region + formula → keep the same tooltip object so CM reuses its DOM
   // (cursor motion within the formula doesn't flicker the preview).
   if (prev && prev.key === key) return prev;
@@ -60,7 +70,7 @@ function buildTooltip(state: EditorState, prev: KeyedTooltip | null): KeyedToolt
     create: () => {
       const dom = document.createElement("div");
       dom.className = "cm-lp-math-tooltip";
-      dom.innerHTML = renderKatex(math.formula, math.displayMode, live);
+      dom.innerHTML = renderKatex(tex, math.displayMode, live);
       return { dom };
     },
   };

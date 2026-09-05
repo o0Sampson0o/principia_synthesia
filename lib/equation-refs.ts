@@ -334,6 +334,24 @@ export function equationTransforms(source: string): {
   return { byOffset, numbers };
 }
 
+/**
+ * Apply label-stripping and reference resolution to one formula in isolation.
+ *
+ * For renderers that hold a formula with no document offset to key on — the
+ * callout widget rebuilds its body from raw source, so its math cannot be
+ * matched back to a position. Numbering is not applied here (that needs the
+ * document), only the two rewrites that would otherwise render as errors.
+ */
+export function resolveRefsInFormula(
+  tex: string,
+  numbers: Map<string, number>
+): string {
+  return tex.replace(LABEL_RE, "").replace(REF_RE, (whole, _cmd: string, key: string) => {
+    const n = numbers.get(key.trim());
+    return n === undefined ? whole : `\\href{#eq-${cssEscape(key.trim())}}{(${n})}`;
+  });
+}
+
 /** Keep a label usable as an HTML id and inside a TeX group. */
 function cssEscape(key: string): string {
   return key.replace(/[^A-Za-z0-9_-]/g, "-");

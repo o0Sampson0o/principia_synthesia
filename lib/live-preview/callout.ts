@@ -4,6 +4,7 @@ import { syntaxTree } from "@codemirror/language";
 import { selectionIntersects, frontmatterExtent } from "./reveal";
 import { CalloutWidget, canonicalType } from "./widgets/callout";
 import { katexMacrosFacet } from "./macros";
+import { equationField } from "./equations";
 
 /**
  * WYSIWYG callout ($> [!type]$) rendering. Like block math and tables, a
@@ -64,7 +65,12 @@ function buildDeco(state: EditorState, callouts: Callout[]): DecorationSet {
     .filter((c) => !selectionIntersects(state.selection, c.from, c.to))
     .map((c) =>
       Decoration.replace({
-        widget: new CalloutWidget(c.type, c.raw, state.facet(katexMacrosFacet)),
+        widget: new CalloutWidget(
+          c.type,
+          c.raw,
+          state.facet(katexMacrosFacet),
+          state.field(equationField, false)?.numbers ?? new Map()
+        ),
         block: true,
       }).range(c.from, c.to)
     );

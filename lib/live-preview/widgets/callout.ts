@@ -1,6 +1,7 @@
 import { WidgetType } from "@codemirror/view";
 import { renderKatex } from "./math";
 import { EMPTY_MACROS, type LiveMacros } from "../macros";
+import { resolveRefsInFormula } from "@/lib/equation-refs";
 
 /**
  * WYSIWYG callout rendering for live preview.
@@ -50,7 +51,7 @@ function escapeHtml(s: string): string {
  * `_italic_`, `` `code` ``, and `[text](url)`. Everything else is emitted as an
  * escaped text node. Emphasis/link text recurses; code and math bodies do not.
  */
-function renderInline(text: string, live: LiveMacros): string {
+function renderInline(text: string, live: LiveMacros, eq: Map<string, number>): string {
   let html = "";
   let i = 0;
   while (i < text.length) {
@@ -60,13 +61,13 @@ function renderInline(text: string, live: LiveMacros): string {
     if ((m = /^`([^`]+)`/.exec(rest))) {
       html += `<code>${escapeHtml(m[1])}</code>`;
     } else if ((m = /^\$([^$]+)\$/.exec(rest))) {
-      html += `<span class="cm-lp-math">${renderKatex(m[1], false, live)}</span>`;
+      html += `<span class="cm-lp-math">${renderKatex(resolveRefsInFormula(m[1], eq), false, live)}</span>`;
     } else if ((m = /^\*\*([^*]+?)\*\*/.exec(rest))) {
-      html += `<strong>${renderInline(m[1], live)}</strong>`;
+      html += `<strong>${renderInline(m[1], live, eq)}</strong>`;
     } else if ((m = /^\*([^*]+?)\*/.exec(rest)) || (m = /^_([^_]+?)_/.exec(rest))) {
-      html += `<em>${renderInline(m[1], live)}</em>`;
+      html += `<em>${renderInline(m[1], live, eq)}</em>`;
     } else if ((m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(rest))) {
-      html += `<a href="${escapeHtml(m[2])}">${renderInline(m[1], live)}</a>`;
+      html += `<a href="${escapeHtml(m[2])}">${renderInline(m[1], live, eq)}</a>`;
     } else {
       // Plain run: emit up to (but not including) the next markup sigil.
       const next = rest.slice(1).search(/[`$*_[]/);
@@ -89,7 +90,7 @@ const LIST_ITEM_RE = /^[ \t]*([-*+]|\d+[.)])[ \t]+(.*)$/;
  * List and paragraph runs can alternate within the block (e.g. an intro line
  * immediately followed by bullets with no blank line between them).
  */
-function renderBlock(block: string, live: LiveMacros): string {
+function renderBlock(block: string, live: LiveMacros, eq: Map<string, number>): string {
   const lines = block.split("\n");
   let html = "";
   let i = 0;
@@ -117,7 +118,7 @@ function renderBlock(block: string, live: LiveMacros): string {
       const tag = ordered ? "ol" : "ul";
       html +=
         `<${tag}>` +
-        items.map((it) => `<li>${renderInline(it, live)}</li>`).join("") +
+        items.map((it) => `<li>${renderInline(it, live, eq)}</li>`).join("") +
         `</${tag}>`;
     } else {
       // A paragraph run: gather until the next list item. Soft-wrapped source
@@ -128,7 +129,7 @@ function renderBlock(block: string, live: LiveMacros): string {
         i++;
       }
       const text = para.join(" ").replace(/[ \t]+/g, " ").trim();
-      if (text) html += `<p>${renderInline(text, live)}</p>`;
+      if (text) html += `<p>${renderInline(text, live, eq)}</p>`;
     }
   }
   return html;
@@ -140,7 +141,11 @@ function renderBlock(block: string, live: LiveMacros): string {
  * lines; a `$$…$$` block renders as display math, a run of `-`/`*`/`+` or
  * numbered lines as a list, everything else as a paragraph. Returns HTML.
  */
-export function renderCalloutBody(bodyText: string, live: LiveMacros = EMPTY_MACROS): string {
+export function renderCalloutBody(
+  bodyText: string,
+  live: LiveMacros = EMPTY_MACROS,
+  eq: Map<string, number> = new Map()
+): string {
   let html = "";
   for (const raw of bodyText.split(/\n[ \t]*\n/)) {
     const block = raw.replace(/^\n+|\n+$/g, "");
@@ -148,9 +153,9 @@ export function renderCalloutBody(bodyText: string, live: LiveMacros = EMPTY_MAC
     if (!trimmed) continue;
     if (trimmed.startsWith("$$") && trimmed.endsWith("$$") && trimmed.length > 4) {
       const inner = trimmed.slice(2, -2).trim();
-      html += `<div class="cm-lp-math-block">${renderKatex(inner, true, live)}</div>`;
+      html += `<div class="cm-lp-math-block">${renderKatex(resolveRefsInFormula(inner, eq), true, live)}</div>`;
     } else {
-      html += renderBlock(block, live);
+      html += renderBlock(block, live, eq);
     }
   }
   return html;
@@ -165,7 +170,8 @@ export class CalloutWidget extends WidgetType {
   constructor(
     readonly type: string,
     readonly raw: string,
-    readonly live: LiveMacros = EMPTY_MACROS
+    readonly live: LiveMacros = EMPTY_MACROS,
+    readonly eqNumbers: Map<string, number> = new Map()
   ) {
     super();
   }
@@ -206,7 +212,7 @@ export class CalloutWidget extends WidgetType {
     // body content are direct children of `.callout` (matches the published
     // DOM, where `> :last-child` resets the trailing margin).
     const scratch = document.createElement("div");
-    scratch.innerHTML = renderCalloutBody(lines.join("\n"), this.live);
+    scratch.innerHTML = renderCalloutBody(lines.join("\n"), this.live, this.eqNumbers);
     while (scratch.firstChild) box.appendChild(scratch.firstChild);
 
     container.appendChild(box);
