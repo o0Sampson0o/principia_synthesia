@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { SearchExcerpt } from "@/lib/search-excerpt";
 
 interface Props {
   type: "article" | "book" | "object";
@@ -9,9 +10,11 @@ interface Props {
   objectType?: string;
   /** For book-internal articles: the parent book's slug (links under the book). */
   parentBookSlug?: string | null;
+  /** Passage around a body match; plain text, the match wrapped in <mark> here. */
+  excerpt?: SearchExcerpt | null;
 }
 
-export default function SearchResultItem({ type, publisherSlug, slug, title, description, objectType, parentBookSlug }: Props) {
+export default function SearchResultItem({ type, publisherSlug, slug, title, description, objectType, parentBookSlug, excerpt }: Props) {
   let href = parentBookSlug
     ? `/${publisherSlug}/books/${parentBookSlug}/${slug}`
     : `/${publisherSlug}/articles/${slug}`;
@@ -74,6 +77,14 @@ export default function SearchResultItem({ type, publisherSlug, slug, title, des
           }}
         >
           {description}
+        </p>
+      )}
+
+      {excerpt && (
+        <p className="ps-search-excerpt">
+          {excerpt.before}
+          <mark>{excerpt.match}</mark>
+          {excerpt.after}
         </p>
       )}
     </div>

@@ -218,6 +218,7 @@ export default async function SearchPage({
                     title={a.title}
                     description={a.summary}
                     parentBookSlug={a.parentBookSlug}
+                    excerpt={a.excerpt}
                   />
                 ))}
               </section>

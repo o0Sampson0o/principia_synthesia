@@ -5,6 +5,7 @@ import { articles, books, objects, publishers, resourceVisibility } from "@/db/s
 import { ilike, and, eq, sql, or, isNull, isNotNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { getSession } from "@/lib/auth";
+import { searchExcerpt, type SearchExcerpt } from "@/lib/search-excerpt";
 
 export interface SearchArticleResult {
   id: number;
@@ -14,6 +15,8 @@ export interface SearchArticleResult {
   summary?: string | null;
   /** Set when the article is a book-internal section — used to build its URL. */
   parentBookSlug?: string | null;
+  /** The passage around the match in the body, when the body matched. */
+  excerpt?: SearchExcerpt | null;
 }
 
 export interface SearchBookResult {
@@ -161,6 +164,8 @@ export async function searchAll(
         publisherSlug: publishers.slug,
         summary: articles.summary,
         parentBookSlug: parentBook.slug,
+        // Read for the excerpt only; stripped before results leave the server.
+        content: articles.content,
       })
       .from(articles)
       .leftJoin(
@@ -190,6 +195,14 @@ export async function searchAll(
         )
       )
       .where(and(...articleConditions))
+      // Relevance before the cut: a title match outranks a summary match,
+      // which outranks a passing mention in the body.
+      .orderBy(
+        ...(query
+          ? [sql`CASE WHEN ${articles.title} ILIKE ${q} THEN 0 WHEN ${articles.summary} ILIKE ${q} THEN 1 ELSE 2 END`]
+          : []),
+        articles.title
+      )
       .limit(20),
 
     db
@@ -244,7 +257,12 @@ export async function searchAll(
   ]);
 
   return {
-    articles: articleResults.map((a) => ({ ...a, publisherSlug: a.publisherSlug ?? "unknown" })),
+    // content is read only to build the excerpt; it never leaves the server.
+    articles: articleResults.map(({ content, ...a }) => ({
+      ...a,
+      publisherSlug: a.publisherSlug ?? "unknown",
+      excerpt: query ? searchExcerpt(content ?? "", query) : null,
+    })),
     books: bookResults.map((b) => ({ ...b, publisherSlug: b.publisherSlug ?? "unknown" })),
     objects: (objectResults as any[]).map((o) => ({ ...o, publisherSlug: o.publisherSlug ?? "unknown" })),
   };
