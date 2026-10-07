@@ -176,10 +176,11 @@ body {
 }
 
 /* ─── Frosted glass nav ──────────────────────────────────────────── */
+/* Opaque, despite the name: a translucent bar let prose scrolling beneath it
+   show through the links wherever the blur did not render — and glass is on
+   DESIGN.md's Don't list. Depth is the bottom hairline alone. */
 .nav-glass {
-  background: color-mix(in srgb, var(--surface) 78%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 
@@ -401,7 +402,9 @@ body {
 .markdown-content {
   font-size: 1.0625rem;
   line-height: 1.8;
-  color: var(--foreground);
+  /* Body prose is eased below full ink (lib/theme proseInk caps it at 12:1);
+     headings and bold keep --foreground, so ink strength marks hierarchy. */
+  color: var(--prose-ink, var(--foreground));
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
@@ -2035,14 +2038,15 @@ body::-webkit-scrollbar-corner,
      centring in the leftover space — the Docusaurus/Infima arrangement. The
      centred version put the gutter at 156px minimum and made it grow with the
      window; this pins it at ~32px at every width and sends the slack to the
-     right, where the section rail belongs. */
+     right, where the section rail belongs. The column keeps max-w-3xl's
+     48rem (~68ch), the same measure as a standalone article: wider lines
+     (it was 60rem, ~110 characters) tire the eye over a long session. */
   .ps-book-reading .ps-doc {
     padding-left: 0.75rem;
   }
   .ps-book-reading .max-w-3xl {
     margin-left: 0;
     margin-right: auto;
-    max-width: 60rem;
   }
   .ps-spine { display: block; }
   .ps-spine-trigger { display: none; }
@@ -2128,8 +2132,8 @@ body::-webkit-scrollbar-corner,
   /* Cap doc + rail as a group so the rail stays next to the prose instead of
      pinning to the viewport edge (which opens a void between them). The cap
      has to match the widths below or it strands space:
-       0.75rem padding + 60rem column + 2rem gutter + 16rem rail = 78.75rem. */
-  max-width: 79rem;
+       0.75rem padding + 48rem column + 2rem gutter + 16rem rail = 66.75rem. */
+  max-width: 67rem;
 }
 
 /* A standalone article has no spine to hug, so its group centres. */

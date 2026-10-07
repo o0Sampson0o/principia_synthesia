@@ -328,11 +328,73 @@ export function camel2kebab(str: string): string {
   return str.replace(/([A-Z])/g, (m) => `-${m.toLowerCase()}`)
 }
 
+// ─── Derived values ───────────────────────────────────────────────────────────
+
+/**
+ * Body-prose contrast cap. Ink at full strength on its ground (18.8:1 for the
+ * default dark theme) glares over a long session; well-read documentation
+ * sites sit near 10–12:1. 12:1 is still far above WCAG AAA (7:1).
+ */
+export const PROSE_CONTRAST_CAP = 12
+
+function parseHex(color: string): [number, number, number] | null {
+  const m = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)
+  if (!m) return null
+  const hex = m[1].length === 3 ? [...m[1]].map((c) => c + c).join("") : m[1]
+  return [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number]
+}
+
+function luminance([r, g, b]: [number, number, number]): number {
+  const lin = (c: number) => {
+    const s = c / 255
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+
+/** WCAG contrast ratio between two RGB colours. */
+export function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+function toHex(rgb: number[]): string {
+  return "#" + rgb.map((c) => Math.round(c).toString(16).padStart(2, "0")).join("")
+}
+
+/**
+ * Body-prose ink: the foreground, eased toward the background only as far as
+ * needed to bring contrast down to PROSE_CONTRAST_CAP. Themes already at or
+ * below the cap (most presets) keep their foreground exactly; so does any
+ * colour that is not a plain hex, which cannot be measured here. Headings,
+ * bold and UI keep full --foreground, so ink strength also marks hierarchy.
+ */
+export function proseInk(tokens: ThemeTokens): string {
+  const fg = parseHex(tokens.foreground)
+  const bg = parseHex(tokens.background)
+  if (!fg || !bg || contrastRatio(fg, bg) <= PROSE_CONTRAST_CAP) return tokens.foreground
+
+  // Contrast falls monotonically as the ink moves toward the ground.
+  let lo = 0, hi = 1 // fraction of background mixed in
+  for (let i = 0; i < 20; i++) {
+    const mid = (lo + hi) / 2
+    const mixed = fg.map((c, k) => c + (bg[k] - c) * mid) as [number, number, number]
+    if (contrastRatio(mixed, bg) > PROSE_CONTRAST_CAP) lo = mid
+    else hi = mid
+  }
+  // Hex rounding can shave a hair off the ratio; back toward the ink until the
+  // rounded colour itself clears the cap.
+  const at = (t: number) => toHex(fg.map((c, k) => c + (bg[k] - c) * t))
+  while (lo > 0 && contrastRatio(parseHex(at(lo))!, bg) < PROSE_CONTRAST_CAP) lo -= 0.002
+  return at(Math.max(lo, 0))
+}
+
 /**
  * Generates a CSS `<style>` block that declares all 17 theme tokens as CSS
  * custom properties on `:root`. The dark variants are wrapped in a
  * `prefers-color-scheme: dark` media query so the browser picks the right set
- * automatically.
+ * automatically. Values derived from the tokens (not themselves editable)
+ * follow them in each block.
  *
  * The resulting string is injected verbatim into `<head>` by the root layout.
  */
@@ -340,10 +402,12 @@ export function buildThemeStyle(light: ThemeTokens, dark: ThemeTokens): string {
   return `
 :root {
 ${tokensToVars(light)}
+  --prose-ink: ${proseInk(light)};
 }
 @media (prefers-color-scheme: dark) {
   :root {
 ${tokensToVars(dark)}
+    --prose-ink: ${proseInk(dark)};
   }
 }
 `.trim()

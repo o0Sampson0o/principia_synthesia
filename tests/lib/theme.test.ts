@@ -1,6 +1,15 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { buildThemeStyle, defaultThemeStyle, defaultLight, defaultDark } from "@/lib/theme";
+import {
+  buildThemeStyle,
+  defaultThemeStyle,
+  defaultLight,
+  defaultDark,
+  proseInk,
+  contrastRatio,
+  PROSE_CONTRAST_CAP,
+  PRESETS,
+} from "@/lib/theme";
 import type { ThemeTokens } from "@/db/schema";
 
 
@@ -88,10 +97,10 @@ describe("buildThemeStyle", () => {
     expect(style).toContain("#0000ff");
   });
 
-  it("output has exactly the right number of CSS variable declarations (17 per theme = 34 total)", () => {
+  it("output has exactly the right number of CSS variable declarations (17 tokens + 1 derived per theme = 36 total)", () => {
     const style = buildThemeStyle(defaultLight, defaultDark);
     const matches = style.match(/--[a-z-]+:/g) || [];
-    expect(matches).toHaveLength(34); // 17 light + 17 dark
+    expect(matches).toHaveLength(36); // (17 tokens + --prose-ink) × light, dark
   });
 });
 
@@ -121,5 +130,36 @@ describe("defaultThemeStyle", () => {
     for (const cssVar of EXPECTED_CSS_VARS) {
       expect(style).toContain(cssVar);
     }
+  });
+});
+
+const rgb = (hex: string): [number, number, number] =>
+  [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
+
+describe("proseInk", () => {
+  it("eases the default themes down to the contrast cap, never below it", () => {
+    for (const t of [defaultLight, defaultDark]) {
+      const ink = proseInk(t);
+      expect(ink).not.toBe(t.foreground);
+      const ratio = contrastRatio(rgb(ink), rgb(t.background));
+      expect(ratio).toBeGreaterThanOrEqual(PROSE_CONTRAST_CAP);
+      expect(ratio).toBeLessThan(PROSE_CONTRAST_CAP + 0.25); // one hex step
+    }
+  });
+
+  it("leaves a theme already at or below the cap untouched", () => {
+    const solarized = PRESETS.find((p) => p.name === "Solarized")!;
+    expect(proseInk(solarized.light)).toBe(solarized.light.foreground);
+    expect(proseInk(solarized.dark)).toBe(solarized.dark.foreground);
+  });
+
+  it("falls back to the foreground for colours it cannot measure", () => {
+    const t = { ...defaultDark, foreground: "rgb(250 250 250)" };
+    expect(proseInk(t)).toBe("rgb(250 250 250)");
+  });
+
+  it("is emitted in both blocks of the theme style", () => {
+    const style = buildThemeStyle(defaultLight, defaultDark);
+    expect(style.match(/--prose-ink:/g)).toHaveLength(2);
   });
 });
