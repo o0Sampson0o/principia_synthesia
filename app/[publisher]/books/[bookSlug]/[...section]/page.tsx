@@ -114,8 +114,8 @@ export default async function BookSectionPage({
   // Prev/next span the flat section order (dividers excluded).
   const total = structure.orderedSections.length;
   const idx = loc.flatIndex;
-  const prevSlug = idx > 0 ? structure.orderedSections[idx - 1].slug : null;
-  const nextSlug = idx < total - 1 ? structure.orderedSections[idx + 1].slug : null;
+  const prev = idx > 0 ? structure.orderedSections[idx - 1] : null;
+  const next = idx < total - 1 ? structure.orderedSections[idx + 1] : null;
 
   const { body, renderedBody } = prepareArticleBody(article.content ?? "", { publisherSlug });
   // Book macros reach internal sections only. A standalone article a book links
@@ -237,61 +237,52 @@ export default async function BookSectionPage({
       </div>
 
       {/* ── Page-turn navigation ─────────────────────────────────── */}
-      {(prevSlug || nextSlug) && (
+      {(prev || next) && (
         <div className="max-w-3xl mx-auto px-5 pb-16 sm:pb-20">
-          <nav
-            className="flex items-center justify-between pt-8"
-            style={{ borderTop: "1px solid var(--border)" }}
-          >
-            {prevSlug ? (
-              <Link
-                href={sectionHref(publisherSlug, bookSlug, prevSlug)}
-                className="group flex items-center gap-2 themed-nav-link hover:text-[var(--foreground)] transition-colors"
-                style={{ fontSize: "0.875rem" }}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="transition-transform group-hover:-translate-x-0.5"
-                  aria-hidden="true"
-                >
-                  <path d="M19 12H5m7-7-7 7 7 7" />
-                </svg>
-                Previous
+          <nav className="ps-page-turn" aria-label="Section navigation">
+            {prev && (
+              <Link href={sectionHref(publisherSlug, bookSlug, prev.slug)} rel="prev" className="ps-page-turn-link group">
+                <span className="ps-page-turn-label">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="transition-transform group-hover:-translate-x-0.5"
+                    aria-hidden="true"
+                  >
+                    <path d="M19 12H5m7-7-7 7 7 7" />
+                  </svg>
+                  Previous
+                </span>
+                <span className="ps-page-turn-title">{prev.title}</span>
               </Link>
-            ) : (
-              <span />
             )}
-            {nextSlug ? (
-              <Link
-                href={sectionHref(publisherSlug, bookSlug, nextSlug)}
-                className="group flex items-center gap-2 themed-nav-link hover:text-[var(--foreground)] transition-colors"
-                style={{ fontSize: "0.875rem" }}
-              >
-                Next
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="transition-transform group-hover:translate-x-0.5"
-                  aria-hidden="true"
-                >
-                  <path d="M5 12h14m-7-7 7 7-7 7" />
-                </svg>
+            {next && (
+              <Link href={sectionHref(publisherSlug, bookSlug, next.slug)} rel="next" className="ps-page-turn-link group">
+                <span className="ps-page-turn-label">
+                  Next
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  >
+                    <path d="M5 12h14m-7-7 7 7-7 7" />
+                  </svg>
+                </span>
+                <span className="ps-page-turn-title">{next.title}</span>
               </Link>
-            ) : (
-              <span />
             )}
           </nav>
         </div>

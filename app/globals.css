@@ -2050,6 +2050,63 @@ body::-webkit-scrollbar-corner,
 }
 
 
+/* ── Page turn: previous / next section, named ────────────────────────
+   Titles, not bare "Previous"/"Next": a reader deciding whether to turn the
+   page wants to know what is on the other side. Hairline-divided halves,
+   never cards; stacked on phones, where halves wrap a title a word a line.
+   The next link keeps the right half even when there is no previous one, so
+   its position never jumps between the first section and the rest. */
+.ps-page-turn {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+.ps-page-turn-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  text-decoration: none;
+  color: var(--secondary-text);
+  transition: color 0.15s;
+}
+.ps-page-turn-link[rel="next"] {
+  align-items: flex-end;
+  text-align: right;
+}
+@media (min-width: 40rem) {
+  .ps-page-turn { grid-template-columns: 1fr 1fr; }
+  .ps-page-turn-link[rel="next"] { grid-column: 2; }
+}
+.ps-page-turn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+/* Geist, not Playfair: at this size the Playfair Threshold Rule applies. */
+.ps-page-turn-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  transition: color 0.15s;
+}
+.ps-page-turn-link:hover .ps-page-turn-title { color: var(--accent); }
+.ps-page-turn-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
 /* ─── Section rail — the page's own headings, pinned right ──────────────
    Unlabelled on purpose: a visible heading here competes with the spine's
    "Book contents" and reads as a second table of contents. The hairline rule
