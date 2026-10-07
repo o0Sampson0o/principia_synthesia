@@ -465,7 +465,11 @@ body {
 
 /* ─── Section anchors + table of contents ────────────────────────── */
 /* Quiet "§" self-link on each heading; revealed on hover or focus. */
-.markdown-content [id] { scroll-margin-top: 5rem; }
+/* Clear the nav and, on narrow layouts, the sticky Sections bar under it. */
+.markdown-content [id] { scroll-margin-top: 7rem; }
+@container reading (min-width: 66rem) {
+  .markdown-content [id] { scroll-margin-top: 5rem; }
+}
 .md-anchor {
   margin-left: 0.4em;
   font-size: 0.75em;
@@ -481,11 +485,16 @@ body {
 }
 .md-anchor:hover { opacity: 1; }
 
-/* Collapsible contents block above the prose */
+/* Sections bar: the article's headings above the prose, for layouts without
+   the rail. Sticky under the nav (h-12) so it keeps naming the section being
+   read; its open list floats over the prose instead of pushing it down. */
 .md-toc {
+  position: sticky;
+  top: 3rem;
+  z-index: 20;
+  background: var(--background);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  padding: 0.75rem 0;
   margin-bottom: 2.5rem;
 }
 .md-toc summary {
@@ -493,8 +502,8 @@ body {
   list-style: none;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: 1rem;
+  padding: 0.75rem 0;
 }
 .md-toc summary::-webkit-details-marker { display: none; }
 .md-toc summary::after {
@@ -503,19 +512,48 @@ body {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
 }
 .md-toc[open] summary::after { content: "−"; }
-.md-toc ol {
-  list-style: none;
-  margin: 0.75rem 0 0.25rem;
-  padding: 0;
+.md-toc summary > :nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
 }
-.md-toc li { margin: 0.35rem 0; }
+.md-toc-current {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.8125rem;
+  color: var(--foreground);
+}
+.md-toc ol {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: min(60vh, 28rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 0.5rem 0.5rem;
+  /* Floating overlay — the one shadow DESIGN.md allows. */
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+.md-toc li { margin: 0; }
 .md-toc a {
+  display: block;
+  padding: 0.4rem 0;
   color: var(--secondary-text);
   text-decoration: none;
   font-size: 0.875rem;
+  line-height: 1.45;
   transition: color 0.15s;
 }
 .md-toc a:hover { color: var(--foreground); }
+.md-toc a[aria-current="location"] { color: var(--accent); font-weight: 500; }
 .md-toc [data-depth="2"] { padding-left: 1.25rem; }
 .md-toc [data-depth="3"] { padding-left: 2.5rem; }
 
