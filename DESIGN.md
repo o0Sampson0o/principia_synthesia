@@ -99,6 +99,10 @@ A restrained, ink-on-fog palette where the only voice with color is the accent.
 
 **The Token Rule.** Every color goes through a CSS custom property (`--accent`, `--surface`, …). Hardcoding a hex in a component is prohibited; users retheme all 15 tokens, and a hardcoded value breaks their theme.
 
+**The Prose Ink Rule.** Body prose is set in `--prose-ink`, not `--foreground`: the theme's foreground eased toward the background just far enough to cap contrast at 12:1 (`PROSE_CONTRAST_CAP`, derived in `lib/theme.ts` `buildThemeStyle`). Full ink on its ground — 18.8:1 for the default dark theme — glares over a long session; themes already at or below the cap keep their foreground exactly. Headings and bold stay at full `--foreground`, so ink strength marks hierarchy alongside size. Derived values are never editable tokens.
+
+**The Accent Ink Rule.** Accent-coloured *text* below display size uses `--accent-ink` (the accent mixed 75% toward the foreground, derived in `globals.css`). Raw Quiet Iris is 4.17:1 on the light page ground — under AA for small text; the ink is 5.99:1 light, 8.83:1 dark. Fills, rules, focus rings and display-size text keep raw `--accent`.
+
 ## 3. Typography
 
 **Display Font:** Playfair Display (with Georgia, serif)
@@ -110,7 +114,8 @@ A restrained, ink-on-fog palette where the only voice with color is the accent.
 ### Hierarchy
 - **Hero** (500, clamp to ≤4.5rem, line-height 1.02, letter-spacing -0.04em): page-level heroes only (`.ps-hero`); `text-wrap: balance`.
 - **Display** (500, clamp(1.75rem, 4vw, 2.75rem), line-height 1.12, letter-spacing -0.03em): page titles, publisher names, article titles (`.ps-display`).
-- **Body** (400, 1rem, line-height 1.6–1.65): prose and UI text; reading column capped at `max-w-3xl` (~68ch).
+- **Body** (400, 1rem, line-height 1.6–1.65): prose and UI text; reading column capped at `max-w-3xl` (~68ch). Article and book prose is 1.0625rem at line-height 1.8.
+- **Prose headings**: `#` and `##` in Playfair at display size; `###` in Geist 600 at 1.1875rem — one clear step above the prose, never the body size; `####` is the uppercase muted label.
 - **Label / mono metadata** (400, 0.6875rem, letter-spacing 0.05em, `.ps-mono-meta`): dates, counts. The uppercase micro variant (`.ps-mono-micro`, 0.5625rem, tracking 0.1em) marks statuses and section micro-labels.
 - **Eyebrow** (0.6875rem, tracking 0.1em, uppercase): accent-colored section pre-label (`.ps-eyebrow`); muted variant for column headers.
 
@@ -125,14 +130,17 @@ labels) where the value also appears elsewhere at a legible size.
 ### Named Rules
 **The Playfair Threshold Rule.** Playfair Display appears only at display sizes (≥1.5rem). It is forbidden in buttons, labels, body text, or data — working UI is always Geist.
 
-**The Mono Fact Rule.** Numbers about the system (counts, dates, versions, statuses) render in the mono metadata style, lowercase or small-caps, never bold.
+**The Mono Fact Rule.** Numbers about the system (counts, dates, versions, statuses) render in the mono metadata style, lowercase or small-caps, never bold. The mono micro-label is for facts, never for titles or for content a reader must read: a book part's name, a table's column labels.
+
+**The Measure Rule.** Every reading column — standalone article or book section — is `max-w-3xl` (48rem, ~68 characters). Wider lines (book sections once ran to 60rem, ~110 characters) tire the eye over a long session; spare width goes to the margins and the section rail, never to the line.
 
 ## 4. Elevation
 
 Flat by doctrine. Depth is conveyed by hairline borders (#e4e4e7) and stepped surface tone (page ground → surface → mist), never by resting shadows. The dark theme lifts panels the same way: tone steps from #0b0b0d to #151517 to #27272a.
 
 ### Shadow Vocabulary
-- **Floating overlay** (`box-shadow: 0 10px 34px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)`): reserved exclusively for elements that float above the document — context menus, dialogs. Nothing that sits *in* the page casts a shadow.
+- **Floating overlay** (`box-shadow: 0 10px 34px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)`): reserved exclusively for elements that float above the document — context menus, dialogs, the open Sections dropdown. Nothing that sits *in* the page casts a shadow.
+- **Sticky chrome** (the nav, the Sections bar) is opaque: surface or page ground plus a hairline. Never translucent — prose scrolling beneath must not show through the controls.
 
 ### Named Rules
 **The Hairline Rule.** If an element rests in the page flow, its depth budget is one 1px border and one surface-tone step. A resting card with a shadow is drift.
@@ -176,6 +184,14 @@ typed values. `SearchParamToast` covers the rare genuine cross-page arrival
 (e.g. the email-verification link landing on `/login`). Per-field validation
 stays inline on its input; a toast can't point at a field.
 
+### Book reader
+How a section of a book reads. Patterns studied from Starlight (Astro's docs framework) and adapted to this system — see the reader commits of 2026-10-08.
+- **Spine** (left, "Book contents"): a part is the strongest line (0.875rem Geist 600, full ink, set off by a hairline); chapters fold behind a disclosure button beside the title link (never a link inside `<summary>`); a chapter is open by default exactly when it holds the current section, readers' choices persist per book for the session, and the current section is scrolled into view without moving the page. The current section takes the sanctioned 2px accent rule — never a filled accent row.
+- **Section rail** (right, unlabelled, "On this page" for assistive tech): an Overview entry, then the headings, with inline maths typeset; the current one in `--accent-ink`. Current = the last heading whose top has passed a reading line under the sticky chrome — a position rule, not an observer band, so long sections and large heading margins cannot strand it.
+- **Sections bar** (narrow layouts, in place of the rail): sticky under the nav, naming the current section; its list floats (floating overlay) and closes on a followed link, an outside click or Escape. "Sections" and "Book contents" never share a word.
+- **Page turn**: previous and next named by title, in hairline-divided halves that stack on phones; titles in Geist (The Playfair Threshold Rule).
+- **Print**: ink on paper whatever the theme (tokens redefined under `html:root` in `@media print`), one full-width column, chrome and screen-only sections (`.ps-no-print`) hidden, no breaks inside equations, tables, code or callouts, external link URLs printed.
+
 ### List Row (signature)
 The app's characteristic surface: flush rows divided by hairlines, 0.875rem vertical padding, hover fill to surface tone, and a trailing "→" that fades in at 50% opacity on hover. Used for articles, search results, queues, and indexes — the anti-card.
 
@@ -195,5 +211,6 @@ The app's characteristic surface: flush rows divided by hairlines, 0.875rem vert
 - **Don't** hardcode a color value in a component. The only sanctioned literals are the fixed semantic tokens (#ef4444, #16a34a, #dc2626).
 - **Don't** use side-stripe accents (`border-left` > 1px) on cards, banners, or list items. The single exception is quote grammar: blockquotes and Obsidian-style callouts keep their 2px left rule.
 - **Don't** put Playfair in buttons, labels, or data (The Playfair Threshold Rule).
-- **Don't** add resting shadows, gradients, or glassmorphism — depth is hairline + tone (The Hairline Rule).
+- **Don't** add resting shadows, gradients, or glassmorphism — depth is hairline + tone (The Hairline Rule). Sticky bars are opaque.
+- **Don't** set body prose or small accent text in raw `--foreground` / `--accent` — use `--prose-ink` and `--accent-ink` (The Prose Ink and Accent Ink Rules).
 - **Don't** let Quiet Iris exceed ~10% of a screen (The One Voice Rule). If the accent is everywhere, nothing is primary.
