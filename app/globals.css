@@ -444,7 +444,9 @@ body {
 .markdown-content h3:not(.md-h2-demoted),
 .markdown-content .md-h3-demoted {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: 1.0625rem;
+  /* A step above the 1.0625rem body, so ### reads as a heading by size as
+     well as weight; still under the 1.5rem Playfair threshold. */
+  font-size: 1.1875rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.4;
@@ -553,7 +555,7 @@ body {
   transition: color 0.15s;
 }
 .md-toc a:hover { color: var(--foreground); }
-.md-toc a[aria-current="location"] { color: var(--accent); font-weight: 500; }
+.md-toc a[aria-current="location"] { color: var(--accent-ink); font-weight: 500; }
 .md-toc [data-depth="2"] { padding-left: 1.25rem; }
 .md-toc [data-depth="3"] { padding-left: 2.5rem; }
 
@@ -580,7 +582,7 @@ body {
   transition: color 0.15s, text-decoration-color 0.15s;
 }
 .markdown-content a:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration-color: var(--accent);
 }
 
@@ -758,11 +760,12 @@ body {
 .markdown-content thead {
   border-bottom: 2px solid var(--border);
 }
+/* Column labels are content a reader needs: the muted-eyebrow size, not the
+   0.5625rem micro-label DESIGN.md keeps for dense visualisations. */
 .markdown-content th {
-  font-size: 0.5625rem;
-  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted-foreground);
   background: none;
@@ -1428,6 +1431,16 @@ body::-webkit-scrollbar-corner,
   transition: box-shadow 0.15s ease-out;
 }
 
+/* ─── Derived accent shades ────────────────────────────────────────
+   Computed from the theme's --accent, so they follow every theme without
+   adding editable tokens. --accent-ink is the accent as small text: raw
+   --accent is only ~4.2:1 on the default light page, under AA, so any
+   accent-coloured text below display size uses this instead (6:1 light,
+   8.8:1 dark). Fills, rules and focus rings keep raw --accent. */
+:root {
+  --accent-ink: color-mix(in srgb, var(--accent) 75%, var(--foreground));
+}
+
 /* ─── Semantic color tokens ─────────────────────────────────────────
    Fixed (not user-customizable), like --color-error/--color-success. Chosen
    as mid-tone hues that read on both light and dark backgrounds. Callouts,
@@ -1498,9 +1511,8 @@ body::-webkit-scrollbar-corner,
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  /* Nudged toward ink so 11px eyebrows clear AA contrast in both modes
-     (raw --accent sits at ~4.3:1 on the light page ground). */
-  color: color-mix(in srgb, var(--accent) 75%, var(--foreground));
+  /* --accent-ink: raw --accent is under AA at 11px on the light ground. */
+  color: var(--accent-ink);
 }
 
 /* Muted small-caps eyebrow (section labels) */
@@ -1889,7 +1901,7 @@ body::-webkit-scrollbar-corner,
   text-decoration: none;
   text-wrap: balance;
 }
-.ps-spine-title:hover { color: var(--accent); }
+.ps-spine-title:hover { color: var(--accent-ink); }
 .ps-spine-count {
   margin-top: 0.25rem;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
@@ -1920,7 +1932,7 @@ body::-webkit-scrollbar-corner,
   text-decoration: none;
   text-wrap: balance;
 }
-.ps-spine-part-label:hover { color: var(--accent); }
+.ps-spine-part-label:hover { color: var(--accent-ink); }
 
 /* Chapter: title link + a disclosure button that folds its sections. */
 .ps-spine-chapter-row {
@@ -1964,7 +1976,7 @@ body::-webkit-scrollbar-corner,
   color: var(--foreground);
   text-decoration: none;
 }
-.ps-spine-chapter-label:hover { color: var(--accent); }
+.ps-spine-chapter-label:hover { color: var(--accent-ink); }
 
 .ps-spine-sections {
   list-style: none;
@@ -2185,7 +2197,7 @@ body::-webkit-scrollbar-corner,
   text-wrap: balance;
   transition: color 0.15s;
 }
-.ps-page-turn-link:hover .ps-page-turn-title { color: var(--accent); }
+.ps-page-turn-link:hover .ps-page-turn-title { color: var(--accent-ink); }
 .ps-page-turn-link:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
@@ -2259,7 +2271,7 @@ body::-webkit-scrollbar-corner,
 }
 .ps-section-rail a:hover { color: var(--foreground); }
 .ps-section-rail a[aria-current="location"] {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 500;
 }
 .ps-section-rail a:focus-visible {
