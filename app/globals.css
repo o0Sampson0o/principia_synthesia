@@ -2288,3 +2288,95 @@ body::-webkit-scrollbar-corner,
     scroll-behavior: auto !important;
   }
 }
+
+/* ─── Print ────────────────────────────────────────────────────────────
+   A section printed from the browser should read like a page of the book:
+   the prose and its citations, nothing to click.
+
+   Ink on paper whatever the screen theme. Browsers drop background colours
+   when printing, so a dark theme would otherwise put its near-white text on
+   white paper. The tokens are redefined rather than each rule overridden, so
+   every component follows. `html:root` outranks the plain `:root` of the
+   theme <style> the root layout injects after this sheet. */
+@media print {
+  @page { margin: 2cm 2.2cm; }
+
+  html:root {
+    --background: #ffffff;
+    --foreground: #000000;
+    --prose-ink: #000000;
+    --surface: #ffffff;
+    --muted: #f4f4f5;
+    --muted-foreground: #52525b;
+    --secondary-text: #3f3f46;
+    --border: #d4d4d8;
+    --code-background: #f4f4f5;
+    --accent: #3730a3;
+  }
+
+  /* Chrome: navigation, the spine and rail, the Sections bar, page turns,
+     anchors, and everything below the prose that only works on a screen. */
+  nav,
+  footer,
+  .ps-spine,
+  .ps-spine-trigger,
+  .ps-spine-dialog,
+  .ps-section-rail,
+  .md-toc,
+  .ps-page-turn,
+  .md-anchor,
+  .ps-no-print,
+  .ps-meta-item:has(button, form, .ps-quiet-action),
+  button,
+  .ps-quiet-action {
+    display: none !important;
+  }
+
+  /* One column, the full width of the paper. */
+  .ps-book-shell,
+  .ps-book-reading,
+  .ps-reading-area {
+    display: block !important;
+    max-width: none !important;
+  }
+  .ps-doc,
+  .ps-doc .max-w-3xl {
+    max-width: none !important;
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .markdown-content {
+    font-size: 11pt;
+    line-height: 1.55;
+  }
+  .markdown-content p,
+  .markdown-content li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Never strand a heading at the foot of a page, or split a unit a reader
+     has to see whole. */
+  .markdown-content :is(h1, h2, h3, h4, .md-h1) {
+    break-after: avoid;
+  }
+  .markdown-content :is(pre, table, figure, img, blockquote, .callout, .katex-display, .ps-diagram) {
+    break-inside: avoid;
+  }
+
+  /* Paper cannot follow a link: print where an external one goes. */
+  .markdown-content a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: var(--muted-foreground);
+    overflow-wrap: anywhere;
+  }
+
+  /* Code wraps instead of running off the page. */
+  .markdown-content pre {
+    white-space: pre-wrap;
+    overflow: visible;
+  }
+}

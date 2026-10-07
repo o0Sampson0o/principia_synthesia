@@ -37,7 +37,7 @@ export default async function RelatedEvents({
   if (rows.length === 0) return null;
 
   return (
-    <section className="mt-16">
+    <section className="ps-no-print mt-16">
       <SectionHeader
         title="Related events"
         count={`${rows.length} ${rows.length === 1 ? "event" : "events"}`}

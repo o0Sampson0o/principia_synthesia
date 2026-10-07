@@ -42,7 +42,7 @@ export default function ForksList({ forks, totalCount }: Props) {
   const overflow = forks.slice(VISIBLE_FORKS);
 
   return (
-    <section className="mt-16">
+    <section className="ps-no-print mt-16">
       <SectionHeader
         title="Forks"
         count={`${totalCount} ${totalCount === 1 ? "fork" : "forks"}`}

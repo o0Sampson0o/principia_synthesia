@@ -249,7 +249,7 @@ export default async function CommentThread({
   const visibleCount = visible.filter((r) => r.deletedAt === null).length;
 
   return (
-    <section className="mt-16">
+    <section className="ps-no-print mt-16">
       <SectionHeader
         title="Discussion"
         count={

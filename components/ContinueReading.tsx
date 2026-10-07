@@ -145,7 +145,7 @@ export default async function ContinueReading({
   if (bookPaths.length === 0 && related.length === 0) return null;
 
   return (
-    <section className="mt-16">
+    <section className="ps-no-print mt-16">
       <SectionHeader title="Continue reading" />
       <div className="mt-4 space-y-4">
         {bookPaths.map((b) => (
