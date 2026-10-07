@@ -1861,21 +1861,64 @@ body::-webkit-scrollbar-corner,
 }
 
 .ps-spine-tree { list-style: none; margin: 0; padding: 0; }
-.ps-spine-part { margin-top: 1.35rem; }
+/* A part is the book's largest unit, so its label is the strongest line in
+   the spine — readable Geist at full ink, set off by space and a hairline.
+   (It was a 0.5625rem mono micro-label: the smallest text for the biggest
+   unit, and the Mono Fact Rule keeps that style for facts, not titles.) */
+.ps-spine-part {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.ps-spine-tree > .ps-spine-part:first-child { border-top: 0; padding-top: 0; }
 .ps-spine-part-label {
   display: block;
-  margin-bottom: 0.45rem;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.5625rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  color: var(--foreground);
   text-decoration: none;
+  text-wrap: balance;
 }
-.ps-spine-part-label:hover { color: var(--foreground); }
+.ps-spine-part-label:hover { color: var(--accent); }
+
+/* Chapter: title link + a disclosure button that folds its sections. */
+.ps-spine-chapter-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+.ps-spine-fold {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 24px: the WCAG 2.2 minimum target, aligned to the label's first line. */
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.1rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0.25rem;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+.ps-spine-fold:hover { color: var(--foreground); background: var(--surface-hover); }
+.ps-spine-fold svg { transition: transform 0.15s ease; }
+.ps-spine-fold[aria-expanded="true"] svg { transform: rotate(90deg); }
+.ps-spine-fold:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
 
 .ps-spine-chapter-label {
   display: block;
+  flex: 1;
+  min-width: 0;
   padding: 0.28rem 0;
   font-size: 0.8125rem;
   font-weight: 500;

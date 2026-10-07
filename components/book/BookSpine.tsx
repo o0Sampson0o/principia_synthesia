@@ -2,12 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   dividerHref,
   sectionHref,
   type BookChild,
   type ChapterNode,
+  type PartNode,
   type SectionNode,
   // lib/book-nav, NOT lib/book-structure: this is a client component and that
   // module imports `db`, which would pull the postgres driver into the browser.
@@ -45,6 +56,7 @@ export default function BookSpine({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const fold = useChapterFold(publisherSlug, bookSlug, pathname);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const asideRef = useRef<HTMLElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -71,12 +83,13 @@ export default function BookSpine({
   }, [open]);
 
   const tree = (
-    <BookTree
-      publisherSlug={publisherSlug}
-      bookSlug={bookSlug}
-      nodes={nodes}
-      pathname={pathname}
-    />
+    <SpineContext.Provider value={fold}>
+      <ol className="ps-spine-tree">
+        {nodes.map((node, i) => (
+          <SpineNode key={`${node.kind}-${node.slug}-${i}`} node={node} />
+        ))}
+      </ol>
+    </SpineContext.Provider>
   );
 
   const head = (
@@ -164,54 +177,110 @@ function revealCurrent(scroller: HTMLElement) {
   scroller.scrollTop += item.top - box.top - box.height / 3;
 }
 
-/* ── Tree ─────────────────────────────────────────────────────────────────── */
+/* ── Chapter folding ──────────────────────────────────────────────────────── */
 
-function BookTree({
-  publisherSlug,
-  bookSlug,
-  nodes,
-  pathname,
-}: {
-  publisherSlug: string;
-  bookSlug: string;
-  nodes: BookChild[];
-  pathname: string;
-}) {
-  return (
-    <ol className="ps-spine-tree">
-      {nodes.map((node, i) => (
-        <SpineNode
-          key={`${node.kind}-${node.slug}-${i}`}
-          node={node}
-          publisherSlug={publisherSlug}
-          bookSlug={bookSlug}
-          pathname={pathname}
-        />
-      ))}
-    </ol>
-  );
+/**
+ * A reader's explicit open/closed choice for one chapter, and the section that
+ * was current when they made it.
+ */
+type Fold = { open: boolean; at: string };
+
+const FOLD_EVENT = "ps-spine-fold";
+
+/** Where choices go when sessionStorage throws (private mode, blocked storage). */
+const memoryFolds = new Map<string, string>();
+
+function readFolds(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key) ?? memoryFolds.get(key) ?? null;
+  } catch {
+    return memoryFolds.get(key) ?? null;
+  }
 }
 
-function SpineNode({
-  node,
-  publisherSlug,
-  bookSlug,
-  pathname,
-}: {
-  node: BookChild;
-  publisherSlug: string;
-  bookSlug: string;
-  pathname: string;
-}) {
+/**
+ * Which chapters are open. A chapter with no recorded choice is open exactly
+ * when it holds the current section, so a long book reads as a list of
+ * chapters with the reader's own one unfolded. A recorded choice wins — except
+ * that a chapter closed from some other section reopens when the reader turns
+ * into it, so the spine always shows where they are.
+ *
+ * Choices live in sessionStorage per book, so they survive a reload but not
+ * the session. useSyncExternalStore reads them hydration-safely: the server
+ * snapshot is "no choices", the same tree the server rendered.
+ */
+function useChapterFold(publisherSlug: string, bookSlug: string, pathname: string) {
+  const storageKey = `ps-spine:${publisherSlug}/${bookSlug}`;
+
+  const raw = useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener(FOLD_EVENT, onChange);
+      return () => window.removeEventListener(FOLD_EVENT, onChange);
+    },
+    () => readFolds(storageKey),
+    () => null
+  );
+
+  const folds = useMemo<Record<string, Fold>>(() => {
+    try {
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }, [raw]);
+
+  // resolvePath keys off the LAST URL segment, so a section is current whenever
+  // the path ends with its slug — which correctly matches every accepted shape
+  // (/book/slug, /book/part/slug, /book/part/chapter/slug).
+  const currentSlug = decodeURIComponent(
+    pathname.split("?")[0].replace(/\/+$/, "").split("/").pop() ?? ""
+  );
+
+  const isOpen = useCallback(
+    (chapter: ChapterNode) => {
+      const holdsCurrent = chapter.children.some((s) => s.slug === currentSlug);
+      const fold = folds[chapter.slug];
+      if (!fold) return holdsCurrent;
+      if (holdsCurrent && !fold.open && fold.at !== currentSlug) return true;
+      return fold.open;
+    },
+    [folds, currentSlug]
+  );
+
+  const toggle = useCallback(
+    (chapter: ChapterNode) => {
+      const next = { ...folds, [chapter.slug]: { open: !isOpen(chapter), at: currentSlug } };
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify(next));
+      } catch {
+        // The toggle still has to work: keep the choice for this page instead.
+        memoryFolds.set(storageKey, JSON.stringify(next));
+      }
+      window.dispatchEvent(new Event(FOLD_EVENT));
+    },
+    [folds, isOpen, currentSlug, storageKey]
+  );
+
+  return { publisherSlug, bookSlug, currentSlug, isOpen, toggle };
+}
+
+type SpineState = ReturnType<typeof useChapterFold>;
+
+const SpineContext = createContext<SpineState | null>(null);
+
+function useSpine(): SpineState {
+  const ctx = useContext(SpineContext);
+  if (!ctx) throw new Error("Spine nodes must render inside BookSpine");
+  return ctx;
+}
+
+/* ── Tree ─────────────────────────────────────────────────────────────────── */
+
+function SpineNode({ node }: { node: BookChild }) {
   if (node.kind === "section") {
     return (
       <li className="ps-spine-loose">
-        <SpineSection
-          node={node}
-          publisherSlug={publisherSlug}
-          bookSlug={bookSlug}
-          pathname={pathname}
-        />
+        <SpineSection node={node} />
       </li>
     );
   }
@@ -219,16 +288,16 @@ function SpineNode({
   if (node.kind === "chapter") {
     return (
       <li className="ps-spine-chapter">
-        <SpineChapter
-          node={node}
-          publisherSlug={publisherSlug}
-          bookSlug={bookSlug}
-          pathname={pathname}
-        />
+        <SpineChapter node={node} />
       </li>
     );
   }
 
+  return <SpinePart node={node} />;
+}
+
+function SpinePart({ node }: { node: PartNode }) {
+  const { publisherSlug, bookSlug } = useSpine();
   return (
     <li className="ps-spine-part">
       <Link href={dividerHref(publisherSlug, bookSlug, node)} className="ps-spine-part-label">
@@ -238,21 +307,11 @@ function SpineNode({
         {node.children.map((child, i) =>
           child.kind === "chapter" ? (
             <li className="ps-spine-chapter" key={`c-${child.slug}-${i}`}>
-              <SpineChapter
-                node={child}
-                publisherSlug={publisherSlug}
-                bookSlug={bookSlug}
-                pathname={pathname}
-              />
+              <SpineChapter node={child} />
             </li>
           ) : (
             <li key={`s-${child.slug}-${i}`}>
-              <SpineSection
-                node={child}
-                publisherSlug={publisherSlug}
-                bookSlug={bookSlug}
-                pathname={pathname}
-              />
+              <SpineSection node={child} />
             </li>
           )
         )}
@@ -261,32 +320,44 @@ function SpineNode({
   );
 }
 
-function SpineChapter({
-  node,
-  publisherSlug,
-  bookSlug,
-  pathname,
-}: {
-  node: ChapterNode;
-  publisherSlug: string;
-  bookSlug: string;
-  pathname: string;
-}) {
+/**
+ * A chapter row: its title links to the chapter's contents page, and a
+ * separate disclosure button folds its sections. Not a <details>: a link
+ * inside <summary> nests a link in a button-role element, which assistive
+ * technology announces badly and which splits one click into two meanings.
+ */
+function SpineChapter({ node }: { node: ChapterNode }) {
+  const { publisherSlug, bookSlug, isOpen, toggle } = useSpine();
+  const listId = useId();
+  const open = isOpen(node);
+  const hasSections = node.children.length > 0;
+
   return (
     <>
-      <Link href={dividerHref(publisherSlug, bookSlug, node)} className="ps-spine-chapter-label">
-        {node.title}
-      </Link>
-      {node.children.length > 0 && (
-        <ol className="ps-spine-sections">
+      <div className="ps-spine-chapter-row">
+        <Link href={dividerHref(publisherSlug, bookSlug, node)} className="ps-spine-chapter-label">
+          {node.title}
+        </Link>
+        {hasSections && (
+          <button
+            type="button"
+            className="ps-spine-fold"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-label={`${open ? "Collapse" : "Expand"} ${node.title}`}
+            onClick={() => toggle(node)}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m9 6 6 6-6 6" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {hasSections && (
+        <ol id={listId} className="ps-spine-sections" hidden={!open}>
           {node.children.map((s, i) => (
             <li key={`${s.slug}-${i}`}>
-              <SpineSection
-                node={s}
-                publisherSlug={publisherSlug}
-                bookSlug={bookSlug}
-                pathname={pathname}
-              />
+              <SpineSection node={s} />
             </li>
           ))}
         </ol>
@@ -295,24 +366,10 @@ function SpineChapter({
   );
 }
 
-function SpineSection({
-  node,
-  publisherSlug,
-  bookSlug,
-  pathname,
-}: {
-  node: SectionNode;
-  publisherSlug: string;
-  bookSlug: string;
-  pathname: string;
-}) {
+function SpineSection({ node }: { node: SectionNode }) {
+  const { publisherSlug, bookSlug, currentSlug } = useSpine();
   const href = sectionHref(publisherSlug, bookSlug, node.slug);
-
-  // resolvePath keys off the LAST URL segment, so a section is current whenever
-  // the path ends with its slug — which correctly matches every accepted shape
-  // (/book/slug, /book/part/slug, /book/part/chapter/slug).
-  const last = decodeURIComponent(pathname.split("?")[0].replace(/\/+$/, "").split("/").pop() ?? "");
-  const current = last === node.slug;
+  const current = currentSlug === node.slug;
 
   // A section owned by another publisher: the book assembled it rather than
   // wrote it, and it is not the book owner's to edit.
