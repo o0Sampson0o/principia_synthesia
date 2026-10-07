@@ -46,6 +46,16 @@ export default function BookSpine({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // A deep link into a long book, or a page turn past the visible part of the
+  // tree, would otherwise leave the current section scrolled out of sight. The
+  // layout persists across navigations, so a click inside the tree that is
+  // already in view moves nothing.
+  useEffect(() => {
+    if (asideRef.current) revealCurrent(asideRef.current);
+  }, [pathname]);
 
   // Native <dialog>: showModal() gives us the top layer, focus trap and Esc for
   // free. Styles live in globals.css — Tailwind utilities on <dialog> lose to
@@ -53,7 +63,10 @@ export default function BookSpine({
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
-    if (open && !el.open) el.showModal();
+    if (open && !el.open) {
+      el.showModal();
+      if (panelRef.current) revealCurrent(panelRef.current);
+    }
     if (!open && el.open) el.close();
   }, [open]);
 
@@ -82,7 +95,7 @@ export default function BookSpine({
   return (
     <>
       {/* Wide: the spine itself. */}
-      <aside className="ps-spine" aria-label="Book contents">
+      <aside ref={asideRef} className="ps-spine" aria-label="Book contents">
         {head}
         {tree}
       </aside>
@@ -113,6 +126,7 @@ export default function BookSpine({
             so the drawer closes. Delegated here rather than run from a
             pathname effect, which would cascade a render on every nav. */}
         <div
+          ref={panelRef}
           className="ps-spine-panel"
           onClick={(e) => {
             if ((e.target as HTMLElement).closest("a")) setOpen(false);
@@ -134,6 +148,20 @@ export default function BookSpine({
       </dialog>
     </>
   );
+}
+
+/**
+ * Scroll `scroller` so its current section sits a third of the way down, if it
+ * is not already fully visible. Adjusts scrollTop directly: scrollIntoView
+ * would also scroll the window, moving the page the reader is on.
+ */
+function revealCurrent(scroller: HTMLElement) {
+  const current = scroller.querySelector('[aria-current="page"]');
+  if (!current) return;
+  const box = scroller.getBoundingClientRect();
+  const item = current.getBoundingClientRect();
+  if (item.top >= box.top && item.bottom <= box.bottom) return;
+  scroller.scrollTop += item.top - box.top - box.height / 3;
 }
 
 /* ── Tree ─────────────────────────────────────────────────────────────────── */
