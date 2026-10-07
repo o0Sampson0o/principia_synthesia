@@ -125,7 +125,7 @@ export default async function BookSectionPage({
     article.isInternal ? bookRow.metadata.macros : null,
     extractMacroSource(body)
   );
-  const toc = extractToc(body);
+  const toc = extractToc(body, katexMacros);
   const { slugToNumber, resolved: resolvedCitations } = await resolveCitations(body);
 
   const crumbs: Crumb[] = [

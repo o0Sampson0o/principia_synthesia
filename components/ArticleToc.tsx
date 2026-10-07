@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { TocEntry } from "@/lib/article-toc";
 import { useActiveHeading } from "@/lib/useActiveHeading";
+import TocLabel from "@/components/TocLabel";
 
 /** Show a contents block only when an article has this many headings. */
 const TOC_THRESHOLD = 2;
@@ -59,7 +60,9 @@ export default function ArticleToc({ entries }: { entries: TocEntry[] }) {
           Sections
         </span>
         {active ? (
-          <span className="md-toc-current">{active.text}</span>
+          <span className="md-toc-current">
+            <TocLabel entry={active} />
+          </span>
         ) : (
           <span className="themed-muted ps-mono-meta">{entries.length}</span>
         )}
@@ -75,7 +78,7 @@ export default function ArticleToc({ entries }: { entries: TocEntry[] }) {
         {entries.map((e, i) => (
           <li key={`${e.id}-${i}`} data-depth={e.depth}>
             <a href={`#${e.id}`} aria-current={activeId === e.id ? "location" : undefined}>
-              {e.text}
+              <TocLabel entry={e} />
             </a>
           </li>
         ))}

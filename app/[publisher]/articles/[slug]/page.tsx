@@ -179,7 +179,7 @@ export default async function ArticlePage({
   // Standalone article: its own ```katex block only. Internal sections are
   // redirected to the book route above, which is where book macros apply.
   const katexMacros = buildKatexMacros(extractMacroSource(body));
-  const toc = extractToc(body);
+  const toc = extractToc(body, katexMacros);
 
   // Citation input computation
   const canonicalUrl = `${config.siteUrl}/${publisherSlug}/articles/${slug}${versionHash ? `?v=${versionHash}` : ""}`;

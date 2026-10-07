@@ -45,3 +45,30 @@ describe("extractToc", () => {
     expect(toc).toEqual([]);
   });
 });
+
+describe("extractToc inline maths", () => {
+  it("typesets $…$ in a heading and keeps the prose around it", () => {
+    const [e] = extractToc("## The Wave Function ($\\Psi$) and $E$ field");
+    expect(e.html).toContain('class="katex"');
+    expect(e.html).toMatch(/^The Wave Function \(/);
+    expect(e.html).toContain(" and ");
+    expect(e.html).toMatch(/ field$/);
+  });
+
+  it("leaves plain headings without html", () => {
+    const [e] = extractToc("## Plain heading");
+    expect(e.html).toBeUndefined();
+  });
+
+  it("applies author macros", () => {
+    const [e] = extractToc("## Bra $\\bra{x}$", { "\\bra": "\\langle #1|" });
+    expect(e.html).toContain("⟨");
+    expect(e.html).not.toContain("katex-error");
+  });
+
+  it("escapes HTML in the surrounding prose", () => {
+    const [e] = extractToc("## <b>x</b> $y$");
+    expect(e.html).toContain("&lt;b&gt;");
+    expect(e.html).not.toContain("<b>");
+  });
+});

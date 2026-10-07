@@ -2,6 +2,7 @@
 
 import type { TocEntry } from "@/lib/article-toc";
 import { useActiveHeading } from "@/lib/useActiveHeading";
+import TocLabel from "@/components/TocLabel";
 
 /** Match ArticleToc: one heading is not a structure worth a rail. */
 const RAIL_THRESHOLD = 2;
@@ -26,13 +27,21 @@ export default function ArticleSectionRail({ entries }: { entries: TocEntry[] })
   return (
     <aside className="ps-section-rail" aria-label="On this page">
       <ol>
+        {/* A way back to the start, current while the reader is above the
+            first heading. #top scrolls to the top of the document when no
+            element has that id (HTML's "top" fragment rule). */}
+        <li data-depth={1}>
+          <a href="#top" aria-current={activeId === null ? "location" : undefined}>
+            Overview
+          </a>
+        </li>
         {entries.map((e, i) => (
           <li key={`${e.id}-${i}`} data-depth={e.depth}>
             <a
               href={`#${e.id}`}
               aria-current={activeId === e.id ? "location" : undefined}
             >
-              {e.text}
+              <TocLabel entry={e} />
             </a>
           </li>
         ))}
