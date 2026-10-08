@@ -41,3 +41,11 @@ describe("searchExcerpt", () => {
     expect(e.after).toBe(" rises.");
   });
 });
+
+describe("plainText display maths", () => {
+  it("drops $$ display equations but keeps inline maths", () => {
+    const t = plainText("Entropy rises: $$\\Delta S \\ge 0$$ and $S$ is a state function.");
+    expect(t).not.toContain("$$");
+    expect(t).toContain("$S$ is a state function");
+  });
+});

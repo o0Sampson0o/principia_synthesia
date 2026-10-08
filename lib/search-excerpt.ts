@@ -18,14 +18,16 @@ const CONTEXT = 90;
 /**
  * Markdown to the text a reader sees, near enough for an excerpt: frontmatter,
  * fenced code and macro blocks, link/wikilink/image syntax, emphasis markers and
- * heading hashes go; inline and display maths keep their TeX (it is the text
- * the author wrote, and often exactly what was searched for).
+ * heading hashes go, as do display equations (cut mid-way they read as raw
+ * `$$` fragments); inline maths keeps its TeX (it is the text the author
+ * wrote, and often exactly what was searched for).
  */
 export function plainText(markdown: string): string {
   return markdown
     .replace(/\r\n?/g, "\n")
     .replace(/^---\n[\s\S]*?\n---\n/, "")
     .replace(/^(```|~~~)[^\n]*\n[\s\S]*?\n\1[^\n]*$/gm, " ")
+    .replace(/\$\$[\s\S]*?\$\$/g, " ")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2")
     .replace(/\[\[([^\]]+)\]\]/g, "$1")
