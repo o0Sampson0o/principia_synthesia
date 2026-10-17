@@ -63,11 +63,16 @@ Three runtime caching strategies:
 
 **Build requirement:** `npm run build` must use `--webpack`. Turbopack is incompatible with Workbox's webpack plugin.
 
-## Drag-and-drop curriculum reordering
+## Book outline editor
 
-Book edit page uses `@dnd-kit/core` (`DndContext`) and `@dnd-kit/sortable` (`SortableContext`, `verticalListSortingStrategy`). Both `PointerSensor` and `KeyboardSensor` (with `sortableKeyboardCoordinates`) are registered.
+The book edit page's curriculum is one keyboard-driven outline (`app/[publisher]/books/[bookSlug]/edit/OutlineEditor.tsx`), held in local state and written by a single `saveBookOutline` server action. Nothing is written until **Save outline**.
 
-On drag end: `arrayMove` computes new order → local state updates immediately → `reorderChapters(publisherSlug, bookSlug, orderedIds)` called in `startTransition`. `reorderChapters` updates each entry's `position` column in a loop.
+- **Typing:** each line is a Part, Chapter or Section. `Enter` starts a new line (one level deeper after a divider), `Tab` / `Shift+Tab` move a line between section ↔ chapter ↔ part, `Alt+↑/↓` reorder, `↑/↓` move focus, `Backspace` on an empty new line deletes it, `Ctrl/⌘+S` saves. Tab is only captured when the line's level can change, so it still leaves the outline otherwise.
+- **Pasting** several lines into a line (or the empty-book box / "Paste outline") adds them all, via `parseOutline` in `lib/book-outline.ts`: `#` → Part, `##` → Chapter, list leaves → sections, list parents → chapters (parts when they have grandchildren), and "Part II" / "Chapter 3" numerals win over structure.
+- **Slugs are never typed.** A new section's slug is `article-` + its title slugified (`lib/slugify.ts`; TeX control words dropped), de-duplicated within the book (`-2`, `-3`…) against every internal article the book ever had (binned ones too) and every article in it. The row shows the preview; the server settles the final slug.
+- **Drag:** `@dnd-kit/sortable` on the ⠿ handle (pointer only; the keyboard path is `Alt+↑/↓`).
+- **Save:** `planOutlineSave` (pure, unit-tested) checks the payload against the saved rows — the editor's starting entry order must still match (else "changed since you opened"), entries must belong to the book, no duplicates, saved sections can't become dividers — and returns the writes; the action runs them in one transaction. Removals are marked in the outline (struck through, undoable) and confirmed in a dialog that names internal sections, whose articles are deleted.
+- Make standalone / Make internal and "add an article from another publisher" write immediately and are disabled while the outline has unsaved edits.
 
 ## Nav
 

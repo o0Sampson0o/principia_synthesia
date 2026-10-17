@@ -138,32 +138,25 @@ export const updateBookSchema = z.object({
 });
 
 /**
- * Validates form data for adding or updating a curriculum (book) entry.
- * Uses `bookId` FK instead of the old `bookSlug`/`bookTitle` denormalised pair.
+ * Validates the JSON payload of the book outline editor's batch save
+ * (`lib/book-outline.ts`). Shape only; cross-row rules (stale base, entries
+ * from another book, duplicates) are `planOutlineSave`'s job.
  */
-export const upsertCurriculumEntrySchema = z.object({
-  bookId: z.coerce.number().int().positive("Invalid book ID"),
-  articleId: z.coerce.number().int().positive("Invalid article ID"),
-  position: z.coerce.number().int().min(0, "Position must be non-negative"),
-});
-
-/**
- * Validates form data for removing a single article from a curriculum book.
- */
-export const removeCurriculumEntrySchema = z.object({
-  id: z.coerce.number().int().positive("Invalid entry ID"),
-  bookId: z.coerce.number().int().positive("Invalid book ID"),
-});
-
-/**
- * Validates form data for creating an internal (book-only) article.
- * The article is automatically linked to the given book as a curriculum entry.
- */
-export const createInternalArticleSchema = z.object({
-  bookId: z.coerce.number().int().positive("Invalid book ID"),
-  title: z.string().min(1, "Title is required").max(200, "Title too long"),
-  slug: articleSlugSchema,
-  position: z.coerce.number().int().min(0, "Position must be non-negative"),
+const outlineTitle = z.string().max(200, "Title too long");
+const outlineId = z.number().int().positive();
+export const saveBookOutlineSchema = z.object({
+  bookId: outlineId,
+  baseIds: z.array(outlineId).max(1000),
+  items: z
+    .array(
+      z.union([
+        z.object({ kind: z.enum(["part", "chapter"]), entryId: outlineId.optional(), title: outlineTitle }).strict(),
+        z.object({ kind: z.literal("section"), entryId: outlineId }).strict(),
+        z.object({ kind: z.literal("section"), articleId: outlineId }).strict(),
+        z.object({ kind: z.literal("section"), title: outlineTitle }).strict(),
+      ])
+    )
+    .max(1000, "A book outline can hold at most 1000 entries."),
 });
 
 /**
@@ -177,39 +170,6 @@ export const addExternalArticleSchema = z.object({
   targetPublisher: publisherSlugSchema,
   articleSlug: articleSlugSchema,
   position: z.coerce.number().int().min(0, "Position must be non-negative"),
-});
-
-/**
- * Part dividers: standalone "Part" heading rows in a book's curriculum
- * (curriculum entries with a NULL articleId).
- */
-export const addPartSchema = z.object({
-  bookId: z.coerce.number().int().positive("Invalid book ID"),
-  title: z.string().min(1, "Part title is required").max(200, "Part title too long"),
-  position: z.coerce.number().int().min(0, "Position must be non-negative"),
-});
-
-export const renamePartSchema = z.object({
-  entryId: z.coerce.number().int().positive("Invalid entry ID"),
-  bookId: z.coerce.number().int().positive("Invalid book ID"),
-  title: z.string().min(1, "Part title is required").max(200, "Part title too long"),
-});
-
-/**
- * Chapter dividers: standalone "Chapter" heading rows (the middle grouping
- * level between Part and Section) in a book's curriculum. Same shape as Part
- * dividers, distinguished by `dividerLevel: 'chapter'` on insert.
- */
-export const addChapterDividerSchema = z.object({
-  bookId: z.coerce.number().int().positive("Invalid book ID"),
-  title: z.string().min(1, "Chapter title is required").max(200, "Chapter title too long"),
-  position: z.coerce.number().int().min(0, "Position must be non-negative"),
-});
-
-export const renameChapterDividerSchema = z.object({
-  entryId: z.coerce.number().int().positive("Invalid entry ID"),
-  bookId: z.coerce.number().int().positive("Invalid book ID"),
-  title: z.string().min(1, "Chapter title is required").max(200, "Chapter title too long"),
 });
 
 /**

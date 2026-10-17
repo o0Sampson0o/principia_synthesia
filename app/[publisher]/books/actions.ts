@@ -9,7 +9,7 @@ import {
   bookSnapshotEntries,
   resourceVisibility,
 } from "@/db/schema";
-import { eq, asc, and, isNull } from "drizzle-orm";
+import { eq, asc, and, isNull, inArray, like } from "drizzle-orm";
 import { setContentTags } from "@/lib/content-tags";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -20,20 +20,16 @@ import {
   createBookSchema,
   deleteBookSchema,
   updateBookSchema,
-  upsertCurriculumEntrySchema,
-  removeCurriculumEntrySchema,
-  createInternalArticleSchema,
+  saveBookOutlineSchema,
   addExternalArticleSchema,
   promoteArticleSchema,
   absorbArticleSchema,
-  addPartSchema,
-  renamePartSchema,
-  addChapterDividerSchema,
-  renameChapterDividerSchema,
 } from "@/lib/validations";
 import { resolvePublisher } from "@/lib/publisher";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { withDividerTitles } from "@/lib/curriculum";
+import { planOutlineSave } from "@/lib/book-outline";
+import { normalizePrefixedSlug, prefixedSlug, uniqueSlug } from "@/lib/slugify";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -50,9 +46,23 @@ export async function createBook(
 ): Promise<{ error: string } | void> {
   const { session, ownerType, ownerId } = await assertEditRights(publisherSlug);
 
+  // The slug field is optional and its `book-` prefix implied: a typed slug
+  // is normalized; a blank one is derived from the title and, unlike a typed
+  // one, quietly suffixed (-2, -3…) past this publisher's existing books.
+  const title = String(formData.get("title") ?? "");
+  let slug = normalizePrefixedSlug("book-", String(formData.get("slug") ?? ""));
+  if (!slug) {
+    const base = prefixedSlug("book-", title, "untitled");
+    const existing = await db
+      .select({ slug: books.slug })
+      .from(books)
+      .where(and(eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), like(books.slug, `${base}%`)));
+    slug = uniqueSlug(base, new Set(existing.map((b) => b.slug)));
+  }
+
   const validated = createBookSchema.parse({
-    slug: formData.get("slug"),
-    title: formData.get("title"),
+    slug,
+    title,
     summary: formData.get("summary"),
     ownerType,
     ownerId,
@@ -110,7 +120,7 @@ export async function updateBook(publisherSlug: string, formData: FormData) {
 
   const validated = updateBookSchema.parse({
     id: formData.get("id"),
-    slug: formData.get("slug"),
+    slug: normalizePrefixedSlug("book-", String(formData.get("slug") ?? "")) ?? "",
     title: formData.get("title"),
     summary: formData.get("summary"),
     categories: formData.get("categories"),
@@ -162,56 +172,182 @@ export async function updateBook(publisherSlug: string, formData: FormData) {
 // Curriculum entries
 // ---------------------------------------------------------------------------
 
-export async function upsertCurriculumEntry(publisherSlug: string, formData: FormData) {
+
+/**
+ * The book outline editor's single save: the whole curriculum in final order —
+ * kept rows, renamed or re-levelled Part/Chapter dividers, new dividers, new
+ * internal sections (slug derived from the title, de-duplicated within the
+ * book), the publisher's standalone articles added as sections, and removals —
+ * written in one transaction.
+ *
+ * `payload` is JSON validated by `saveBookOutlineSchema`; the cross-row rules
+ * and the write plan come from `planOutlineSave` (lib/book-outline.ts).
+ * Removing an internal section deletes its article, exactly like the old
+ * per-row Remove did; the editor confirms that before submitting.
+ */
+export async function saveBookOutline(
+  publisherSlug: string,
+  formData: FormData
+): Promise<{ error: string } | void> {
   const { ownerType, ownerId } = await assertEditRights(publisherSlug);
 
-  const validated = upsertCurriculumEntrySchema.parse({
-    bookId: formData.get("bookId"),
-    articleId: formData.get("articleId"),
-    position: formData.get("position"),
-  });
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(formData.get("payload") ?? ""));
+  } catch {
+    return { error: "The outline could not be read. Reload and try again." };
+  }
+  const parsed = saveBookOutlineSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "The outline is not valid." };
+  }
+  const { bookId, baseIds, items } = parsed.data;
 
   const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
+    .where(and(eq(books.id, bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
     .limit(1);
   if (!book) throw new Error("Book not found");
 
-  // Security: this entry point is for same-publisher articles only.
-  // Cross-publisher articles must go through addExternalArticle, which
-  // performs a visibility check rather than an ownership check.
-  const [art] = await db
-    .select({ ownerType: articles.ownerType, ownerId: articles.ownerId })
-    .from(articles)
-    .where(and(eq(articles.id, validated.articleId), isNull(articles.deletedAt)))
-    .limit(1);
-  if (!art) throw new Error("Article not found");
-  if (art.ownerType !== ownerType || art.ownerId !== ownerId) {
-    throw new Error(
-      "This article is not owned by the current publisher. Use addExternalArticle."
-    );
-  }
-
-  const existing = await db
-    .select({ id: curriculumEntries.id })
+  const savedRows = await db
+    .select({
+      entryId: curriculumEntries.id,
+      articleId: curriculumEntries.articleId,
+      partTitle: curriculumEntries.partTitle,
+      dividerLevel: curriculumEntries.dividerLevel,
+      slug: articles.slug,
+      isInternal: articles.isInternal,
+    })
     .from(curriculumEntries)
-    .where(
-      and(
-        eq(curriculumEntries.bookId, validated.bookId),
-        eq(curriculumEntries.articleId, validated.articleId)
-      )
-    )
-    .limit(1);
+    .leftJoin(articles, eq(curriculumEntries.articleId, articles.id))
+    .where(eq(curriculumEntries.bookId, bookId))
+    .orderBy(asc(curriculumEntries.position), asc(curriculumEntries.id));
 
-  if (existing[0]) {
-    await db
-      .update(curriculumEntries)
-      .set({ position: validated.position })
-      .where(eq(curriculumEntries.id, existing[0].id));
-  } else {
-    await db.insert(curriculumEntries).values(validated);
+  // Slugs a new section must avoid: every internal article ever made in this
+  // book (the unique index covers binned rows too) and every article in it.
+  const internalSlugs = await db
+    .select({ slug: articles.slug })
+    .from(articles)
+    .where(eq(articles.parentBookId, bookId));
+  const takenSlugs = new Set<string>([
+    ...internalSlugs.map((r) => r.slug),
+    ...savedRows.flatMap((r) => (r.slug ? [r.slug] : [])),
+  ]);
+
+  const plan = planOutlineSave({
+    saved: savedRows.map((r) => ({
+      entryId: r.entryId,
+      articleId: r.articleId,
+      kind: r.articleId !== null ? "section" : r.dividerLevel === "chapter" ? "chapter" : "part",
+      title: r.articleId !== null ? null : r.partTitle,
+      isInternal: r.isInternal ?? false,
+    })),
+    baseIds,
+    items,
+    takenSlugs,
+  });
+  if ("error" in plan) return plan;
+
+  // Added articles: same-publisher standalone only (another publisher's
+  // article goes through addExternalArticle and its visibility check), and
+  // never one whose slug a section of this book already uses.
+  const addIds = plan.rows.flatMap((r) => (r.op === "add-article" ? [r.articleId] : []));
+  if (addIds.length > 0) {
+    const found = await db
+      .select({ id: articles.id, slug: articles.slug })
+      .from(articles)
+      .where(
+        and(
+          inArray(articles.id, addIds),
+          eq(articles.ownerType, ownerType),
+          eq(articles.ownerId, ownerId),
+          eq(articles.isInternal, false),
+          isNull(articles.deletedAt)
+        )
+      );
+    if (found.length !== addIds.length) {
+      return { error: "One of the added articles is not one of your standalone articles." };
+    }
+    const removedIds = new Set(plan.removals.map((r) => r.entryId));
+    const keptSlugs = new Set(
+      savedRows.filter((r) => r.slug && !removedIds.has(r.entryId)).map((r) => r.slug)
+    );
+    for (const row of plan.rows) {
+      if (row.op === "new-section") keptSlugs.add(row.slug);
+    }
+    const clash = found.find((a) => keptSlugs.has(a.slug));
+    if (clash) {
+      return { error: `A section of this book already uses the slug "${clash.slug}".` };
+    }
   }
 
-  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
+  try {
+    await db.transaction(async (tx) => {
+      for (const r of plan.removals) {
+        // An internal article lives only in this book: delete it (its entry
+        // cascades). Anything else just leaves the book.
+        if (r.deleteArticleId !== null) {
+          await tx.delete(articles).where(and(eq(articles.id, r.deleteArticleId), eq(articles.parentBookId, bookId)));
+        }
+        await tx.delete(curriculumEntries).where(and(eq(curriculumEntries.id, r.entryId), eq(curriculumEntries.bookId, bookId)));
+      }
+
+      for (const r of plan.renames) {
+        await tx
+          .update(curriculumEntries)
+          .set({ partTitle: r.title, dividerLevel: r.kind })
+          .where(and(eq(curriculumEntries.id, r.entryId), eq(curriculumEntries.bookId, bookId), isNull(curriculumEntries.articleId)));
+      }
+
+      for (const [position, row] of plan.rows.entries()) {
+        if (row.op === "keep") {
+          await tx
+            .update(curriculumEntries)
+            .set({ position })
+            .where(and(eq(curriculumEntries.id, row.entryId), eq(curriculumEntries.bookId, bookId)));
+        } else if (row.op === "new-divider") {
+          await tx.insert(curriculumEntries).values({
+            bookId,
+            articleId: null,
+            position,
+            partTitle: row.title,
+            dividerLevel: row.kind,
+          });
+        } else if (row.op === "add-article") {
+          await tx.insert(curriculumEntries).values({ bookId, articleId: row.articleId, position });
+        } else {
+          const content = internalArticleContent(row.title);
+          const [article] = await tx
+            .insert(articles)
+            .values({
+              slug: row.slug,
+              title: row.title,
+              content,
+              ownerType,
+              ownerId,
+              isInternal: true,
+              parentBookId: bookId,
+              metadata: parseFrontmatter(content).metadata,
+            })
+            .returning({ id: articles.id });
+          await tx.insert(curriculumEntries).values({ bookId, articleId: article.id, position });
+        }
+      }
+    });
+  } catch (err) {
+    // A concurrent save took a slug or article between planning and writing.
+    if (isUniqueViolation(err)) {
+      return { error: "The book changed while saving. Reload and try again." };
+    }
+    throw err;
+  }
+
+  revalidatePath(`/${publisherSlug}/books/${book.slug}`, "layout");
+  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
+}
+
+/** Starting MDX for a new internal section: default frontmatter + its title. */
+function internalArticleContent(title: string): string {
+  return `---\nstatus: published\ntags: []\ndescription: ""\ncanvas: null\n---\n\n# ${title}\n`;
 }
 
 export async function addExternalArticle(
@@ -225,7 +361,7 @@ export async function addExternalArticle(
   const validated = addExternalArticleSchema.parse({
     bookId: formData.get("bookId"),
     targetPublisher: formData.get("targetPublisher"),
-    articleSlug: formData.get("articleSlug"),
+    articleSlug: normalizePrefixedSlug("article-", String(formData.get("articleSlug") ?? "")) ?? "",
     position: formData.get("position"),
   });
 
@@ -305,266 +441,6 @@ export async function addExternalArticle(
   // 9. Revalidate book pages.
   revalidatePath(`/${publisherSlug}/books/${ownedBook.slug}`);
   revalidatePath(`/${publisherSlug}/books/${ownedBook.slug}/edit`);
-}
-
-export async function removeCurriculumEntry(publisherSlug: string, formData: FormData) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
-
-  const validated = removeCurriculumEntrySchema.parse({
-    id: formData.get("id"),
-    bookId: formData.get("bookId"),
-  });
-
-  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
-    .limit(1);
-  if (!book) throw new Error("Book not found");
-
-  // Check if article is internal — if so, delete the article itself
-  const [entry] = await db
-    .select({ articleId: curriculumEntries.articleId })
-    .from(curriculumEntries)
-    .where(eq(curriculumEntries.id, validated.id))
-    .limit(1);
-
-  if (entry) {
-    if (entry.articleId === null) {
-      // Part divider: nothing else hangs off it, just remove the row.
-      await db.delete(curriculumEntries).where(eq(curriculumEntries.id, validated.id));
-      revalidatePath(`/${publisherSlug}/books/${book.slug}`);
-      revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-      return;
-    }
-    const [article] = await db
-      .select({ isInternal: articles.isInternal })
-      .from(articles)
-      .where(eq(articles.id, entry.articleId))
-      .limit(1);
-
-    if (article?.isInternal) {
-      await db.delete(articles).where(eq(articles.id, entry.articleId));
-    } else {
-      await db.delete(curriculumEntries).where(eq(curriculumEntries.id, validated.id));
-    }
-  }
-
-  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
-  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-}
-
-export async function reorderCurriculumEntries(
-  publisherSlug: string,
-  bookId: number,
-  orderedIds: number[]
-) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
-
-  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
-    .limit(1);
-  if (!book) throw new Error("Book not found");
-
-  await db.transaction(async (tx) => {
-    for (let i = 0; i < orderedIds.length; i++) {
-      await tx
-        .update(curriculumEntries)
-        .set({ position: i })
-        .where(eq(curriculumEntries.id, orderedIds[i]));
-    }
-  });
-
-  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-}
-
-export async function reorderChapters(publisherSlug: string, formData: FormData) {
-  await assertEditRights(publisherSlug);
-  const bookId = Number(formData.get("bookId"));
-  const raw = formData.get("orderedIds") as string;
-  const orderedIds = JSON.parse(raw) as number[];
-  await reorderCurriculumEntries(publisherSlug, bookId, orderedIds);
-}
-
-// ---------------------------------------------------------------------------
-// Part dividers
-// ---------------------------------------------------------------------------
-
-/**
- * Adds a standalone part divider (curriculum entry with a NULL articleId and
- * dividerLevel 'part') at the given position — usually the end of the list.
- * Reorderable and removable exactly like a section entry.
- */
-export async function addPart(publisherSlug: string, formData: FormData) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
-
-  const validated = addPartSchema.parse({
-    bookId: formData.get("bookId"),
-    title: formData.get("title"),
-    position: formData.get("position"),
-  });
-
-  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
-    .limit(1);
-  if (!book) throw new Error("Book not found");
-
-  await db.insert(curriculumEntries).values({
-    bookId: validated.bookId,
-    articleId: null,
-    position: validated.position,
-    partTitle: validated.title,
-    dividerLevel: "part",
-  });
-
-  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
-  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-}
-
-export async function renamePart(publisherSlug: string, formData: FormData) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
-
-  const validated = renamePartSchema.parse({
-    entryId: formData.get("entryId"),
-    bookId: formData.get("bookId"),
-    title: formData.get("title"),
-  });
-
-  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
-    .limit(1);
-  if (!book) throw new Error("Book not found");
-
-  await db
-    .update(curriculumEntries)
-    .set({ partTitle: validated.title })
-    .where(and(
-      eq(curriculumEntries.id, validated.entryId),
-      eq(curriculumEntries.bookId, validated.bookId),
-      isNull(curriculumEntries.articleId)
-    ));
-
-  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
-  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-}
-
-// ---------------------------------------------------------------------------
-// Chapter dividers (the middle grouping level between Part and Section)
-// ---------------------------------------------------------------------------
-
-/**
- * Adds a standalone chapter divider (curriculum entry with a NULL articleId and
- * dividerLevel 'chapter') at the given position. Same lifecycle as a part
- * divider; only the level differs.
- */
-export async function addChapterDivider(publisherSlug: string, formData: FormData) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
-
-  const validated = addChapterDividerSchema.parse({
-    bookId: formData.get("bookId"),
-    title: formData.get("title"),
-    position: formData.get("position"),
-  });
-
-  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
-    .limit(1);
-  if (!book) throw new Error("Book not found");
-
-  await db.insert(curriculumEntries).values({
-    bookId: validated.bookId,
-    articleId: null,
-    position: validated.position,
-    partTitle: validated.title,
-    dividerLevel: "chapter",
-  });
-
-  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
-  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-}
-
-export async function renameChapterDivider(publisherSlug: string, formData: FormData) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
-
-  const validated = renameChapterDividerSchema.parse({
-    entryId: formData.get("entryId"),
-    bookId: formData.get("bookId"),
-    title: formData.get("title"),
-  });
-
-  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
-    .limit(1);
-  if (!book) throw new Error("Book not found");
-
-  await db
-    .update(curriculumEntries)
-    .set({ partTitle: validated.title })
-    .where(and(
-      eq(curriculumEntries.id, validated.entryId),
-      eq(curriculumEntries.bookId, validated.bookId),
-      isNull(curriculumEntries.articleId)
-    ));
-
-  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
-  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
-}
-
-// ---------------------------------------------------------------------------
-// Internal articles
-// ---------------------------------------------------------------------------
-
-export async function createInternalArticle(publisherSlug: string, formData: FormData) {
-  const { ownerType, ownerId } = await assertEditRights(publisherSlug);
-
-  const validated = createInternalArticleSchema.parse({
-    bookId: formData.get("bookId"),
-    title: formData.get("title"),
-    slug: formData.get("slug"),
-    position: formData.get("position"),
-  });
-
-  const [book] = await db.select({ id: books.id, slug: books.slug }).from(books)
-    .where(and(eq(books.id, validated.bookId), eq(books.ownerType, ownerType), eq(books.ownerId, ownerId), isNull(books.deletedAt)))
-    .limit(1);
-  if (!book) throw new Error("Book not found");
-
-  const defaultContent = `---\nstatus: published\ntags: []\ndescription: ""\ncanvas: null\n---\n\n# ${validated.title}\n`;
-  const parsed = parseFrontmatter(defaultContent);
-
-  try {
-    await db.transaction(async (tx) => {
-      const [article] = await tx
-        .insert(articles)
-        .values({
-          slug: validated.slug,
-          title: validated.title,
-          content: defaultContent,
-          ownerType,
-          ownerId,
-          isInternal: true,
-          parentBookId: validated.bookId,
-          metadata: parsed.metadata,
-        })
-        .returning({ id: articles.id });
-
-      await tx.insert(curriculumEntries).values({
-        bookId: validated.bookId,
-        articleId: article.id,
-        position: validated.position,
-      });
-    });
-  } catch (err) {
-    // Section slugs are unique within this book only, so another book may hold
-    // the same slug quite legitimately — the clash is always in-book here.
-    if (isUniqueViolation(err)) {
-      return { error: "This book already has a section with that slug. Pick a different slug." };
-    }
-    throw err;
-  }
-
-  // Revalidate in place (no redirect) so the editor updates without a
-  // navigation — otherwise the page scrolls to the top after each add.
-  revalidatePath(`/${publisherSlug}/books/${book.slug}`);
-  revalidatePath(`/${publisherSlug}/books/${book.slug}/edit`);
 }
 
 /**

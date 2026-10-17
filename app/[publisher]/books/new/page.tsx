@@ -41,7 +41,7 @@ export default async function NewBookPage({
         </div>
         <div>
           <label htmlFor="slug" className="block text-sm font-medium themed-secondary mb-1">
-            Slug
+            Slug <span className="themed-muted font-normal">(optional)</span>
           </label>
           <div className="flex items-center gap-1">
             <span className="text-sm themed-muted">book-</span>
@@ -49,14 +49,13 @@ export default async function NewBookPage({
               id="slug"
               name="slug"
               type="text"
-              required
-              placeholder="my-book"
+              placeholder="made from the title"
               className="themed-input flex-1"
-              pattern="^book-[a-z0-9]+(?:-[a-z0-9]+)*$"
             />
           </div>
-          <p className="text-xs themed-muted mt-1">Must start with &ldquo;book-&rdquo;.</p>
+          <p className="text-xs themed-muted mt-1">Leave blank to use the title. Sections get their slugs the same way.</p>
         </div>
+
         <div>
           <label htmlFor="summary" className="block text-sm font-medium themed-secondary mb-1">
             Summary

@@ -7,7 +7,7 @@ All mutations live in dedicated `actions.ts` files. All use Zod schemas from `li
 | `app/[publisher]/articles/actions.ts` | create/update/delete article, restore revision, set categories, `updateArticleContent`, `markArticleVerified` |
 | `app/[publisher]/articles/[slug]/access/actions.ts` | `setArticleVisibility`, `addArticleGrant`, `removeArticleGrant` |
 | `app/[publisher]/articles/fork-action.ts` | `forkArticle` |
-| `app/[publisher]/books/actions.ts` | create/update/delete book, upsert/remove curriculum entry, `createInternalArticle`, `reorderChapters`, `snapshotBook`, `listBookSnapshots`, `restoreBookSnapshot` |
+| `app/[publisher]/books/actions.ts` | create/update/delete book (slug optional on create — derived from the title), `saveBookOutline` (the whole curriculum in one batch: order, parts/chapters, new internal sections, added/removed articles), `addExternalArticle`, promote/absorb, `snapshotBook`, `listBookSnapshots`, `restoreBookSnapshot` |
 | `app/[publisher]/books/[bookSlug]/access/actions.ts` | `setBookVisibility`, `addBookGrant`, `removeBookGrant` |
 | `app/[publisher]/books/[bookSlug]/sync/actions.ts` | `importSyncBundle` |
 | `app/[publisher]/objects/actions.ts` | `createKaoObject`, `updateKaoObject`, `deleteKaoObject` |

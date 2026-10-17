@@ -9,22 +9,14 @@ import { books, curriculumEntries, articles, publishers, bookCategories, categor
 import { eq, and, asc, isNull, or, sql, inArray } from "drizzle-orm";
 import Link from "next/link";
 import CategoryPicker from "@/components/CategoryPicker";
-import CurriculumList from "./CurriculumList";
-import AddCurriculumMenu from "./AddCurriculumMenu";
+import OutlineEditor from "./OutlineEditor";
 import {
   updateBook,
   deleteBook,
-  upsertCurriculumEntry,
-  removeCurriculumEntry,
-  createInternalArticle,
-  reorderChapters,
+  saveBookOutline,
   addExternalArticle,
   promoteArticleToStandalone,
   absorbArticleIntoBook,
-  addPart,
-  renamePart,
-  addChapterDivider,
-  renameChapterDivider,
 } from "../../actions";
 
 export default async function EditBookPage({
@@ -122,7 +114,7 @@ export default async function EditBookPage({
       position: d.position,
       part: d,
     })),
-  ].sort((a, b) => a.position - b.position);
+  ].sort((a, b) => a.position - b.position || a.entryId - b.entryId);
 
 
   // How many books each chapter's article belongs to. A same-publisher
@@ -153,7 +145,6 @@ export default async function EditBookPage({
           articleId: r.chapter.articleId,
           articleSlug: r.chapter.articleSlug,
           articleTitle: r.chapter.articleTitle,
-          partTitle: r.chapter.partTitle,
           isInternal: r.chapter.isInternal,
           isExternal:
             r.chapter.articlePublisherSlug !== null &&
@@ -183,24 +174,9 @@ export default async function EditBookPage({
     return updateBook(publisherSlug, formData);
   }
 
-  async function addChapter(formData: FormData): Promise<void> {
+  async function saveOutline(formData: FormData) {
     "use server";
-    await upsertCurriculumEntry(publisherSlug, formData);
-  }
-
-  async function removeChapter(formData: FormData): Promise<void> {
-    "use server";
-    await removeCurriculumEntry(publisherSlug, formData);
-  }
-
-  async function newInternalArticle(formData: FormData) {
-    "use server";
-    return createInternalArticle(publisherSlug, formData);
-  }
-
-  async function reorder(formData: FormData): Promise<void> {
-    "use server";
-    await reorderChapters(publisherSlug, formData);
+    return saveBookOutline(publisherSlug, formData);
   }
 
   async function addExternal(formData: FormData) {
@@ -211,26 +187,6 @@ export default async function EditBookPage({
   async function makeStandalone(formData: FormData): Promise<void> {
     "use server";
     await promoteArticleToStandalone(publisherSlug, formData);
-  }
-
-  async function addPartAction(formData: FormData): Promise<void> {
-    "use server";
-    await addPart(publisherSlug, formData);
-  }
-
-  async function renamePartAction(formData: FormData): Promise<void> {
-    "use server";
-    await renamePart(publisherSlug, formData);
-  }
-
-  async function addChapterDividerAction(formData: FormData): Promise<void> {
-    "use server";
-    await addChapterDivider(publisherSlug, formData);
-  }
-
-  async function renameChapterDividerAction(formData: FormData): Promise<void> {
-    "use server";
-    await renameChapterDivider(publisherSlug, formData);
   }
 
   async function absorb(formData: FormData): Promise<void> {
@@ -335,165 +291,33 @@ export default async function EditBookPage({
       </ToastForm>
 
       <section className="mt-10 border-t themed-border pt-8">
-        <h2 className="text-xl font-semibold themed-heading mb-4">Sections</h2>
+        <h2 className="text-xl font-semibold themed-heading mb-4">Outline</h2>
 
-        <CurriculumList
-          key={listRows.map((r) => r.entryId).join("-")}
+        <OutlineEditor
+          /* Remount after every save so local edits reset to what was saved. */
+          key={listRows.map((r) => (r.kind === "section" ? r.entryId : `${r.entryId}:${r.kind}:${r.partTitle}`)).join("|")}
           bookId={bookRow.id}
+          bookSlug={bookRow.slug}
           rows={listRows}
-          reorder={reorder}
-          removeEntry={removeChapter}
-          renamePart={renamePartAction}
-          renameChapterDivider={renameChapterDividerAction}
+          availableArticles={availableArticles}
+          saveOutline={saveOutline}
           makeStandalone={makeStandalone}
           absorb={absorb}
-        />
-
-        <AddCurriculumMenu
-          items={[
-            {
-              key: "existing",
-              label: "Existing section",
-              content: (
-                <ToastForm action={addChapter} errorTitle="Section not added" className="space-y-2">
-                  <p className="text-xs themed-muted mb-1">Add one of your standalone articles as a section.</p>
-                  <input type="hidden" name="bookId" value={bookRow.id} />
-                  <input type="hidden" name="position" value={rows.length} />
-                  <select name="articleId" required className="themed-input text-sm">
-                    <option value="">Select an article…</option>
-                    {availableArticles
-                      .filter((a) => !chapters.some((c) => c.articleId === a.id))
-                      .map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.title} ({a.slug})
-                        </option>
-                      ))}
-                  </select>
-                  <button type="submit" className="themed-btn-accent rounded-lg text-sm">
-                    Add section
-                  </button>
-                </ToastForm>
-              ),
-            },
-            {
-              key: "internal",
-              label: "New section",
-              content: (
-                <ToastForm action={newInternalArticle} errorTitle="Section not added" className="space-y-2">
-                  <p className="text-xs themed-muted mb-1">
-                    Create a section that lives only inside this book.
-                  </p>
-                  <input type="hidden" name="bookId" value={bookRow.id} />
-                  <input type="hidden" name="position" value={rows.length} />
-                  <input
-                    name="title"
-                    type="text"
-                    required
-                    placeholder="Section title"
-                    maxLength={200}
-                    className="themed-input text-sm"
-                  />
-                  <input
-                    name="slug"
-                    type="text"
-                    required
-                    placeholder="article-my-section"
-                    pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
-                    title="Must start with 'article-' followed by lowercase letters, numbers, and hyphens"
-                    className="themed-input text-sm"
-                  />
-                  <p className="text-xs themed-muted">Slug must start with &ldquo;article-&rdquo; (e.g. article-intro).</p>
-                  <button type="submit" className="themed-btn-accent rounded-lg text-sm">
-                    Create section
-                  </button>
-                </ToastForm>
-              ),
-            },
-            {
-              key: "part",
-              label: "Part",
-              content: (
-                <ToastForm action={addPartAction} errorTitle="Part not added" className="space-y-2">
-                  <p className="text-xs themed-muted mb-1">
-                    A part is the top-level heading. Chapters and sections after it belong to it until the next part.
-                  </p>
-                  <div className="flex gap-2">
-                    <input type="hidden" name="bookId" value={bookRow.id} />
-                    <input type="hidden" name="position" value={rows.length} />
-                    <input
-                      name="title"
-                      type="text"
-                      required
-                      maxLength={200}
-                      placeholder="Part I: Foundations"
-                      className="themed-input text-sm flex-1"
-                    />
-                    <button type="submit" className="themed-btn-accent rounded-lg text-sm shrink-0">
-                      Add part
-                    </button>
-                  </div>
-                </ToastForm>
-              ),
-            },
-            {
-              key: "chapter",
-              label: "Chapter",
-              content: (
-                <ToastForm action={addChapterDividerAction} errorTitle="Chapter not added" className="space-y-2">
-                  <p className="text-xs themed-muted mb-1">
-                    A chapter is the middle-level heading between a part and its sections.
-                  </p>
-                  <div className="flex gap-2">
-                    <input type="hidden" name="bookId" value={bookRow.id} />
-                    <input type="hidden" name="position" value={rows.length} />
-                    <input
-                      name="title"
-                      type="text"
-                      required
-                      maxLength={200}
-                      placeholder="Chapter 1: Getting started"
-                      className="themed-input text-sm flex-1"
-                    />
-                    <button type="submit" className="themed-btn-accent rounded-lg text-sm shrink-0">
-                      Add chapter
-                    </button>
-                  </div>
-                </ToastForm>
-              ),
-            },
-            {
-              key: "external",
-              label: "External section",
-              content: (
-                <ToastForm action={addExternal} errorTitle="Section not added" className="space-y-2">
-                  <p className="text-xs themed-muted mb-1">
-                    Borrow an article authored by another publisher. It must be visible to your account; original authorship is preserved.
-                  </p>
-                  <input type="hidden" name="bookId" value={bookRow.id} />
-                  <input type="hidden" name="position" value={rows.length} />
-                  <input
-                    name="targetPublisher"
-                    type="text"
-                    required
-                    placeholder="publisher-slug"
-                    className="themed-input text-sm"
-                  />
-                  <input
-                    name="articleSlug"
-                    type="text"
-                    required
-                    placeholder="article-my-section"
-                    pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
-                    title="Article slug, e.g. article-intro"
-                    className="themed-input text-sm"
-                  />
-                  <button type="submit" className="themed-btn-accent rounded-lg text-sm">
-                    Add external section
-                  </button>
-                </ToastForm>
-              ),
-            },
-          ]}
+          borrow={
+            <ToastForm action={addExternal} errorTitle="Section not added" className="space-y-2">
+              <p className="text-xs themed-muted mb-1">
+                Borrow an article authored by another publisher. It must be visible to your account; original
+                authorship is preserved. It is added at the end of the outline.
+              </p>
+              <input type="hidden" name="bookId" value={bookRow.id} />
+              <input type="hidden" name="position" value={rows.length} />
+              <input name="targetPublisher" type="text" required placeholder="publisher-slug" className="themed-input text-sm" />
+              <input name="articleSlug" type="text" required placeholder="article slug, e.g. intro" className="themed-input text-sm" />
+              <button type="submit" className="themed-btn-accent rounded-lg text-sm">
+                Add their article
+              </button>
+            </ToastForm>
+          }
         />
       </section>
 

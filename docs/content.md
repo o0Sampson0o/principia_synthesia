@@ -273,7 +273,7 @@ Dates use `Intl.DateTimeFormat` with `timeZone: "UTC"` and are populated in `use
 Internal articles belong exclusively to one book and are not discoverable outside it.
 
 - `articles.isInternal = true`, `articles.parentBookId` (FK → `books.id`) set on creation.
-- Created atomically with a `curriculumEntries` row via `createInternalArticle()`.
+- Created atomically with a `curriculumEntries` row by `saveBookOutline()` (the book outline editor), with a slug derived from the title and de-duplicated within the book.
 - Only accessible at `/:publisher/books/[bookSlug]/[chapter]`. Chapter route verifies `article.parentBookId === bookRow.id`.
 - Excluded from search, category listings, homepage, sitemap, and command palette.
 - Removing a curriculum entry for an internal article permanently deletes the article. Removing an entry for a regular article only removes the entry row.
