@@ -25,9 +25,10 @@ export default function ArticleMetadataDisplay({
   categories = [],
   renderedSummary = null,
 }: ArticleMetadataDisplayProps) {
+  // One summary per page: the frontmatter description stands in only when the
+  // article has no summary (the dek above already says it otherwise).
   const showDescription =
-    metadata.description.trim().length > 0 &&
-    metadata.description.trim() !== renderedSummary?.trim();
+    metadata.description.trim().length > 0 && !renderedSummary?.trim();
   const showStatus = metadata.status !== "published";
   const showTags = categories.length > 0;
 

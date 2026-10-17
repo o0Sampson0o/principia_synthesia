@@ -415,7 +415,9 @@ body {
 .markdown-content h1,
 .markdown-content .md-h1 {
   font-family: var(--font-playfair), Georgia, serif;
-  font-size: clamp(1.625rem, 3.5vw, 2.25rem);
+  /* A step below the page title (clamp to 2.75rem) so a section's own top
+     heading never competes with it; floor stays at the Playfair Threshold. */
+  font-size: clamp(1.5rem, 2.6vw, 1.875rem);
   font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 1.15;
@@ -427,6 +429,12 @@ body {
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
+/* Content that opens with a heading starts at the top of the prose column:
+   its 2.5em lead-in (plus the container padding) left a ~150px empty band
+   under the page title, and its top hairline doubled the header's rule. */
+.markdown-content > :first-child { margin-top: 0; }
+.markdown-content > .md-h1:first-child { border-top: 0; padding-top: 0; }
+
 /* .md-h2-demoted / .md-h3-demoted: authored ##/### render one element
    lower (h3/h4) to keep the outline correct under the .md-h1 demotion,
    with these classes preserving their original visual scale. */
@@ -497,7 +505,7 @@ body {
   background: var(--background);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.75rem;
 }
 .md-toc summary {
   cursor: pointer;
@@ -1834,6 +1842,47 @@ body::-webkit-scrollbar-corner,
 .ps-quiet-action:hover { color: var(--foreground); }
 .ps-quiet-action-danger:hover { color: var(--color-error); }
 
+/* A stale "last verified" fact: the warning ink, still a fact in the meta
+   row (Mono Fact Rule), never a panel. */
+.ps-stale-fact { color: color-mix(in srgb, var(--color-error) 70%, var(--foreground)); }
+
+/* ─── Book breadcrumb (components/book/BookBreadcrumb) ──────────── */
+.ps-crumbs {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+.ps-crumb { display: flex; align-items: baseline; min-width: 0; flex: 0 1 auto; }
+/* The nearest crumb is the one a reader needs; ancestors yield first. */
+.ps-crumb:not(:last-child) .ps-crumb-link { max-width: 11rem; }
+.ps-crumb:last-child { flex: 0 1000 auto; }
+.ps-crumb + .ps-crumb::before {
+  content: "/";
+  flex: none;
+  padding: 0 0.4rem;
+  font-size: 0.6875rem;
+  opacity: 0.7;
+}
+.ps-crumb-link, .ps-crumb-current {
+  display: block;
+  min-width: 0;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+  transition: color 0.15s;
+}
+.ps-crumb-link:hover { color: var(--foreground); }
+@media (max-width: 640px) {
+  .ps-crumb[data-hide-narrow] { display: none; }
+  .ps-crumb[data-hide-narrow] + .ps-crumb:not([data-hide-narrow])::before { display: none; }
+  .ps-crumb-link, .ps-crumb-current { max-width: 100%; }
+}
+
 /* ─── Book outline editor (books/[bookSlug]/edit/OutlineEditor) ───── */
 /* A List Row in a fixed grid — handle · marker · title · actions — so the
    handle and the Part/Chapter/number markers hold their columns and only
@@ -2169,9 +2218,11 @@ body::-webkit-scrollbar-corner,
   min-width: 0;
   padding: 0.28rem 0;
   font-size: 0.8125rem;
-  font-weight: 500;
+  /* Regular weight, one step below ink: only the part is a strong line, so
+     a column of long chapter titles reads as a list, not a wall of bold. */
+  font-weight: 400;
   line-height: 1.4;
-  color: var(--foreground);
+  color: var(--secondary-text);
   text-decoration: none;
 }
 .ps-spine-chapter-label:hover { color: var(--accent-ink); }

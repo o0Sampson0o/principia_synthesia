@@ -16,7 +16,7 @@ import ArticleMetadataDisplay from "@/components/ArticleMetadata";
 import { prepareArticleBody, resolveCitations } from "@/lib/article-mdx";
 import { buildKatexMacros, extractMacroSource } from "@/lib/katex-macros";
 import RelatedEvents from "@/components/RelatedEvents";
-import LastVerifiedBadge, { StaleWarningBanner } from "@/components/LastVerifiedBadge";
+import LastVerifiedBadge from "@/components/LastVerifiedBadge";
 import MarkVerifiedForm from "@/components/MarkVerifiedForm";
 import SnapshotBanner from "@/components/SnapshotBanner";
 import { getSnapshotByShortHash } from "@/lib/article-snapshots";
@@ -345,6 +345,8 @@ export default async function ArticlePage({
                 <LastVerifiedBadge
                   lastVerifiedAt={lastVerifiedAt}
                   isPublished={metadata.status === "published"}
+                  stale={isStale}
+                  staleMonths={staleMonths}
                 />
               </span>
             </>
@@ -409,7 +411,6 @@ export default async function ArticlePage({
         />
       </header>
 
-      {isStale && <StaleWarningBanner staleMonths={staleMonths} />}
 
       {forkSource && (
         <ForkLineageHeader

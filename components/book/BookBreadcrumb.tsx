@@ -7,40 +7,36 @@ export interface Crumb {
 }
 
 /**
- * The hand-rolled eyebrow breadcrumb trail used across book pages:
- * `@publisher / Book / Part / Chapter / Section`. The first crumb uses the
- * `.ps-eyebrow` treatment; the rest are muted. A crumb without an `href` is the
- * current page.
+ * The breadcrumb trail used across book pages (`@publisher / Book / Part /
+ * Chapter / …`). Always ONE line: every crumb truncates rather than wrapping
+ * (long chapter titles once made it four lines tall on a phone), and on
+ * narrow screens only the last two crumbs show. All crumbs share one quiet
+ * voice; a crumb without an `href` is the current page.
  */
 export default function BookBreadcrumb({ crumbs }: { crumbs: Crumb[] }) {
   return (
-    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-      {crumbs.map((c, i) => (
-        <div key={i} className="flex items-center gap-1.5 min-w-0">
-          {i > 0 && (
-            <span className="themed-muted" style={{ fontSize: "0.625rem" }}>
-              /
-            </span>
-          )}
-          {c.href ? (
-            <Link
-              href={c.href}
-              className={
-                i === 0
-                  ? "ps-eyebrow hover:opacity-70 transition-opacity"
-                  : "themed-muted hover:text-[var(--foreground)] transition-colors truncate"
-              }
-              style={i === 0 ? undefined : { fontSize: "0.6875rem" }}
-            >
-              {c.label}
-            </Link>
-          ) : (
-            <span className="themed-muted truncate" style={{ fontSize: "0.6875rem" }}>
-              {c.label}
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
+    <nav aria-label="Breadcrumb" className="min-w-0">
+      <ol className="ps-crumbs">
+        {crumbs.map((c, i) => {
+          return (
+            <li key={i} className="ps-crumb" data-hide-narrow={i < crumbs.length - 2 || undefined}>
+              {c.href ? (
+                <Link
+                  href={c.href}
+                  className="ps-crumb-link"
+                  title={c.label}
+                >
+                  {c.label}
+                </Link>
+              ) : (
+                <span className="ps-crumb-current" aria-current="page" title={c.label}>
+                  {c.label}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }

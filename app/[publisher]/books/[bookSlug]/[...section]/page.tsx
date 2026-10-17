@@ -134,7 +134,7 @@ export default async function BookSectionPage({
   ];
   if (loc.part) crumbs.push({ label: loc.part.title, href: dividerHref(publisherSlug, bookSlug, loc.part) });
   if (loc.chapter) crumbs.push({ label: loc.chapter.title, href: dividerHref(publisherSlug, bookSlug, loc.chapter) });
-  crumbs.push({ label: article.title });
+  // The section itself is not a crumb: its title is the heading right below.
 
   return (
     // main + rail are siblings inside .ps-book-reading, which is the flex row.
@@ -203,7 +203,7 @@ export default async function BookSectionPage({
           </div>
 
           {/* Section title */}
-          <div className="py-8 sm:py-11">
+          <div className="py-6 sm:py-9">
             <h1
               className="article-title-serif"
               style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)", lineHeight: 1.15 }}
@@ -224,7 +224,7 @@ export default async function BookSectionPage({
       </div>
 
       {/* ── Prose ────────────────────────────────────────────────── */}
-      <div className="max-w-3xl mx-auto px-5 py-10 sm:py-14">
+      <div className="max-w-3xl mx-auto px-5 pt-6 pb-10 sm:pt-10 sm:pb-14">
         <ArticleToc entries={toc} />
         <ArticleBody
           source={renderedBody}
