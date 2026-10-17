@@ -27,6 +27,17 @@ public pages are listed, the result is the same for every visitor and is cached
 for five minutes, or until an article is created, saved, deleted or restored
 (`revalidateTag("backlinks")`). A link from a private or draft page is not shown.
 
+## Hover previews
+
+Hovering (or keyboard-focusing) an internal link in an article body shows a
+card with the target's kind, title and opening lines, with inline maths
+typeset; hovering an equation reference such as "(10)" shows the equation
+itself (`components/HoverPreviews.tsx`). Link cards come from
+`GET /api/preview?path=…`, which applies the same `canView` checks as the
+target page and returns 404 for anything that page would not show. Equation
+cards are copied from the page, with no request. Devices without hover skip
+previews: a tap follows the link.
+
 ## Supported syntax
 
 Most wikilinks use a three-segment format: `[[publisher:type:slug]]`. Book

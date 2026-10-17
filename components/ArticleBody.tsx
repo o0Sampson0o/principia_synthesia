@@ -7,6 +7,7 @@ import type { KatexMacros } from "@/lib/katex-macros";
 import type { ResolvedCitation } from "@/lib/remark-cite-numbering";
 import MdxErrorBoundary from "./MdxErrorBoundary";
 import MdxErrorNotice from "./MdxErrorNotice";
+import HoverPreviews from "./HoverPreviews";
 
 /**
  * The single entry point for rendering an article body on a published page.
@@ -76,6 +77,7 @@ export default async function ArticleBody({
   return (
     <MdxErrorBoundary showDetails={showDetails}>
       <div className="markdown-content">{content}</div>
+      <HoverPreviews />
     </MdxErrorBoundary>
   );
 }
