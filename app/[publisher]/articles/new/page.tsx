@@ -48,21 +48,13 @@ export default async function NewArticlePage({
           </div>
           <div>
             <label htmlFor="slug" className="block font-medium mb-1.5 themed-secondary" style={{ fontSize: "0.75rem" }}>
-              Slug
+              Slug <span className="themed-muted font-normal">(optional)</span>
             </label>
             <div className="flex items-center gap-1.5">
               <span className="themed-muted shrink-0" style={{ fontSize: "0.875rem" }}>article-</span>
-              <input
-                id="slug"
-                name="slug"
-                type="text"
-                required
-                placeholder="my-article"
-                className="themed-input flex-1"
-                pattern="^article-[a-z0-9]+(?:-[a-z0-9]+)*$"
-              />
+              <input id="slug" name="slug" type="text" placeholder="made from the title" className="themed-input flex-1" />
             </div>
-            <p className="themed-muted mt-1.5" style={{ fontSize: "0.75rem" }}>Must start with &ldquo;article-&rdquo;.</p>
+            <p className="themed-muted mt-1.5" style={{ fontSize: "0.75rem" }}>Leave blank to use the title.</p>
           </div>
           <div className="sm:col-span-2">
             <label htmlFor="summary" className="block font-medium mb-1.5 themed-secondary" style={{ fontSize: "0.75rem" }}>

@@ -24,6 +24,7 @@ export default function CheckMdxButton({
   onError,
   triggerRef,
   articleId,
+  showTrigger = true,
 }: {
   publisherSlug: string;
   getSource: () => string;
@@ -32,6 +33,8 @@ export default function CheckMdxButton({
   onError?: (hasError: boolean) => void;
   /** Lets the parent invoke the check imperatively (ContentEditorRef.compile). */
   triggerRef?: React.MutableRefObject<(() => void) | null>;
+  /** False when the check is started from elsewhere (the editor's "…" menu); the result badge still shows here. */
+  showTrigger?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<CheckState>({ status: "idle" });
@@ -77,7 +80,10 @@ export default function CheckMdxButton({
 
   return (
     <>
-      <button
+      {isPending && !showTrigger && (
+        <span className="themed-muted" style={{ fontSize: "0.6875rem" }}>Checking…</span>
+      )}
+      {showTrigger && <button
         type="button"
         onClick={handleCheck}
         disabled={isPending}
@@ -86,7 +92,7 @@ export default function CheckMdxButton({
         title="Compile the document through the full MDX pipeline"
       >
         {isPending ? "Checking…" : "Check MDX"}
-      </button>
+      </button>}
 
       {state.status === "ok" && (
         <button

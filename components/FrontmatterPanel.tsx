@@ -43,7 +43,7 @@ export default forwardRef<FrontmatterPanelRef, {
   return (
     <details data-tour="frontmatter-panel" className="border themed-border rounded-lg themed-surface">
       <summary className="cursor-pointer px-4 py-2 text-sm font-medium themed-secondary select-none">
-        Frontmatter
+        Status &amp; advanced
       </summary>
       <div className="px-4 py-3 space-y-3 border-t themed-border">
         {/* Status */}
@@ -60,18 +60,9 @@ export default forwardRef<FrontmatterPanelRef, {
           </select>
         </div>
 
-        {/* Description */}
-        <div className="flex items-start gap-3">
-          <label className="w-24 text-sm themed-secondary shrink-0 pt-1">Description</label>
-          <textarea
-            value={meta.description}
-            onChange={(e) => applyChange({ ...meta, description: e.target.value })}
-            rows={2}
-            maxLength={300}
-            placeholder="Short summary (max 300 chars)"
-            className="themed-input text-sm flex-1 resize-y"
-          />
-        </div>
+        {/* No Description field: it duplicated Summary (and the page once
+            showed both). A stored description is kept in the frontmatter and
+            still shown on an article that has no summary. */}
 
         {/* Canvas */}
         <div className="flex items-center gap-3">

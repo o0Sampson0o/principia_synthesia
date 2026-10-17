@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useEffect, useState, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
+import EditorMoreMenu from "@/components/EditorMoreMenu";
 import dynamic from "next/dynamic";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorView, keymap } from "@codemirror/view";
@@ -348,29 +349,19 @@ export default forwardRef<ContentEditorRef, {
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={toggleGrammar}
-              aria-pressed={grammarOn}
-              title="Grammar & spell check"
-              className={`px-2.5 py-0.5 rounded-md border transition-colors ${
-                grammarOn ? "themed-accent-border themed-accent" : "themed-border themed-muted themed-hover-foreground"
-              }`}
-              style={{
-                fontFamily: "var(--font-geist-mono), monospace",
-                fontSize: "0.6875rem",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                background: grammarOn
-                  ? "color-mix(in srgb, var(--accent) 10%, var(--surface))"
-                  : "transparent",
-              }}
-            >
-              Grammar {grammarOn ? "on" : "off"}
-            </button>
-            <CheckMdxButton publisherSlug={publisherSlug} getSource={handleGetSource} onError={onError} triggerRef={checkTriggerRef} articleId={articleId} />
+            {grammarOn && (
+              <span className="ps-mono-micro themed-muted" title="Grammar & spell check is on">grammar on</span>
+            )}
+            <CheckMdxButton publisherSlug={publisherSlug} getSource={handleGetSource} onError={onError} triggerRef={checkTriggerRef} articleId={articleId} showTrigger={false} />
           </div>
-          {toolbar && <div className="flex items-center gap-2">{toolbar}</div>}
+          <div className="flex items-center gap-2">
+            {toolbar}
+            <EditorMoreMenu
+              grammarOn={grammarOn}
+              onToggleGrammar={toggleGrammar}
+              onCheckMdx={() => checkTriggerRef.current?.()}
+            />
+          </div>
         </div>
         <CodeMirror
           value={initial}
@@ -418,3 +409,4 @@ export default forwardRef<ContentEditorRef, {
     </div>
   );
 });
+

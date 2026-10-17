@@ -26,8 +26,8 @@ const STEPS: Step[] = [
   },
   {
     id: "frontmatter-panel",
-    title: "Frontmatter & book slug",
-    body: "Open the Frontmatter section to set tags, description, and the canvas (book slug) that groups this article into a curriculum.",
+    title: "Status & advanced",
+    body: "Open Status & advanced to keep an article as a draft or publish it, and to put an optional canvas animation at its top.",
     fallbackRoute: { label: "Open new article form", href: "" },
   },
   {

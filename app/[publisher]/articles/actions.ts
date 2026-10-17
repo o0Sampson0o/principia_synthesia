@@ -3,7 +3,8 @@
 import { db } from "@/db";
 import { articles, revisions, articleCategories, categories } from "@/db/schema";
 import { setContentTags } from "@/lib/content-tags";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, like } from "drizzle-orm";
+import { normalizePrefixedSlug, prefixedSlug, uniqueSlug } from "@/lib/slugify";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { BACKLINKS_TAG } from "@/lib/backlinks-tag";
 import { redirect } from "next/navigation";
@@ -88,9 +89,31 @@ export async function createArticle(
 ): Promise<{ error: string } | void> {
   const { session, ownerType, ownerId } = await assertEditRights(publisherSlug);
 
+  // The slug field is optional and its `article-` prefix implied: a typed slug
+  // is normalized; a blank one comes from the title, suffixed (-2, -3…) past
+  // this publisher's standalone articles (binned ones too — the unique index
+  // still holds their slugs).
+  const title = String(formData.get("title") ?? "");
+  let slug = normalizePrefixedSlug("article-", String(formData.get("slug") ?? ""));
+  if (!slug) {
+    const base = prefixedSlug("article-", title, "untitled");
+    const existing = await db
+      .select({ slug: articles.slug })
+      .from(articles)
+      .where(
+        and(
+          eq(articles.ownerType, ownerType),
+          eq(articles.ownerId, ownerId),
+          isNull(articles.parentBookId),
+          like(articles.slug, `${base}%`)
+        )
+      );
+    slug = uniqueSlug(base, new Set(existing.map((a) => a.slug)));
+  }
+
   const validated = createArticleSchema.parse({
-    title: formData.get("title"),
-    slug: formData.get("slug"),
+    title,
+    slug,
     summary: formData.get("summary"),
     content: formData.get("content"),
     categories: formData.get("categories"),

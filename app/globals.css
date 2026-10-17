@@ -2013,6 +2013,42 @@ body::-webkit-scrollbar-corner,
   .ps-pdf-open::after { content: " (" attr(href) ")"; }
 }
 
+/* ─── Editor "···" menu (ContentEditor EditorMoreMenu) ────────────── */
+.ps-editor-more {
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.375rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+}
+.ps-editor-more:hover { color: var(--foreground); background: var(--surface-hover); }
+/* A popover in the top layer: fixed, placed by its button (place()). */
+.ps-editor-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: 14rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+.ps-editor-menu button {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  text-align: left;
+}
+.ps-editor-menu button:hover, .ps-editor-menu button:focus-visible { background: var(--surface-hover); outline: none; }
+
 /* ─── Book breadcrumb (components/book/BookBreadcrumb) ──────────── */
 .ps-crumbs {
   display: flex;
