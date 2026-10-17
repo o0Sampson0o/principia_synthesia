@@ -16,7 +16,7 @@ export default function MdxCompileError({ detail }: { detail: MdxErrorDetail }) 
         style={{
           fontFamily: "var(--font-geist-mono), monospace",
           fontSize: "0.8125rem",
-          color: "var(--color-error)",
+          color: "var(--error-ink)",
         }}
       >
         {detail.reason}

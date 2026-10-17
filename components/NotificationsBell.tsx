@@ -146,7 +146,7 @@ export default function NotificationsBell() {
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
         {count > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
+          <span className="absolute -top-1 -right-1 ps-count-badge text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
             {count > 9 ? "9+" : count}
           </span>
         )}

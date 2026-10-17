@@ -183,7 +183,7 @@ export default async function EditArticlePage({
 
       {/* ── Danger zone ── */}
       <div className="mt-14 pt-6 border-t themed-border">
-        <p className="ps-eyebrow mb-3" style={{ color: "var(--color-error)" }}>Danger zone</p>
+        <p className="ps-eyebrow mb-3" style={{ color: "var(--error-ink)" }}>Danger zone</p>
         <DeleteArticleButton
           publisherSlug={publisherSlug}
           articleId={article.id}

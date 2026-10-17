@@ -133,7 +133,7 @@ export default function CategoryPicker({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); toggleSelect(slug); }}
-              className="themed-muted hover:text-red-500 leading-none"
+              className="themed-muted ps-hover-error leading-none"
               aria-label={`Remove tag ${slug}`}
             >
               ×
@@ -147,6 +147,7 @@ export default function CategoryPicker({
           onChange={handleQueryChange}
           onFocus={() => setOpen(true)}
           placeholder={selected.length === 0 ? "Search or create tags…" : ""}
+          aria-label="Tags"
           className="flex-1 min-w-[120px] bg-transparent outline-none text-sm themed-foreground placeholder:themed-muted"
         />
       </div>
@@ -186,7 +187,7 @@ export default function CategoryPicker({
                 <button
                   type="button"
                   onClick={(e) => toggleBookmark(cat, e)}
-                  className={`text-xs px-1.5 py-0.5 rounded transition-colors ${cat.bookmarked ? "text-yellow-500 hover:text-yellow-400" : "themed-muted hover:text-yellow-500"}`}
+                  className={`text-xs px-1.5 py-0.5 rounded transition-colors ${cat.bookmarked ? "ps-bookmarked" : "themed-muted ps-hover-bookmark"}`}
                   aria-label={cat.bookmarked ? "Remove bookmark" : "Bookmark tag"}
                   title={cat.bookmarked ? "Bookmarked — click to remove" : "Bookmark this tag"}
                 >

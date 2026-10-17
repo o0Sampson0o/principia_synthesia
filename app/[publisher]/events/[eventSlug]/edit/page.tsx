@@ -206,7 +206,7 @@ export default async function EditEventPage({
           <input type="hidden" name="slug" value={event.slug} />
           <button
             type="submit"
-            className="text-sm text-red-500 themed-btn-ghost px-4 py-2"
+            className="text-sm ps-error-text themed-btn-ghost px-4 py-2"
           >
             Delete event
           </button>

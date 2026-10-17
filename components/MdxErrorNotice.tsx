@@ -30,7 +30,7 @@ export default function MdxErrorNotice({
 
   return (
     <div className="themed-surface border themed-border rounded-lg px-4 py-3 text-sm">
-      <p className="mb-1 ps-mono-micro" style={{ color: "var(--color-error)" }}>
+      <p className="mb-1 ps-mono-micro" style={{ color: "var(--error-ink)" }}>
         Display error
       </p>
       <p className="themed-secondary">

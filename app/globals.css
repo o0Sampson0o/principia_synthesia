@@ -140,12 +140,14 @@ body {
 }
 
 /* Accent — a per-theme highlight color distinct from the primary button */
+/* Accent as TEXT is --accent-ink (AA at small sizes); as a FILL behind text
+   it is --accent-fill under --accent-fill-ink (lib/theme.ts accentFill). */
 .themed-accent {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .themed-accent-bg {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-fill, var(--accent));
+  color: var(--accent-fill-ink, #fff);
 }
 .themed-accent-dim {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -154,9 +156,11 @@ body {
   border-color: var(--accent);
 }
 .themed-btn-accent {
-  background: var(--accent);
-  color: var(--accent-foreground);
-  border-radius: 0.375rem;
+  background: var(--accent-fill, var(--accent));
+  color: var(--accent-fill-ink, var(--accent-foreground));
+  /* DESIGN.md's primary radius. The documented "pair with rounded-lg"
+     never took effect: this unlayered rule outranks Tailwind's utility. */
+  border-radius: 0.5rem;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -335,7 +339,9 @@ body {
 /* Small status / type badge */
 .themed-badge {
   background: var(--muted);
-  color: var(--secondary-text);
+  /* Secondary text on the muted fill is 4.39:1 in the default light theme;
+     a step toward ink clears AA at this 12px size. */
+  color: color-mix(in srgb, var(--secondary-text) 70%, var(--foreground));
   border: 1px solid var(--border);
   border-radius: 0.25rem;
   padding: 0.125rem 0.5rem;
@@ -384,7 +390,7 @@ body {
 .themed-btn-danger {
   background: #dc2626;
   color: #ffffff;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   transition: opacity 0.15s;
@@ -813,7 +819,9 @@ body {
   font-size: 0.6875rem;
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: var(--callout-accent, var(--accent));
+  /* The callout's hue as small text, eased toward ink like --accent-ink:
+     raw --color-info under a 11px title was 3.48:1. */
+  color: color-mix(in srgb, var(--callout-accent, var(--accent)) 75%, var(--foreground));
   margin: 0 0 0.45em;
 }
 .markdown-content .callout > .callout-title::before {
@@ -1390,7 +1398,10 @@ body::-webkit-scrollbar-corner,
   display: block;
   text-align: center;
   margin: 2em 0;
-  padding: 0.25em 0;
+  /* Inline padding keeps KaTeX's 1–2px glyph overhang (bold symbols, the
+     equation number) inside the scroll box: without it every such equation
+     drew a scrollbar on systems that always show one. */
+  padding: 0.25em 0.25rem;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -1447,6 +1458,9 @@ body::-webkit-scrollbar-corner,
    8.8:1 dark). Fills, rules and focus rings keep raw --accent. */
 :root {
   --accent-ink: color-mix(in srgb, var(--accent) 75%, var(--foreground));
+  /* Error red as TEXT (headings, labels): raw --color-error is 3.5:1 on the
+     light page. Fills, borders and icons keep --color-error. */
+  --error-ink: color-mix(in srgb, var(--color-error) 75%, var(--foreground));
 }
 
 /* ─── Semantic color tokens ─────────────────────────────────────────
@@ -1911,8 +1925,18 @@ body::-webkit-scrollbar-corner,
   line-height: 1.55;
   color: var(--prose-ink, var(--foreground));
 }
-.ps-preview-equation { overflow-x: auto; padding: 0.25rem 0; text-align: center; }
-.ps-preview-equation .katex-display { margin: 0; }
+/* The scroll box keeps a little inner padding: KaTeX glyphs (bold symbols,
+   the equation number) overhang their boxes by a pixel or two, which made a
+   permanent scrollbar on systems that always draw one. Real overflow — a
+   long equation — still scrolls. */
+.ps-preview-equation {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0.375rem;
+  text-align: center;
+  scrollbar-width: thin;
+}
+.ps-preview-equation .katex-display { margin: 0; padding: 0; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .ps-preview { animation: none; } }
 @media print { .ps-preview { display: none; } }
 
@@ -1936,6 +1960,38 @@ body::-webkit-scrollbar-corner,
   border: 1px solid var(--border);
   border-radius: 0.25rem;
 }
+
+/* ─── Inline notice (recovered draft, load/import errors, offline) ─── */
+/* A tinted panel in a semantic tone, built from tokens so it follows the
+   site theme (the Tailwind red/yellow/amber + dark: classes it replaces
+   followed the OS instead, and ignored custom themes). Text stays ink. */
+.ps-notice {
+  --tone: var(--color-warning);
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, var(--border));
+  background: color-mix(in srgb, var(--tone) 9%, var(--surface));
+  color: var(--foreground);
+  border-radius: 0.5rem;
+}
+.ps-notice[data-tone="error"] { --tone: var(--color-error); }
+
+.ps-notice-bar { border-width: 0 0 1px; border-radius: 0; }
+
+/* ─── Semantic text & state classes ───────────────────────────────── */
+/* Token-based replacements for Tailwind palette colours (text-red-500,
+   border-blue-500, dark:…): they follow the site theme, not the OS, and the
+   *-ink mixes keep small text at AA (DESIGN.md: The Token Rule). */
+.ps-error-text { color: var(--error-ink); }
+.ps-success-text { color: color-mix(in srgb, var(--color-success) 75%, var(--foreground)); }
+.ps-hover-error:hover, .ps-hover-error-strong:hover { color: var(--error-ink); }
+.ps-hover-error-strong:hover { text-decoration: underline; }
+.ps-hover-error-bg:hover { background: color-mix(in srgb, var(--color-error) 9%, var(--surface)); }
+.ps-selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+.ps-selected-border { border-color: var(--accent); }
+.ps-bookmarked { color: var(--color-warning); }
+.ps-bookmarked:hover { opacity: 0.8; }
+.ps-hover-bookmark:hover { color: var(--color-warning); }
+/* Count badge: white on raw error red is 3.8:1; a darker fill clears AA. */
+.ps-count-badge { background: color-mix(in srgb, var(--color-error) 85%, #000); color: #fff; }
 
 /* ─── Book breadcrumb (components/book/BookBreadcrumb) ──────────── */
 .ps-crumbs {

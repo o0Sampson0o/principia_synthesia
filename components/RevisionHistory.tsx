@@ -48,7 +48,7 @@ export default function RevisionHistory({ publisherSlug, articleId, revisions }:
 
   if (revisions.length === 0) {
     return (
-      <details className="border rounded themed-surface">
+      <details className="border themed-border rounded-lg themed-surface">
         <summary className="cursor-pointer px-4 py-2 text-sm font-medium themed-secondary select-none">
           Revision history
         </summary>
@@ -58,7 +58,7 @@ export default function RevisionHistory({ publisherSlug, articleId, revisions }:
   }
 
   return (
-    <details className="border rounded themed-surface">
+    <details className="border themed-border rounded-lg themed-surface">
       <summary className="cursor-pointer px-4 py-2 text-sm font-medium themed-secondary select-none">
         Revision history ({revisions.length})
       </summary>

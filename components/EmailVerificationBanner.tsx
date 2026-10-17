@@ -23,7 +23,7 @@ export default function EmailVerificationBanner({ email }: Props) {
   return (
     <div
       role="alert"
-      className="w-full bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-sm text-amber-900 dark:text-amber-100 flex flex-wrap items-center gap-x-3 gap-y-1"
+      className="ps-notice ps-notice-bar w-full px-4 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1"
     >
       <span>
         Your email address <strong>{email}</strong> is not verified. Some

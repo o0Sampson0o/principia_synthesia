@@ -68,7 +68,7 @@ export default function ImageManager({ publisherSlug, initialImages }: Props) {
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium themed-secondary mb-1">
-              Alt text <span className="text-red-500">*</span>
+              Alt text <span className="ps-error-text">*</span>
             </label>
             <input
               type="text"
@@ -141,7 +141,7 @@ export default function ImageManager({ publisherSlug, initialImages }: Props) {
                       <button
                         type="button"
                         onClick={() => handleDelete(img)}
-                        className="text-xs px-2 py-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        className="text-xs px-2 py-1 rounded ps-error-text ps-hover-error-bg transition-colors"
                       >
                         Delete
                       </button>

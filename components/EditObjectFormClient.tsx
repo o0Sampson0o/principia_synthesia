@@ -136,10 +136,10 @@ export default function EditObjectFormClient({
           <form ref={deleteFormRef} action={deleteAction} className="flex items-center gap-3">
             <input type="hidden" name="id" value={id} />
             <input type="hidden" name="slug" value={slug} />
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm ps-error-text">
               Delete this object permanently?
             </p>
-            <button type="submit" className="text-sm font-medium text-red-600 dark:text-red-400 underline">
+            <button type="submit" className="text-sm font-medium ps-error-text underline">
               Yes, delete
             </button>
             <button
@@ -154,7 +154,7 @@ export default function EditObjectFormClient({
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            className="text-sm text-red-600 dark:text-red-400 underline"
+            className="text-sm ps-error-text underline"
           >
             Delete object
           </button>

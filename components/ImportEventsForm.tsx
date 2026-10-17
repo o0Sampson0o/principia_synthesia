@@ -111,7 +111,7 @@ export default function ImportEventsForm({ previewAction, confirmAction }: Props
       </form>
 
       {isError(previewState) && (
-        <div className="rounded border border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800 p-4 text-sm text-red-700 dark:text-red-300">
+        <div className="ps-notice p-4 text-sm" data-tone="error">
           {previewState.error}
         </div>
       )}
@@ -134,7 +134,7 @@ export default function ImportEventsForm({ previewAction, confirmAction }: Props
                 </summary>
                 <ul className="mt-2 space-y-1 list-disc list-inside">
                   {previewState.errors.map((err) => (
-                    <li key={err.row} className="text-red-600 dark:text-red-400">
+                    <li key={err.row} className="ps-error-text">
                       Row {err.row}: {err.message}
                     </li>
                   ))}
@@ -158,7 +158,7 @@ export default function ImportEventsForm({ previewAction, confirmAction }: Props
           )}
 
           {isError(confirmState) && (
-            <div className="rounded border border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800 p-4 text-sm text-red-700 dark:text-red-300">
+            <div className="ps-notice p-4 text-sm" data-tone="error">
               {confirmState.error}
             </div>
           )}

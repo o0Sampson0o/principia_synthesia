@@ -41,7 +41,7 @@ export default forwardRef<FrontmatterPanelRef, {
   }
 
   return (
-    <details data-tour="frontmatter-panel" className="border rounded themed-surface">
+    <details data-tour="frontmatter-panel" className="border themed-border rounded-lg themed-surface">
       <summary className="cursor-pointer px-4 py-2 text-sm font-medium themed-secondary select-none">
         Frontmatter
       </summary>

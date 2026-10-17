@@ -308,52 +308,57 @@ export default async function TimelinePage({
 
         {/* Filter form */}
         <form method="GET" action="/timeline" className="mb-10">
-          <div className="ps-action-bar gap-2 flex-wrap sm:flex-nowrap">
+          {/* Sizes are inline flex bases: .themed-input's width:100% and
+              .ps-action-bar's wrap are unlayered CSS, which beats Tailwind's
+              w-* / sm:flex-nowrap utilities — every field had its own row. */}
+          <div className="ps-action-bar gap-2">
             <input
               type="search"
               name="q"
               defaultValue={q ?? ""}
               placeholder="Search events…"
-              className="themed-input flex-1 min-w-40"
-              style={{ fontSize: "0.875rem" }}
+              className="themed-input"
+              style={{ fontSize: "0.875rem", flex: "2 1 12rem" }}
             />
             <input
               type="text"
               name="era"
               defaultValue={era ?? ""}
               placeholder="Era"
-              className="themed-input w-28"
-              style={{ fontSize: "0.875rem" }}
+              className="themed-input"
+              style={{ fontSize: "0.875rem", flex: "1 1 6.5rem" }}
             />
             <input
               type="text"
               name="category"
               defaultValue={category ?? ""}
               placeholder="Category"
-              className="themed-input w-28"
-              style={{ fontSize: "0.875rem" }}
+              className="themed-input"
+              style={{ fontSize: "0.875rem", flex: "1 1 6.5rem" }}
             />
             <input
               type="text"
               name="publisher"
               defaultValue={pubFilter ?? ""}
               placeholder="Publisher"
-              className="themed-input w-28"
-              style={{ fontSize: "0.875rem" }}
+              className="themed-input"
+              style={{ fontSize: "0.875rem", flex: "1 1 6.5rem" }}
             />
             <input
               type="date"
               name="from"
+              aria-label="From date"
               defaultValue={from ?? ""}
-              className="themed-input w-36"
-              style={{ fontSize: "0.875rem" }}
+              className="themed-input"
+              style={{ fontSize: "0.875rem", flex: "1 1 9rem" }}
             />
             <input
               type="date"
               name="to"
+              aria-label="To date"
               defaultValue={to ?? ""}
-              className="themed-input w-36"
-              style={{ fontSize: "0.875rem" }}
+              className="themed-input"
+              style={{ fontSize: "0.875rem", flex: "1 1 9rem" }}
             />
             {activeView === "list" && (
               <input type="hidden" name="view" value="list" />

@@ -16,7 +16,7 @@ export default function DynamicAnimation({ publisher, slug }: DynamicAnimationPr
 
   if (error) {
     return (
-      <div className="my-6 p-4 border border-red-200 rounded text-red-500 text-sm">
+      <div className="ps-notice my-6 p-4 text-sm" data-tone="error">
         Failed to load animation: {slug}
       </div>
     );

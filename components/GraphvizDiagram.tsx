@@ -41,7 +41,7 @@ export default function GraphvizDiagram({ source }: Props) {
 
   if (error) {
     return (
-      <pre className="text-xs text-red-500 bg-red-50 dark:bg-red-950 rounded p-3 overflow-x-auto whitespace-pre-wrap">
+      <pre className="ps-notice text-xs p-3 overflow-x-auto whitespace-pre-wrap" data-tone="error">
         {error}
       </pre>
     );

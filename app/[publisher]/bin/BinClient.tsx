@@ -45,7 +45,7 @@ export default function BinClient({ publisherSlug, items }: { publisherSlug: str
               <form action={purge.bind(null, publisherSlug)}
                 onSubmit={(e) => { if (!confirm(confirmText)) e.preventDefault(); }}>
                 <input type="hidden" name="id" value={item.id} />
-                <button type="submit" className="text-sm text-red-500 hover:text-red-700 transition-colors">Delete forever</button>
+                <button type="submit" className="text-sm ps-error-text ps-hover-error-strong transition-colors">Delete forever</button>
               </form>
             </div>
           </li>

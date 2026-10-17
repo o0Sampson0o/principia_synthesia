@@ -131,7 +131,7 @@ export default async function BookAccessPage({
                 className={[
                   "w-full text-left px-4 py-3 rounded-lg border transition-colors",
                   currentVisibility === v
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 themed-heading"
+                    ? "ps-selected themed-heading"
                     : "themed-surface themed-border themed-hover-border themed-secondary",
                 ].join(" ")}
               >
@@ -170,7 +170,7 @@ export default async function BookAccessPage({
                       <input type="hidden" name="grantId" value={g.id} />
                       <button
                         type="submit"
-                        className="text-xs text-red-500 themed-btn-ghost px-2 py-1"
+                        className="text-xs ps-error-text themed-btn-ghost px-2 py-1"
                       >
                         Revoke
                       </button>

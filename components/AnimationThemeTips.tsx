@@ -33,7 +33,7 @@ const TOKEN_USE: Record<AnimationThemeToken, string> = {
  */
 export default function AnimationThemeTips() {
   return (
-    <details className="border rounded themed-surface">
+    <details className="border themed-border rounded-lg themed-surface">
       <summary className="cursor-pointer px-4 py-2 text-sm font-medium themed-secondary select-none">
         Theme colours you can use
       </summary>

@@ -65,7 +65,7 @@ export default function EraEditForm({
               className="themed-input w-full"
             />
             {renameErrors.newName?.map((e) => (
-              <p key={e} className="text-red-500 text-xs mt-1">{e}</p>
+              <p key={e} className="ps-error-text text-xs mt-1">{e}</p>
             ))}
           </div>
           <button
@@ -101,7 +101,7 @@ export default function EraEditForm({
                 className="themed-input w-full"
               />
               {updateErrors.startDate?.map((e) => (
-                <p key={e} className="text-red-500 text-xs mt-1">{e}</p>
+                <p key={e} className="ps-error-text text-xs mt-1">{e}</p>
               ))}
             </div>
 
@@ -118,13 +118,13 @@ export default function EraEditForm({
                   className="themed-input w-full"
                 />
                 {updateErrors.endDate?.map((e) => (
-                  <p key={e} className="text-red-500 text-xs mt-1">{e}</p>
+                  <p key={e} className="ps-error-text text-xs mt-1">{e}</p>
                 ))}
               </div>
             )}
 
             {updateState && "success" in updateState && (
-              <p className="text-green-600 text-sm">Dates updated.</p>
+              <p className="ps-success-text text-sm">Dates updated.</p>
             )}
 
             <button
@@ -159,7 +159,7 @@ export default function EraEditForm({
         <button
           type="button"
           onClick={handleDelete}
-          className="themed-btn-ghost text-red-600 border border-red-500 px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-950"
+          className="themed-btn-danger px-4 py-2 text-sm"
         >
           Delete era
         </button>

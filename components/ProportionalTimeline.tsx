@@ -416,11 +416,12 @@ export default function ProportionalTimeline({ rows }: { rows: EventRow[] }) {
                 }}
               >
                 <span style={{
-                  fontSize: "0.5rem",
+                  // Ramp floor and full muted ink: at 0.5rem and 70% opacity
+                  // an era name was 2.6:1 — the only place it is written.
+                  fontSize: "0.5625rem",
                   letterSpacing: "0.14em",
                   textTransform: "uppercase",
                   color: "var(--muted-foreground)",
-                  opacity: 0.7,
                   backgroundColor: "var(--background)",
                   paddingRight: 6,
                   whiteSpace: "nowrap",

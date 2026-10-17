@@ -57,7 +57,7 @@ export default function Toaster() {
               style={{
                 color:
                   t.variant === "error"
-                    ? "var(--color-error)"
+                    ? "var(--error-ink)"
                     : t.variant === "success"
                     ? "var(--color-success)"
                     : "var(--muted-foreground)",

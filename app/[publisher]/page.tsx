@@ -295,7 +295,7 @@ export default async function PublisherProfilePage({
 
         {/* Section tab nav */}
         {hasContent && (
-          <div className="flex gap-5 border-b themed-border mb-10 overflow-x-auto scrollbar-none">
+          <div className="flex gap-5 border-b themed-border mb-10 overflow-x-auto overflow-y-hidden scrollbar-none">
             {visibleArticles.length > 0 && (
               <a href="#articles" className="ps-tab" data-active="true">
                 Articles

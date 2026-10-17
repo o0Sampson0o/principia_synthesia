@@ -8,7 +8,8 @@ export default function OfflineGuard() {
   return (
     <div
       role="alert"
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-200 text-sm shadow-lg border border-amber-200 dark:border-amber-700"
+      className="ps-notice fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 text-sm"
+      style={{ boxShadow: "0 10px 34px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)" }}
     >
       You are offline. Changes cannot be saved.
     </div>

@@ -169,7 +169,7 @@ export default function ArticleEditorPanel({
         defaultValue={initialFull}
       />
       {showRestore && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/30 px-4 py-2 text-sm">
+        <div className="ps-notice flex flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm">
           <span className="themed-secondary">
             Recovered unsaved changes from{" "}
             {new Date(restorable!.savedAt).toLocaleString()}.

@@ -144,7 +144,7 @@ export default function InsertImageButton({
                       className={[
                         "rounded-md overflow-hidden border-2 text-left transition-colors",
                         selected?.pathname === img.pathname
-                          ? "border-blue-500"
+                          ? "ps-selected-border"
                           : "border-transparent themed-hover-border",
                       ].join(" ")}
                     >

@@ -20,7 +20,7 @@ export default function EraCreateForm({ publisherSlug }: { publisherSlug: string
     <form action={action} className="space-y-6">
       <div>
         <label className="block text-sm font-medium themed-secondary mb-1" htmlFor="name">
-          Era name <span className="text-red-500">*</span>
+          Era name <span className="ps-error-text">*</span>
         </label>
         <input
           id="name"
@@ -31,13 +31,13 @@ export default function EraCreateForm({ publisherSlug }: { publisherSlug: string
           placeholder="e.g. Cold War Era"
         />
         {errors.name?.map((e) => (
-          <p key={e} className="text-red-500 text-xs mt-1">{e}</p>
+          <p key={e} className="ps-error-text text-xs mt-1">{e}</p>
         ))}
       </div>
 
       <div>
         <label className="block text-sm font-medium themed-secondary mb-1" htmlFor="startDate">
-          Start date <span className="text-red-500">*</span>
+          Start date <span className="ps-error-text">*</span>
         </label>
         <input
           id="startDate"
@@ -47,7 +47,7 @@ export default function EraCreateForm({ publisherSlug }: { publisherSlug: string
           className="themed-input w-full"
         />
         {errors.startDate?.map((e) => (
-          <p key={e} className="text-red-500 text-xs mt-1">{e}</p>
+          <p key={e} className="ps-error-text text-xs mt-1">{e}</p>
         ))}
       </div>
 
@@ -62,7 +62,7 @@ export default function EraCreateForm({ publisherSlug }: { publisherSlug: string
           className="themed-input w-full"
         />
         {errors.endDate?.map((e) => (
-          <p key={e} className="text-red-500 text-xs mt-1">{e}</p>
+          <p key={e} className="ps-error-text text-xs mt-1">{e}</p>
         ))}
       </div>
 
@@ -77,7 +77,7 @@ export default function EraCreateForm({ publisherSlug }: { publisherSlug: string
           className="themed-input w-full"
         />
         {errors.description?.map((e) => (
-          <p key={e} className="text-red-500 text-xs mt-1">{e}</p>
+          <p key={e} className="ps-error-text text-xs mt-1">{e}</p>
         ))}
       </div>
 

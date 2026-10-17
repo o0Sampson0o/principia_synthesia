@@ -114,7 +114,7 @@ export default function AnimationEditor({
                 onChange={setCode}
               />
             </div>
-            {errors?.content && <p className="text-xs text-red-500 mt-1">{errors.content[0]}</p>}
+            {errors?.content && <p className="text-xs ps-error-text mt-1">{errors.content[0]}</p>}
             <div className="mt-3">
               <AnimationThemeTips />
             </div>
@@ -125,7 +125,7 @@ export default function AnimationEditor({
             <div>
               <label htmlFor="name" className="block text-sm font-medium themed-secondary mb-1">Name</label>
               <input id="name" name="name" type="text" required maxLength={200} defaultValue={name} className="themed-input w-full" />
-              {errors?.name && <p className="text-xs text-red-500 mt-1">{errors.name[0]}</p>}
+              {errors?.name && <p className="text-xs ps-error-text mt-1">{errors.name[0]}</p>}
             </div>
 
             <div>
@@ -140,7 +140,7 @@ export default function AnimationEditor({
                 className="themed-input w-full font-mono text-sm"
               />
               <p className="text-xs themed-muted mt-1">Must start with <code>anim-</code>. Renaming changes the URL and any references.</p>
-              {errors?.slug && <p className="text-xs text-red-500 mt-1">{errors.slug[0]}</p>}
+              {errors?.slug && <p className="text-xs ps-error-text mt-1">{errors.slug[0]}</p>}
             </div>
 
             <div>
@@ -177,7 +177,7 @@ export default function AnimationEditor({
               </button>
               <Link href={`/${publisherSlug}/objects/${savedSlug}`} className="text-sm themed-link">Done</Link>
             </div>
-            {errors?._form && <p className="text-xs text-red-500">{errors._form[0]}</p>}
+            {errors?._form && <p className="text-xs ps-error-text">{errors._form[0]}</p>}
 
             <div>
               <p className="text-xs themed-muted mb-2">Preview (last saved)</p>
@@ -203,12 +203,12 @@ export default function AnimationEditor({
           <form action={deleteAction} className="flex items-center gap-3">
             <input type="hidden" name="id" value={id} />
             <input type="hidden" name="slug" value={savedSlug} />
-            <p className="text-sm text-red-600 dark:text-red-400">Delete this object permanently?</p>
-            <button type="submit" className="text-sm font-medium text-red-600 dark:text-red-400 underline">Yes, delete</button>
+            <p className="text-sm ps-error-text">Delete this object permanently?</p>
+            <button type="submit" className="text-sm font-medium ps-error-text underline">Yes, delete</button>
             <button type="button" onClick={() => setConfirmDelete(false)} className="text-sm themed-link">Cancel</button>
           </form>
         ) : (
-          <button type="button" onClick={() => setConfirmDelete(true)} className="text-sm text-red-600 dark:text-red-400 underline">
+          <button type="button" onClick={() => setConfirmDelete(true)} className="text-sm ps-error-text underline">
             Delete object
           </button>
         )}

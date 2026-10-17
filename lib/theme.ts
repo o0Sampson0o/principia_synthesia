@@ -389,6 +389,42 @@ export function proseInk(tokens: ThemeTokens): string {
   return at(Math.max(lo, 0))
 }
 
+/** WCAG AA for normal-size text. */
+export const FILL_CONTRAST_MIN = 4.5
+
+/**
+ * Primary-button colours: the accent as a fill, and the ink set on it, chosen
+ * so button text clears AA. The theme's own accentForeground is kept when it
+ * already does; otherwise the theme's background or foreground, whichever
+ * clears it (the default dark theme's white-on-#818cf8 is 2.98:1, its
+ * near-black background 6.9:1). If no ink does, the fill itself is darkened or
+ * lightened away from the ink just far enough (the default light theme's
+ * #6366f1 under white is 4.47:1). Non-hex colours pass through unchanged.
+ */
+export function accentFill(tokens: ThemeTokens): { fill: string; ink: string } {
+  const accent = parseHex(tokens.accent)
+  if (!accent) return { fill: tokens.accent, ink: tokens.accentForeground }
+  for (const ink of [tokens.accentForeground, tokens.background, tokens.foreground]) {
+    const rgb = parseHex(ink)
+    if (rgb && contrastRatio(rgb, accent) >= FILL_CONTRAST_MIN) return { fill: tokens.accent, ink }
+  }
+  const ink = parseHex(tokens.accentForeground)
+  if (!ink) return { fill: tokens.accent, ink: tokens.accentForeground }
+  // Move the fill toward black under a light ink, toward white under a dark one.
+  const target: [number, number, number] = luminance(ink) > 0.5 ? [0, 0, 0] : [255, 255, 255]
+  const at = (t: number) => accent.map((c, k) => c + (target[k] - c) * t) as [number, number, number]
+  let t = 0
+  while (t < 1 && contrastRatio(parseHex(toHex(at(t)))!, ink) < FILL_CONTRAST_MIN) t += 0.01
+  return { fill: toHex(at(Math.min(t, 1))), ink: tokens.accentForeground }
+}
+
+function derivedVars(tokens: ThemeTokens, indent: string): string {
+  const { fill, ink } = accentFill(tokens)
+  return [`--prose-ink: ${proseInk(tokens)};`, `--accent-fill: ${fill};`, `--accent-fill-ink: ${ink};`]
+    .map((l) => indent + l)
+    .join("\n")
+}
+
 /**
  * Generates a CSS `<style>` block that declares all 17 theme tokens as CSS
  * custom properties on `:root`. The dark variants are wrapped in a
@@ -402,12 +438,12 @@ export function buildThemeStyle(light: ThemeTokens, dark: ThemeTokens): string {
   return `
 :root {
 ${tokensToVars(light)}
-  --prose-ink: ${proseInk(light)};
+${derivedVars(light, "  ")}
 }
 @media (prefers-color-scheme: dark) {
   :root {
 ${tokensToVars(dark)}
-    --prose-ink: ${proseInk(dark)};
+${derivedVars(dark, "    ")}
   }
 }
 `.trim()

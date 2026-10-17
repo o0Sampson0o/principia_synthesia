@@ -152,7 +152,7 @@ export default async function MembersPage({
             <button
               type="submit"
               className="themed-btn-ghost shrink-0"
-              style={{ fontSize: "0.8125rem", color: "var(--color-error)" }}
+              style={{ fontSize: "0.8125rem", color: "var(--error-ink)" }}
             >
               Leave organisation
             </button>
@@ -218,7 +218,7 @@ export default async function MembersPage({
                         <input type="hidden" name="membershipId" value={m.membershipId} />
                         <button
                           type="submit"
-                          className="text-xs text-red-500 themed-btn-ghost px-2 py-1"
+                          className="text-xs ps-error-text themed-btn-ghost px-2 py-1"
                         >
                           Remove
                         </button>
@@ -257,7 +257,7 @@ export default async function MembersPage({
                   </form>
                   <form action={cancelInvite}>
                     <input type="hidden" name="invitationId" value={inv.id} />
-                    <button type="submit" className="text-xs text-red-500 themed-btn-ghost px-2 py-1">
+                    <button type="submit" className="text-xs ps-error-text themed-btn-ghost px-2 py-1">
                       Cancel
                     </button>
                   </form>

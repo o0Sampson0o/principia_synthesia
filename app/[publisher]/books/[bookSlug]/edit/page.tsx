@@ -258,7 +258,7 @@ export default async function EditBookPage({
           </label>
           <CategoryPicker initialSelected={bookCats.map(c => c.slug)} />
         </div>
-        <details className="border rounded themed-surface">
+        <details className="border themed-border rounded-lg themed-surface">
           <summary className="cursor-pointer px-4 py-2 text-sm font-medium themed-secondary select-none">
             Math macros
           </summary>
@@ -322,7 +322,7 @@ export default async function EditBookPage({
       </section>
 
       <section className="mt-12 border-t themed-border pt-8">
-        <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--color-error)" }}>Danger zone</h2>
+        <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--error-ink)" }}>Danger zone</h2>
         <p className="text-sm themed-muted mb-4">
           Deleting a book moves it to the bin for 30 days, then it is permanently removed
           along with its curriculum entries and internal articles.

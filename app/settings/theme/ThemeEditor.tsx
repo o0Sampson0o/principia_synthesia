@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { saveTheme, resetTheme } from "../actions"
 import type { ThemeTokens } from "@/db/schema"
-import { PRESETS } from "@/lib/theme"
+import { PRESETS, accentFill, proseInk } from "@/lib/theme"
 
 const TOKEN_LABELS: Record<keyof ThemeTokens, string> = {
   background:       "Page background",
@@ -47,9 +47,19 @@ export default function ThemeEditor({ initialLight, initialDark }: Props) {
     )
   }
 
+  /** Values derived from the tokens (lib/theme buildThemeStyle) follow the preview too. */
+  function applyDerived(t: ThemeTokens) {
+    const { fill, ink } = accentFill(t)
+    const root = document.documentElement.style
+    root.setProperty("--prose-ink", proseInk(t))
+    root.setProperty("--accent-fill", fill)
+    root.setProperty("--accent-fill-ink", ink)
+  }
+
   function updateToken(key: keyof ThemeTokens, value: string) {
     setTokens((prev) => ({ ...prev, [key]: value }))
     applyVar(key, value)
+    applyDerived({ ...tokens, [key]: value })
   }
 
   function applyPreset(preset: typeof PRESETS[0]) {
@@ -58,6 +68,7 @@ export default function ThemeEditor({ initialLight, initialDark }: Props) {
     for (const [key, value] of Object.entries(t)) {
       applyVar(key as keyof ThemeTokens, value)
     }
+    applyDerived(t)
   }
 
   async function handleSave() {

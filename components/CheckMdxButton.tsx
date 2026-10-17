@@ -117,7 +117,7 @@ export default function CheckMdxButton({
             fontSize: "0.6875rem",
             letterSpacing: "0.03em",
             padding: "0.2rem 0.55rem",
-            color: "var(--color-error)",
+            color: "var(--error-ink)",
             borderColor: "color-mix(in srgb, var(--color-error) 45%, var(--border))",
             background: "color-mix(in srgb, var(--color-error) 9%, var(--surface))",
           }}
