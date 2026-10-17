@@ -238,6 +238,34 @@ Description, Canvas animation. Bidirectional sync:
 
 **Public display:** `components/ArticleMetadata.tsx` (server component) renders at the top of article/chapter pages: updated-at date, status badge (hidden for `"published"`), tags as `/search?tags=<tag>` links, description.
 
+## Editor conveniences (uploads, paste, blocks, links)
+
+- **Uploads go straight to storage.** `lib/upload-client.ts` uploads from the
+  browser to Vercel Blob; `POST /api/uploads` only signs a token after checking
+  edit rights and the exact path (`lib/uploads.ts`). Images (≤20 MB) live at
+  `images/<pub>/<name>.<ext>` in the public store; PDFs (≤100 MB) at
+  `files/<pub>/<uuid>/<name>.pdf`, read only through `GET /api/files/…`. PDFs
+  are stored privately when `BLOB_PRIVATE_READ_WRITE_TOKEN` (a private Blob
+  store) is set; otherwise they sit in the public store at unguessable paths.
+  Anyone with a file's link can read it — there is no per-page access check.
+- **Paste or drop** images and PDFs into the editor, or use "/" → "Image or
+  PDF" (`lib/live-preview/paste-drop.ts`). A `[Uploading …](#uploading-<id>)`
+  placeholder marks the spot until the upload finishes.
+- **`<Pdf src="…" title="…" page={12} height={600} />`** renders the browser's
+  PDF viewer with an "Open PDF" link (`components/PdfEmbed.tsx`, the same
+  figure in Preview via `lib/preview-mdx-render.ts`; rules in
+  `lib/pdf-embed.ts`). A plain link ending `#page=N` opens a PDF at page N.
+- **Smart paste** (`lib/smart-paste.ts`): a URL over selected text links it;
+  arXiv/DOI links (and bare DOIs) get labels; `\[…\]`, `\(…\)` and display
+  environments become `$$`/`$` maths.
+- **`[[` and `@`** both search titles and write the wikilink (see
+  docs/wikilinks.md).
+- **Block handle** (`lib/live-preview/block-handle.ts`, block rules in
+  `lib/live-preview/blocks.ts`): hover a block for ⋮⋮ in the margin — drag to
+  move it, click for Turn into / Duplicate / Move up / Move down / Delete.
+  Fenced code, `$$` maths, tables, callouts and `<details>` move as one block.
+  Pointer-only; the keyboard has Alt+↑/↓ and Ctrl+Alt+0–9.
+
 ## MDX compile check (editor)
 
 The old split-editor Preview pane is gone (live preview renders in place).
@@ -245,8 +273,10 @@ The old split-editor Preview pane is gone (live preview renders in place).
 calls the `previewMdx` server action (`app/[publisher]/articles/actions.ts`),
 which runs the full `unified` remark/rehype pipeline (including `remark-math`,
 `rehype-katex`, `remark-gfm`, and `remarkWikilinks`) on the server and returns
-serialised HTML. The button surfaces a ✓/✗ badge; clicking it opens a native
-`<dialog>` with the compile error or the rendered output.
+serialised HTML. It is started from the editor's "···" menu
+(`components/EditorMoreMenu.tsx`, with Grammar & spelling); the ✓/✗ badge stays
+in the toolbar, and clicking it opens a native `<dialog>` with the compile
+error or the rendered output.
 
 This design is intentional: running `next-mdx-remote`'s client-side `serialize()` in the browser calls `new Function()`, which violates the CSP `unsafe-eval` restriction when navigating client-side to the edit page (the nonce-based CSP header from the previous navigation is no longer in scope). Compiling on the server means the browser never evaluates dynamic code, so editor routes do not need `unsafe-eval`.
 
@@ -322,4 +352,4 @@ The `<Cite slug="publisher/article-slug" />` MDX component creates a numbered, h
 
 ## Command palette
 
-`components/CommandPalette.tsx` (client component) in the root layout. `Ctrl/Cmd+Shift+P` opens modal fuzzy-search over articles, books, and objects via `searchAll()` in `lib/search.ts`. Runs three parallel case-insensitive `ILIKE` queries, up to 8 results per category. Each result includes `publisherSlug` for link construction. Internal articles and (for non-root-admin) private resources are excluded.
+`components/CommandPalette.tsx` (client component) in the root layout. `Ctrl/Cmd+K` (or the nav's shortcut button; `Ctrl/Cmd+Shift+P` still works where the browser lets it through) opens modal fuzzy-search over articles, books, and objects via `searchAll()` in `lib/search.ts`. Runs three parallel case-insensitive `ILIKE` queries, up to 8 results per category. Each result includes `publisherSlug` for link construction. Internal articles and (for non-root-admin) private resources are excluded.

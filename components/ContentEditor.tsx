@@ -15,6 +15,7 @@ import { buildKatexMacros, extractMacroSource } from "@/lib/katex-macros";
 import { editorTheme } from "@/lib/live-preview/theme";
 import { editorCompletions } from "@/lib/live-preview/wikilink-complete";
 import { pasteAndDrop } from "@/lib/live-preview/paste-drop";
+import { blockHandle } from "@/lib/live-preview/block-handle";
 import { turnIntoKeymap } from "@/lib/live-preview/turn-into";
 import CheckMdxButton from "./CheckMdxButton";
 import { findMissingAlt } from "@/lib/alt-text-lint";
@@ -192,6 +193,7 @@ export default forwardRef<ContentEditorRef, {
     editorTheme,
     editorCompletions(publisherSlug),
     pasteAndDrop(publisherSlug),
+    blockHandle,
     turnIntoKeymap,
     htmlTagLinter(),
     grammarCompartment.of([]),

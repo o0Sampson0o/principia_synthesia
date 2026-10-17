@@ -12,8 +12,8 @@ import { toastError } from "@/lib/toast";
  *    as `![alt](url)`, a PDF as a `<Pdf />` block on its own line;
  *  - text goes through `transformPaste` (links, arXiv/DOI, LaTeX).
  *
- * While a file uploads, a placeholder `![Uploading name…](uploading:<id>)`
- * marks its spot; it is found by id on completion, so typing elsewhere in the
+ * While a file uploads, a placeholder link `[Uploading name…](#uploading-<id>)`
+ * marks its spot (a link, not an image, so nothing tries to load it); it is found by id on completion, so typing elsewhere in the
  * meantime does not disturb it.
  */
 
@@ -36,7 +36,7 @@ function insertUploads(view: EditorView, files: File[], pos: number, publisherSl
   const placeholders = usable.map((f) => {
     const id = `${Date.now().toString(36)}${(seq++).toString(36)}`;
     const block = kindForType(f.type) === "file";
-    return { file: f, id, text: `![Uploading ${f.name.replace(/[[\]]/g, "")}…](uploading:${id})`, block };
+    return { file: f, id, text: `[Uploading ${f.name.replace(/[[\]]/g, "")}…](#uploading-${id})`, block };
   });
 
   // PDFs are blocks: give them their own line.
@@ -61,10 +61,10 @@ function insertUploads(view: EditorView, files: File[], pos: number, publisherSl
 
 function replacePlaceholder(view: EditorView, id: string, replacement: string) {
   const doc = view.state.doc.toString();
-  const marker = `](uploading:${id})`;
+  const marker = `](#uploading-${id})`;
   const end = doc.indexOf(marker);
   if (end === -1) return; // the author deleted it while it uploaded
-  const start = doc.lastIndexOf("![Uploading ", end);
+  const start = doc.lastIndexOf("[Uploading ", end);
   if (start === -1) return;
   view.dispatch({ changes: { from: start, to: end + marker.length, insert: replacement } });
 }
