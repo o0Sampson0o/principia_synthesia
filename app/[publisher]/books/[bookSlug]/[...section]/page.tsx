@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/db";
@@ -14,6 +15,7 @@ import { headers } from "next/headers";
 import { classifyReferrer } from "@/lib/analytics-source";
 import { getOrCreateSessionId } from "@/lib/analytics-session";
 import { config } from "@/lib/config";
+import Backlinks from "@/components/Backlinks";
 import CommentThread from "@/components/CommentThread";
 import ArticleToc from "@/components/ArticleToc";
 import ArticleSectionRail from "@/components/ArticleSectionRail";
@@ -234,6 +236,20 @@ export default async function BookSectionPage({
           macros={katexMacros}
           showDetails={isEditor}
         />
+      </div>
+
+      {/* ── Incoming links ───────────────────────────────────────── */}
+      <div className="max-w-3xl mx-auto px-5">
+        <Suspense fallback={null}>
+          <Backlinks
+            target={{
+              articleId: article.id,
+              publisherSlug: articlePublisherSlug,
+              slug: article.slug,
+              bookSlug: article.isInternal ? bookSlug : null,
+            }}
+          />
+        </Suspense>
       </div>
 
       {/* ── Page-turn navigation ─────────────────────────────────── */}

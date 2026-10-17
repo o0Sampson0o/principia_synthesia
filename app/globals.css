@@ -1846,6 +1846,42 @@ body::-webkit-scrollbar-corner,
    row (Mono Fact Rule), never a panel. */
 .ps-stale-fact { color: color-mix(in srgb, var(--color-error) 70%, var(--foreground)); }
 
+/* ─── "Linked from" (components/Backlinks) ───────────────────────── */
+/* The List Row signature, small: titles in ink, a linking section's book in
+   the mono voice. Sits after the prose, before the page turn / discussion. */
+.ps-backlinks { margin: 3rem 0 2.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+.ps-backlinks-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.ps-backlinks ul { list-style: none; margin: 0; padding: 0; }
+.ps-backlinks-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+}
+.ps-backlinks-title { font-size: 0.9375rem; color: var(--foreground); transition: color 0.15s; }
+.ps-backlinks-link:hover .ps-backlinks-title { color: var(--accent-ink); }
+.ps-backlinks-context {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+}
+
 /* ─── Book breadcrumb (components/book/BookBreadcrumb) ──────────── */
 .ps-crumbs {
   display: flex;

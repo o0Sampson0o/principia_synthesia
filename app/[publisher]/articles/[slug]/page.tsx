@@ -30,6 +30,7 @@ import ForkLineageHeader from "@/components/ForkLineageHeader";
 import ForksList from "@/components/ForksList";
 import BibliographySection from "@/components/BibliographySection";
 import CommentThread from "@/components/CommentThread";
+import Backlinks from "@/components/Backlinks";
 import ArticleBody from "@/components/ArticleBody";
 import ArticleToc from "@/components/ArticleToc";
 import ArticleSectionRail from "@/components/ArticleSectionRail";
@@ -435,6 +436,12 @@ export default async function ArticlePage({
       <BibliographySection orderedSlugs={orderedSlugs} resolved={resolvedCitations} />
 
       {/* Self-fetching sections stream in after the prose */}
+      {!viewingSnapshot && (
+        <Suspense fallback={null}>
+          <Backlinks target={{ articleId: article.id, publisherSlug, slug }} />
+        </Suspense>
+      )}
+
       <Suspense fallback={null}>
         <RelatedEvents articleId={article.id} />
       </Suspense>

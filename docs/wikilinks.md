@@ -17,6 +17,16 @@ with the target's title as its label, e.g.
 `[[alice:books:classical-mechanics:intro|Introduction]]`.
 (`lib/live-preview/wikilink-complete.ts`, `lib/link-targets.ts`.)
 
+## Backlinks ("Linked from")
+
+Every article and book section lists the public, published pages whose
+wikilinks point to it, under the prose (`components/Backlinks.tsx`,
+`lib/backlinks.ts`). There is no link table: a `LIKE` prefilter on content finds
+candidates and `linksTo` confirms each with the wikilink grammar. Because only
+public pages are listed, the result is the same for every visitor and is cached
+for five minutes, or until an article is created, saved, deleted or restored
+(`revalidateTag("backlinks")`). A link from a private or draft page is not shown.
+
 ## Supported syntax
 
 Most wikilinks use a three-segment format: `[[publisher:type:slug]]`. Book

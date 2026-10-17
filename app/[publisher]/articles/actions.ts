@@ -4,7 +4,8 @@ import { db } from "@/db";
 import { articles, revisions, articleCategories, categories } from "@/db/schema";
 import { setContentTags } from "@/lib/content-tags";
 import { and, eq, isNull } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { BACKLINKS_TAG } from "@/lib/backlinks-tag";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { canEditContent } from "@/lib/roles";
@@ -118,6 +119,7 @@ export async function createArticle(
   }
 
   revalidatePath("/");
+  revalidateTag(BACKLINKS_TAG, "default"); // links in this article may have changed
   revalidatePath(`/${publisherSlug}`);
   redirect(`/${publisherSlug}/articles/${validated.slug}`);
 }
@@ -190,6 +192,7 @@ export async function updateArticle(
   }
 
   revalidatePath(`/${publisherSlug}/articles/${validated.slug}`);
+  revalidateTag(BACKLINKS_TAG, "default"); // links in this article may have changed
   revalidatePath(`/${publisherSlug}/articles/${validated.slug}/edit`);
   redirect(`/${publisherSlug}/articles/${validated.slug}`);
 }
@@ -205,6 +208,7 @@ export async function deleteArticle(publisherSlug: string, formData: FormData) {
   await deleteArticleCore({ ownerType, ownerId, id: validated.id });
 
   revalidatePath("/");
+  revalidateTag(BACKLINKS_TAG, "default"); // links in this article may have changed
   revalidatePath(`/${publisherSlug}`);
   redirect(`/${publisherSlug}/bin`);
 }
@@ -296,6 +300,7 @@ export async function restoreRevision(formData: FormData) {
   }
 
   revalidatePath(`/${validated.publisherSlug}/articles/${article.slug}`);
+  revalidateTag(BACKLINKS_TAG, "default"); // links in this article may have changed
   revalidatePath(`/${validated.publisherSlug}/articles/${article.slug}/edit`);
   redirect(`/${validated.publisherSlug}/articles/${article.slug}`);
 }
