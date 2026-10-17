@@ -1,5 +1,5 @@
 /**
- * Static page destinations for the Ctrl/Cmd+Shift+P command palette.
+ * Static page destinations for the Ctrl/Cmd+K command palette.
  * Content (articles/books/objects) is searched server-side via lib/search;
  * these cover the app's fixed pages so every screen is reachable from the
  * palette without typing URLs.

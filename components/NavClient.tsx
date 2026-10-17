@@ -5,6 +5,7 @@ import type { SessionPayload } from "@/lib/auth"
 import { useNavMenu } from "@/components/useNavMenu"
 import NotificationsBell from "@/components/NotificationsBell"
 import PrincipiaMark from "@/components/PrincipiaMark"
+import { useSyncExternalStore } from "react"
 
 const NOTIFICATIONS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_NOTIFICATIONS === "true";
 
@@ -41,6 +42,7 @@ export default function NavClient({ session }: { session: SessionPayload | null 
               {label}
             </Link>
           ))}
+          <PaletteHint />
         </div>
 
         <div className="hidden md:flex items-center gap-2 ml-auto shrink-0">
@@ -142,5 +144,32 @@ export default function NavClient({ session }: { session: SessionPayload | null 
         </div>
       )}
     </nav>
+  )
+}
+
+const noSubscribe = () => () => {}
+
+/**
+ * The command palette's shortcut, shown where people look for search, and a
+ * click target for those who don't use shortcuts. "Ctrl K" on the server and
+ * first paint; "⌘K" once the client knows it is on a Mac.
+ */
+function PaletteHint() {
+  const isMac = useSyncExternalStore(
+    noSubscribe,
+    () => /Mac|iPhone|iPad/.test(navigator.platform),
+    () => false
+  )
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new Event("ps:open-palette"))}
+      className="ps-kbd-hint"
+      aria-label="Open the command palette"
+      title="Quick search and commands"
+    >
+      <kbd>{isMac ? "⌘" : "Ctrl"}</kbd>
+      <kbd>K</kbd>
+    </button>
   )
 }

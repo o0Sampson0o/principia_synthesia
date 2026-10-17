@@ -8,7 +8,10 @@ import { getPageCommands, filterPageCommands } from "@/lib/page-commands";
 type SearchResult = Awaited<ReturnType<typeof searchAll>>;
 
 /**
- * Site-wide command palette opened with Ctrl/Cmd+Shift+P.
+ * Site-wide command palette opened with Ctrl/Cmd+K — the docs-site and app
+ * convention, and free in every browser (Ctrl+Shift+P, still accepted, is
+ * Firefox's and Edge's private window, which the page never sees) — or with
+ * the nav's shortcut button, via the `ps:open-palette` window event.
  * Searches articles, books, and objects, plus static page destinations
  * (settings, search, timeline, ...); navigates on selection.
  */
@@ -37,7 +40,10 @@ export default function CommandPalette({ userSlug = null }: { userSlug?: string 
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "P") {
+      const mod = (e.ctrlKey || e.metaKey) && !e.altKey;
+      const isK = mod && !e.shiftKey && e.key.toLowerCase() === "k";
+      const isShiftP = mod && e.shiftKey && e.key.toLowerCase() === "p";
+      if (isK || isShiftP) {
         e.preventDefault();
         e.stopPropagation();
         if (openRef.current) closePalette(); else openPalette();
@@ -45,7 +51,11 @@ export default function CommandPalette({ userSlug = null }: { userSlug?: string 
       if (e.key === "Escape") closePalette();
     }
     window.addEventListener("keydown", handleKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
+    window.addEventListener("ps:open-palette", openPalette);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+      window.removeEventListener("ps:open-palette", openPalette);
+    };
   }, [openPalette, closePalette]);
 
   const handleInput = useCallback((value: string) => {
