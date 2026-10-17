@@ -80,6 +80,7 @@ import { MdH1, MdH2, MdH3 } from "@/components/MdHeadings";
 import MermaidBlock from "@/components/MermaidBlock";
 import InlineAnimation from "@/components/InlineAnimation";
 import Embed, { type EmbedProps } from "@/components/Embed";
+import PdfEmbed from "@/components/PdfEmbed";
 
 /** Frontmatter `canvas:` values allowed to auto-prepend a `<DynamicAnimation>`. */
 const CANVAS_SLUG_RE = /^anim-[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -147,6 +148,7 @@ export function buildArticleComponents(publisherSlug: string) {
     Embed: (props: Omit<EmbedProps, "defaultPublisher">) => (
       <Embed {...props} defaultPublisher={publisherSlug} />
     ),
+    Pdf: PdfEmbed,
     img: ArticleImage,
     p: MdxParagraph,
     Cite,

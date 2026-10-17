@@ -36,6 +36,7 @@ import { remarkQuoteAttribution } from "@/lib/remark-quote-attribution";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import { remarkCiteNumbering } from "@/lib/remark-cite-numbering";
 import { remarkFencedEmbeds } from "@/lib/remark-fenced-embeds";
+import { pdfEmbed } from "@/lib/pdf-embed";
 import { codeHighlightPlugins } from "@/lib/code-highlight";
 import {
   prepareArticleBody,
@@ -102,6 +103,27 @@ function citeToHast(node: JsxNode) {
   ]);
 }
 
+/** `<Pdf>` → the same figure components/PdfEmbed.tsx renders (lib/pdf-embed.ts). */
+function pdfToHast(node: JsxNode) {
+  const expr = (n: string) => {
+    const a = node.attributes.find((x) => x.type === "mdxJsxAttribute" && x.name === n);
+    if (!a) return undefined;
+    if (typeof a.value === "string") return a.value;
+    // page={12}: an expression attribute; its source text is the number.
+    return (a.value as { value?: string } | null)?.value;
+  };
+  const pdf = pdfEmbed({ src: expr("src"), page: expr("page"), title: expr("title"), height: expr("height") });
+  if (!pdf) return undefined;
+  return h("figure", { className: "ps-pdf" }, [
+    h("figcaption", { className: "ps-pdf-bar" }, [
+      h("span", { className: "ps-pdf-title" }, pdf.title),
+      ...(pdf.page ? [h("span", { className: "ps-pdf-page" }, `p. ${pdf.page}`)] : []),
+      h("a", { href: pdf.href, target: "_blank", rel: "noopener noreferrer", className: "ps-pdf-open" }, "Open PDF ↗"),
+    ]),
+    h("iframe", { src: pdf.frameSrc, title: pdf.title, loading: "lazy", className: "ps-pdf-frame", style: `height:${pdf.height}px` }),
+  ]);
+}
+
 /**
  * A mount point for a component that can only run in the browser.
  *
@@ -155,6 +177,7 @@ function makeJsxHandler(publisherSlug: string) {
         publisher: attr(node, "publisher"),
         "default-publisher": publisherSlug,
       });
+    if (name === "Pdf") return pdfToHast(node);
     // Any other custom (uppercase) component we don't model → render its children.
     if (/^[A-Z]/.test(name)) return state.all(node);
 

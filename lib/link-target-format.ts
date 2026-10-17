@@ -34,3 +34,14 @@ export function matchWikilinkQuery(before: string): { query: string; start: numb
   if (!m) return null;
   return { query: m[1], start: m.index };
 }
+
+/**
+ * `@query` at the start of a word: the Notion habit for linking a page. Needs
+ * one character after `@` (a bare "@" in prose stays prose), and never fires
+ * inside an email address or a handle glued to text ("a@b", "x@y").
+ */
+export function matchMentionQuery(before: string): { query: string; start: number } | null {
+  const m = /(^|[\s(])@([A-Za-z0-9][^\s@\[\]()]{0,60}(?: [^\s@\[\]()]{1,30}){0,3})$/.exec(before);
+  if (!m) return null;
+  return { query: m[2], start: m.index + m[1].length };
+}

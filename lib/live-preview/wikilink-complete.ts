@@ -6,9 +6,10 @@ import {
 } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
-import { slashSource } from "@/lib/live-preview/slash-menu";
+import { makeSlashSource } from "@/lib/live-preview/slash-menu";
+import { pickAndUpload } from "@/lib/live-preview/paste-drop";
 import { searchLinkTargets } from "@/lib/link-targets";
-import { linkTargetToWikilink, matchWikilinkQuery, type LinkTarget } from "@/lib/link-target-format";
+import { linkTargetToWikilink, matchMentionQuery, matchWikilinkQuery, type LinkTarget } from "@/lib/link-target-format";
 
 /**
  * `[[` link completion: typing `[[` and part of a title lists matching
@@ -34,12 +35,17 @@ function applyTarget(t: LinkTarget) {
   };
 }
 
+/**
+ * `[[title` and `@title` both search link targets; picking one writes the
+ * wikilink in place of what was typed (the `[[` or the `@`).
+ */
 export function wikilinkSource(publisherSlug: string) {
   // Per-editor memo: retyping or backspacing over a query reuses its answer.
   const cache = new Map<string, Promise<LinkTarget[]>>();
   return async (context: CompletionContext): Promise<CompletionResult | null> => {
     const line = context.state.doc.lineAt(context.pos);
-    const match = matchWikilinkQuery(line.text.slice(0, context.pos - line.from));
+    const before = line.text.slice(0, context.pos - line.from);
+    const match = matchWikilinkQuery(before) ?? matchMentionQuery(before);
     if (!match) return null;
     const key = match.query.trim().toLowerCase();
     let pending = cache.get(key);
@@ -64,8 +70,20 @@ export function wikilinkSource(publisherSlug: string) {
 
 /** The editor's completions: the "/" block menu and "[[" links, one popup. */
 export function editorCompletions(publisherSlug: string): Extension {
+  const upload = {
+    keywords: "upload image picture photo pdf file document attach",
+    completion: {
+      label: "Image or PDF",
+      detail: "upload",
+      type: "image",
+      apply: (view: EditorView, _c: Completion, from: number, to: number) => {
+        view.dispatch({ changes: { from, to, insert: "" } });
+        pickAndUpload(view, publisherSlug);
+      },
+    },
+  };
   return autocompletion({
-    override: [slashSource, wikilinkSource(publisherSlug)],
+    override: [makeSlashSource([upload]), wikilinkSource(publisherSlug)],
     icons: true,
     defaultKeymap: true,
   });

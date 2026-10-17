@@ -80,19 +80,34 @@ export function matchSlashQuery(before: string): { query: string } | null {
   return { query: m[1].toLowerCase() };
 }
 
+/** An extra slash command supplied by the editor (it needs editor context, e.g. uploads). */
+export interface ExtraSlashCommand {
+  completion: Completion;
+  keywords: string;
+}
+
 /** Filters the block commands by a slash query (label + keyword match). */
-export function filterSlashCommands(query: string): Completion[] {
-  return OPTIONS.filter((o) => !query || o.haystack.includes(query)).map((o) => o.completion);
+export function filterSlashCommands(query: string, extra: ExtraSlashCommand[] = []): Completion[] {
+  const all = [
+    ...extra.map((e) => ({ completion: e.completion, haystack: `${e.completion.label} ${e.keywords}`.toLowerCase() })),
+    ...OPTIONS,
+  ];
+  return all.filter((o) => !query || o.haystack.includes(query)).map((o) => o.completion);
 }
 
-export function slashSource(context: CompletionContext): CompletionResult | null {
-  const line = context.state.doc.lineAt(context.pos);
-  const before = line.text.slice(0, context.pos - line.from);
-  const match = matchSlashQuery(before);
-  if (!match) return null;
+/** The "/" source, with any editor-specific commands listed first. */
+export function makeSlashSource(extra: ExtraSlashCommand[] = []) {
+  return (context: CompletionContext): CompletionResult | null => {
+    const line = context.state.doc.lineAt(context.pos);
+    const before = line.text.slice(0, context.pos - line.from);
+    const match = matchSlashQuery(before);
+    if (!match) return null;
 
-  const options = filterSlashCommands(match.query);
-  if (options.length === 0) return null;
-  const from = context.pos - match.query.length - 1; // include the "/"
-  return { from, options, filter: false };
+    const options = filterSlashCommands(match.query, extra);
+    if (options.length === 0) return null;
+    const from = context.pos - match.query.length - 1; // include the "/"
+    return { from, options, filter: false };
+  };
 }
+
+export const slashSource = makeSlashSource();

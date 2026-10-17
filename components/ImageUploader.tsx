@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { uploadFile, UploadError } from "@/lib/upload-client";
 
 export type UploadedImage = {
   url: string;
@@ -40,21 +41,18 @@ export default function ImageUploader({ publisherSlug, onUploaded }: Props) {
     setError(null);
     setUploading(true);
 
-    const fd = new FormData();
-    fd.append("publisher", publisherSlug);
-    fd.append("file", pendingFile);
-    if (customName.trim()) fd.append("name", customName.trim());
-
-    const res = await fetch("/api/images/upload", { method: "POST", body: fd });
-    setUploading(false);
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError((body as { error?: string }).error ?? "Upload failed.");
+    // Straight to storage (lib/upload-client.ts): the old form POST went
+    // through a function whose 4.5 MB request cap was below the 5 MB limit.
+    let data: { url: string; pathname: string };
+    try {
+      data = await uploadFile(pendingFile, publisherSlug, { imageName: customName });
+    } catch (err) {
+      setUploading(false);
+      setError(err instanceof UploadError ? err.message : "Upload failed.");
       return;
     }
+    setUploading(false);
 
-    const data = (await res.json()) as { url: string; pathname: string };
     onUploaded({
       url: data.url,
       pathname: data.pathname,

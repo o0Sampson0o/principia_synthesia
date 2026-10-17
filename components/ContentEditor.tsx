@@ -13,6 +13,7 @@ import { katexMacrosFacet, EMPTY_MACROS } from "@/lib/live-preview/macros";
 import { buildKatexMacros, extractMacroSource } from "@/lib/katex-macros";
 import { editorTheme } from "@/lib/live-preview/theme";
 import { editorCompletions } from "@/lib/live-preview/wikilink-complete";
+import { pasteAndDrop } from "@/lib/live-preview/paste-drop";
 import { turnIntoKeymap } from "@/lib/live-preview/turn-into";
 import CheckMdxButton from "./CheckMdxButton";
 import { findMissingAlt } from "@/lib/alt-text-lint";
@@ -189,6 +190,7 @@ export default forwardRef<ContentEditorRef, {
     EditorView.lineWrapping,
     editorTheme,
     editorCompletions(publisherSlug),
+    pasteAndDrop(publisherSlug),
     turnIntoKeymap,
     htmlTagLinter(),
     grammarCompartment.of([]),

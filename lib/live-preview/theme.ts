@@ -100,6 +100,8 @@ const chrome = EditorView.theme({
   ".cm-completionIcon-table::after": { content: '"▦"' },
   ".cm-completionIcon-math::after": { content: '"∑"' },
   ".cm-completionIcon-wikilink::after": { content: '"[["' },
+  ".cm-completionIcon-image::after": { content: '"↥"' },
+  ".cm-completionIcon-mention::after": { content: '"@"' },
   ".cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionIcon": {
     borderColor: "color-mix(in srgb, var(--accent) 45%, var(--border))",
     color: "var(--accent)",

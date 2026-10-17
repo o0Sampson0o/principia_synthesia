@@ -19,7 +19,8 @@ function buildCsp(nonce: string): string {
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https://*.public.blob.vercel-storage.com`,
     `font-src 'self' data:`,
-    `connect-src 'self' https://vitals.vercel-insights.com https://vercel.live`,
+    // vercel.com/api/blob: browsers upload files straight to Vercel Blob (lib/upload-client.ts).
+    `connect-src 'self' https://vitals.vercel-insights.com https://vercel.live https://vercel.com https://*.blob.vercel-storage.com`,
     // challenges.cloudflare.com: Turnstile widget iframe (guest comments)
     `frame-src 'self' https://vercel.live https://challenges.cloudflare.com`,
     `object-src 'none'`,
