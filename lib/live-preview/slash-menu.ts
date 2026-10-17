@@ -1,17 +1,16 @@
 import {
-  autocompletion,
   type Completion,
   type CompletionContext,
   type CompletionResult,
 } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
-import type { Extension } from "@codemirror/state";
 
 /**
  * Notion-style "/" slash menu. Typing "/" at the start of an (otherwise
  * empty) line opens a searchable list of block types; picking one replaces
  * the "/query" with the block's markdown. The document stays plain markdown —
- * this is a pure insert affordance.
+ * this is a pure insert affordance. Mounted together with the "[[" link
+ * completion by `editorCompletions` (wikilink-complete.ts).
  */
 
 interface BlockCommand {
@@ -86,7 +85,7 @@ export function filterSlashCommands(query: string): Completion[] {
   return OPTIONS.filter((o) => !query || o.haystack.includes(query)).map((o) => o.completion);
 }
 
-function slashSource(context: CompletionContext): CompletionResult | null {
+export function slashSource(context: CompletionContext): CompletionResult | null {
   const line = context.state.doc.lineAt(context.pos);
   const before = line.text.slice(0, context.pos - line.from);
   const match = matchSlashQuery(before);
@@ -97,9 +96,3 @@ function slashSource(context: CompletionContext): CompletionResult | null {
   const from = context.pos - match.query.length - 1; // include the "/"
   return { from, options, filter: false };
 }
-
-export const slashMenu: Extension = autocompletion({
-  override: [slashSource],
-  icons: true,
-  defaultKeymap: true,
-});

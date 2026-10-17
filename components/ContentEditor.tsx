@@ -12,7 +12,7 @@ import { livePreview } from "@/lib/live-preview";
 import { katexMacrosFacet, EMPTY_MACROS } from "@/lib/live-preview/macros";
 import { buildKatexMacros, extractMacroSource } from "@/lib/katex-macros";
 import { editorTheme } from "@/lib/live-preview/theme";
-import { slashMenu } from "@/lib/live-preview/slash-menu";
+import { editorCompletions } from "@/lib/live-preview/wikilink-complete";
 import { turnIntoKeymap } from "@/lib/live-preview/turn-into";
 import CheckMdxButton from "./CheckMdxButton";
 import { findMissingAlt } from "@/lib/alt-text-lint";
@@ -188,7 +188,7 @@ export default forwardRef<ContentEditorRef, {
     }),
     EditorView.lineWrapping,
     editorTheme,
-    slashMenu,
+    editorCompletions(publisherSlug),
     turnIntoKeymap,
     htmlTagLinter(),
     grammarCompartment.of([]),
@@ -203,7 +203,7 @@ export default forwardRef<ContentEditorRef, {
         },
       },
     ]),
-  ], [grammarCompartment, modeCompartment, macrosCompartment, toggleMode]);
+  ], [grammarCompartment, modeCompartment, macrosCompartment, toggleMode, publisherSlug]);
 
   const toggleGrammar = useCallback(() => {
     setGrammarOn((on) => {

@@ -7,6 +7,16 @@ tags before the MDX is compiled.
 
 ---
 
+## Writing links in the editor
+
+You rarely type this syntax by hand. In the article editor, type `[[` and part
+of a title: a list of matching articles, book sections and books appears (your
+own publisher's first, drafts and private pages included; other publishers'
+pages only when this session can see them). Picking one writes the full link
+with the target's title as its label, e.g.
+`[[alice:books:classical-mechanics:intro|Introduction]]`.
+(`lib/live-preview/wikilink-complete.ts`, `lib/link-targets.ts`.)
+
 ## Supported syntax
 
 Most wikilinks use a three-segment format: `[[publisher:type:slug]]`. Book
